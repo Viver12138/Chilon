@@ -82,3 +82,6 @@ jobs:
       #     the DeepSeek case skips when no API key is configured.
       - name: Verify agent turn
         run: pwsh -NoProfile -File database/tests/run_agent_test.ps1
+      # 14) Executor: a plan actually runs, producing questions, citations and a report.
+      - name: Verify end-to-end execution
+        run: pwsh -NoProfile -File database/tests/run_executor_test.ps1

@@ -1,13 +1,13 @@
 {
   "generator_version": "0.1.0",
   "registry_version": "0.1.0",
-  "registry_hash": "ce042fa2dd41ad90ee5a4f244d7051fe72dad47919657c43cbd7bf1f1a79328b",
-  "schema_hash": "4ddcaf1047d6adf08fcb732f5b7acb5ac8aa35ebe2dedb3375ba96b125ced85a",
+  "registry_hash": "4206c7c26e73fb92cb41b84ecf3b7d01f7d1cab1cbd1cf5c43d7fa809e934d8c",
+  "schema_hash": "0a176a741b978df6a3d17e10131a63d8fc2969ebc8e8eedad7ef3de70abdf487",
   "variant": "core",
   "tables": 81,
   "fields": 803,
   "indexes": 88,
-  "policies": 45,
+  "policies": 48,
   "min_foreign_keys": 145,
   "included_tables": [
     "users",

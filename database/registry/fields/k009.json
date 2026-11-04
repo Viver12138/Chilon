@@ -543,7 +543,13 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_document_versions_read",
+          "command": "SELECT",
+          "using": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        }
+      ]
     },
     {
       "name": "knowledge_chunks",
@@ -665,7 +671,13 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_chunks_read",
+          "command": "SELECT",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        }
+      ]
     },
     {
       "name": "knowledge_questions",
@@ -834,7 +846,13 @@
           "where": "segmentation_status <> 'accepted'"
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_questions_read",
+          "command": "SELECT",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        }
+      ]
     },
     {
       "name": "knowledge_annotations",

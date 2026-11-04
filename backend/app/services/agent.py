@@ -56,6 +56,32 @@ class Requirement:
         }
 
 
+SOURCE_WORDS = (
+    "高考真题", "高考题", "模拟卷", "模拟题", "模考", "联考",
+    "教辅", "练习册", "辅导书", "教材", "课本", "人教版",
+)
+
+LEADING_VERBS = ("帮我", "请", "用", "出", "生成", "做", "找", "来")
+
+
+def _clean_topic(text: str) -> str:
+    """Reduce a sentence to the topic it is about.
+
+    "用高考题出 4 道三角函数题" must become "三角函数", not the whole sentence:
+    retrieval matches text with ILIKE, and a whole sentence as the pattern matches
+    nothing at all.
+    """
+    topic = text.strip()
+    for word in SOURCE_WORDS:
+        topic = topic.replace(word, " ")
+    topic = re.sub(r"\d+\s*(?:道|个|题)", " ", topic)
+    for word in LEADING_VERBS:
+        topic = topic.replace(word, " ")
+    topic = re.sub(r"\s+", " ", topic).strip()
+    topic = re.sub(r"的?\s*题$", "", topic).strip(" ，,。、:：")
+    return topic
+
+
 def extract_requirement(text: str) -> Requirement:
     """Deterministic extraction.
 
@@ -74,18 +100,9 @@ def extract_requirement(text: str) -> Requirement:
     match = re.search(r"(\d+)\s*(?:道|个|题)", text)
     count = int(match.group(1)) if match else None
 
-    topic = text.strip()
-    for prefix in ("出一份", "出", "生成", "帮我", "请"):
-        if topic.startswith(prefix):
-            topic = topic[len(prefix) :]
-    topic = re.sub(r"\d+\s*(?:道|个)题?", "", topic).strip(" ，,。")
+    topic = _clean_topic(text)
     if not topic:
         raise RequirementIncomplete(["课题"])
-
-    if not sources:
-        # the platform knowledge base is the default source family (§1.6.1), so an
-        # unspecified source is a default, not a missing value
-        sources = []
 
     return Requirement(topic=topic, sources=sources, question_count=count, raw_text=text)
 
@@ -198,16 +215,49 @@ async def propose_plan(
     }
 
 
+def _sha(value: str) -> str:
+    import hashlib
+
+    return hashlib.sha256(value.encode('utf-8')).hexdigest()
+
+
 def _json(value: Any) -> str:
     import json
 
     return json.dumps(value, ensure_ascii=False, sort_keys=True)
 
 
-def _sha(value: str) -> str:
-    import hashlib
+async def approve_plan(
+    session: AsyncSession,
+    owner_id: uuid.UUID,
+    task_id: uuid.UUID,
+    approval_id: uuid.UUID,
+    *,
+    expected_task_state_version: int | None = None,
+) -> dict[str, Any]:
+    """Approve the plan *and* move the task to `ready`.
 
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
+    Approving is one use case spanning two aggregates: the approval record and the
+    task state machine. Leaving the second half to callers means every caller has to
+    remember it, and the first one that forgets makes `start_execution` fail with a
+    confusing "not legal in state awaiting_plan_approval".
+    """
+    await plans.decide(session, approval_id, owner_id, "approved")
+
+    task = await tasks.get_task(session, task_id)
+    version = task.state_version if expected_task_state_version is None else expected_task_state_version
+    if tasks.TASK.trigger_for(task.status, "approve_plan"):
+        await tasks.advance(session, task_id, "approve_plan", expected_state_version=version)
+        task = await tasks.get_task(session, task_id)
+
+    await dispatcher.enqueue(
+        session,
+        aggregate_type="task",
+        aggregate_id=str(task_id),
+        event_type="agent.plan_approved",
+        payload={"task_id": str(task_id), "approval_id": str(approval_id)},
+    )
+    return {"approval_id": str(approval_id), "status": "approved", "task_status": task.status}
 
 
 # `steps` is imported for its StepSpec type used in annotations above
