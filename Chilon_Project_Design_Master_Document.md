@@ -82,6 +82,7 @@
   - [D.20 2026-11-04 页面级规格（分册 D3）](#d20-2026-11-04-页面级规格分册-d3)
   - [D.21 2026-11-04 K009 字段级设计（模块分册 K09）](#d21-2026-11-04-k009-字段级设计模块分册-k09)
   - [D.22 2026-11-04 验收与测试矩阵（分册 D6）](#d22-2026-11-04-验收与测试矩阵分册-d6)
+  - [D.23 2026-11-04 Registry 与工程骨架](#d23-2026-11-04-registry-与工程骨架)
 
 [//]: # (toc:end)
 
@@ -564,24 +565,21 @@ Harness 不能替代： - 教师是否批准任务计划。 - Agent 是否可以
 ``` text
 database/
   registry/
-    schema.yaml
-    module-registry.yaml
-    table-registry.yaml
-    field-registry/
-    relations/
-    enums/
-    domains/
-    indexes/
-    policies/
-    permissions/
-    migrations/
-    naming/
-    templates/
+    schema.json          # 全局设置：命名、类型映射、模块与表清单、表顺序
+    fields/
+      k009.json          # 按模块聚合：表、字段、约束、索引、策略
   generator/
-  migrations/
+    validate_registry.py # FLD-001..012 + 结构一致性
+    generate_ddl.py      # 确定性 DDL + manifest（带 registry/schema hash）
   generated/
-  tests/
+    k009.sql             # 产物，不要手改
+    manifest.json
+  README.md
 ```
+
+**2026-11-04 实现说明**：最初设想按关注点拆成 `module-registry`、`field-registry/`、`relations/`、`indexes/`、`policies/` 等独立文件。实际实现改为**按模块聚合的单文件**（`fields/k009.json` 内含该模块的表、字段、约束、索引、策略）。
+
+理由：一个模块的字段、索引、策略需要一起评审，拆开后评审者要在 5 个文件间跳转；而跨模块共享的结构（命名、类型映射、表清单）已经在 `schema.json` 中集中。若后续单模块表数超过 30 张，再按关注点拆分，届时迁移成本很低。
 
 ### 9.2 DDL 生成顺序
 
@@ -3479,6 +3477,52 @@ G4 是数据结构问题（只有过与不过）、G5 已有 S1 人工例外通�
 **发布门禁 7 条**（§8）：429 例全过无跳过、覆盖校验 0 缺口、9 项阻断指标达标、黄金路径端到端含两个导出、CC-01–10 全过、12 条界面验收通过、5 个契约校验器全绿。
 
 **本册新增两个长期资产**：`design/gen_test_plan.py`（生成器）与 `design/check_test_plan.py`（覆盖校验）。契约变更后重跑生成器，测试矩阵自动跟上。
+
+## D.23 2026-11-04 Registry 与工程骨架
+
+**本轮交付：** Phase 1 的第一块（K009 Registry）与工程骨架。
+
+**一、Registry（K009，13 张表）**
+
+| 产物 | 内容 |
+| --- | --- |
+| `database/registry/schema.json` | 命名、类型映射、模块与表清单、表顺序、角色、扩展 |
+| `database/registry/fields/k009.json` | 13 张表的字段、约束、索引、RLS |
+| `database/generator/validate_registry.py` | FLD-001..012 + 结构一致性，带自测 |
+| `database/generator/generate_ddl.py` | 确定性 DDL + manifest（registry_hash / schema_hash） |
+| `database/generated/k009.sql` | 341 行；同一 registry 两次生成字节一致 |
+
+规模：143 个字段、20 个索引、4 条 RLS 策略。
+
+**校验覆盖**：表清单与模块文件必须一致；`table_order` 必须覆盖全部表；主键唯一且名为 `id`；`owner_scoped` 必须真的声明 `owner_id`；FK 目标必须存在（或声明为外部表）；约束与索引引用的列必须存在；CHECK 表达式里的标识符必须是列（字符串字面量已排除）；敏感度必须合法；时间默认值必须是 `now()`。
+
+**三个实现层面的决定：**
+
+1. **用 JSON 不用 YAML**：环境没有 PyYAML，而给一个结构权威引入第三方解析依赖不值得。JSON 更难手写一点，但零依赖、可被任何工具读取。
+2. **按模块聚合而非按关注点拆分**（§9.1 已更新）：一个模块的字段、索引、策略要一起评审。
+3. **外部表 FK 生成为 DEFERRED 注释**：`material_knowledge_citations.material_version_id` 指向 K012 的 `material_versions`，后者尚未建表。生成器不臆造 FK，而是输出注释与依赖说明。
+
+**已知缺口**：`superseded_by` 是自引用 FK 但不以 `_id` 结尾，因此 FLD-012 放宽为允许 `_id` 或 `_by`——与 `created_by`、`updated_by` 的惯例一致。这是规则适配现实，不是放过问题。
+
+**二、工程骨架**
+
+| 文件 | 作用 |
+| --- | --- |
+| `tools/check_all.py` | 11 项检查的唯一入口，CI 直接调用 |
+| `.github/workflows/check.yml` | push 与 PR 触发，无第三方依赖 |
+| `backend/pyproject.toml`、`backend/app/` | 后端骨架，只有 healthz，无业务代码 |
+| `database/README.md`、`backend/README.md` | 目录职责与命令 |
+| `.gitignore` | 排除缓存与生成临时文件 |
+
+**11/11 检查通过**：六个契约校验器（均带自测）、文档表格、标点规范、目录锚点、Registry 一致性、DDL 同步。
+
+**三、仓库**
+
+本轮初始化了 Git 并在 master §0.2 的要求下完成首次提交（49 个文件）。CI 的价值依赖版本控制，在此之前 CI 配置只是一段不会执行的文本。
+
+**下一步**：Alembic 基线（从生成的 DDL 建迁移），以及其余模块的字段级设计——但后者依赖 K011 的 35 张表清单，那是 §28.1 仍未关闭的历史恢复项。
+
+----------------------------------------
 
 ----------------------------------------
 
