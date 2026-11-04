@@ -97,6 +97,9 @@ pwsh -NoProfile -File database/tests/run_api_test.ps1
 
 # Agent 回合：需求 → 校验过的方案（模板规划器；有 key 时跑 DeepSeek）
 pwsh -NoProfile -File database/tests/run_agent_test.ps1
+
+# 端到端：方案真的跑出题目、引用与检查报告
+pwsh -NoProfile -File database/tests/run_executor_test.ps1
 ```
 
 ## 配置与模型
