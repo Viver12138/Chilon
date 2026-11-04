@@ -30,7 +30,7 @@ jobs:
         # annotation when it really fails so the cause is visible from the API.
         run: |
           for attempt in 1 2 3; do
-            if pip install --disable-pip-version-check alembic "psycopg[binary]" greenlet; then
+            if pip install --disable-pip-version-check alembic "psycopg[binary]" greenlet fastapi httpx; then
               echo "dependencies installed on attempt $attempt"
               exit 0
             fi
@@ -75,3 +75,6 @@ jobs:
       # 11) Runs and unknown-outcome reconciliation (never retries a side effect).
       - name: Verify run mapping and reconciliation
         run: pwsh -NoProfile -File database/tests/run_run_test.ps1
+      # 12) HTTP surface: frozen endpoints and codes, real RLS (non-superuser role).
+      - name: Verify HTTP surface
+        run: pwsh -NoProfile -File database/tests/run_api_test.ps1
