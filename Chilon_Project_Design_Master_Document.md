@@ -91,6 +91,7 @@
   - [D.29 2026-11-04 K002 入库与 owner_id 外键回填](#d29-2026-11-04-k002-入库与-owner_id-外键回填)
   - [D.30 2026-11-04 接入 GitHub 与 CI 首次联调](#d30-2026-11-04-接入-github-与-ci-首次联调)
   - [D.31 2026-11-04 行级安全上下文与隔离证明](#d31-2026-11-04-行级安全上下文与隔离证明)
+  - [D.32 2026-11-04 CI 间歇性失败的真实原因：探活没探到正确的实例](#d32-2026-11-04-ci-间歇性失败的真实原因探活没探到正确的实例)
 
 [//]: # (toc:end)
 
@@ -3890,6 +3891,52 @@ INSERT  别人的 owner_id 被 WITH CHECK 拒绝  ✓
 ```text
 check     : 14 项静态检查
 database  : 应用 DDL → 结构断言 → alembic upgrade/downgrade → **RLS 隔离断言**
+```
+
+----------------------------------------
+
+------------------------------------------------------------------------
+
+
+## D.32 2026-11-04 CI 间歇性失败的真实原因：探活没探到正确的实例
+
+**现象：** 同一个提交，CI 时红时绿。失败信息是：
+
+```text
+psql: error: connection to server on socket "/var/run/postgresql/.s.PGSQL.5432"
+      failed: FATAL:  the database system is shutting down
+```
+
+**根因不是超时，是竞态。** `postgres` 镜像的 entrypoint 分两阶段：
+
+1. 首次启动时先起一个**临时实例**跑初始化脚本（`initdb`、`POSTGRES_PASSWORD`、建库）
+2. 脚本跑完后停掉临时实例，再起正式实例并监听 TCP
+
+临时实例**只监听 unix socket**（`listen_addresses=''`）。而我们的探活写法是：
+
+```powershell
+docker exec $Container pg_isready -U postgres -d chilon   # 走 unix socket
+```
+
+它在阶段 1 就返回成功——**探到的是一个马上要被关掉的实例**。随后 psql 连接正好落在关闭窗口里，就报 “the database system is shutting down”。
+
+于是同一份代码，取决于初始化耗时与连接时机的相对关系，时红时绿。第 3 轮和第 8 轮失败、第 4 轮和第 7 轮通过，都是这一个原因。
+
+**修法：探活改走 TCP。**
+
+```powershell
+docker exec $Container pg_isready -h 127.0.0.1 -p 5432 -U postgres -d chilon
+```
+
+临时实例没有 TCP 监听，正式实例才有。这一个参数就把两个阶段区分开了。
+
+**这条经验的普遍性：** “服务已就绪”必须探测**你将要连接的那个端点**。用本地 socket 探活、再走 TCP 连接，或者在负载均衡后探一个实例、连另一个——都是同一类错误。探活的语义不是“进程活着”，而是“我这条连接会成功”。
+
+**当前 CI（run #9 全绿）：**
+
+```text
+check     : 14 项静态检查
+database  : 应用 DDL → 结构断言 → alembic upgrade/downgrade → RLS 隔离断言
 ```
 
 ----------------------------------------
