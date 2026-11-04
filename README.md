@@ -91,6 +91,28 @@ pwsh -NoProfile -File database/tests/run_run_test.ps1
 pwsh -NoProfile -File database/tests/run_api_test.ps1
 ```
 
+## 配置与模型
+
+真实模型走 DeepSeek 的 OpenAI 兼容端点。密钥只放在本机的 `.env`（不进版本库）：
+
+```powershell
+Copy-Item .env.example .env
+# 编辑 .env，填入 CHILON_DEEPSEEK_API_KEY=sk-...
+python backend/tests/check_llm.py
+```
+
+`check_llm.py` 会打印掩码后的 key、base URL 与模型名，并做一次最小调用。
+401 / 402 / 404 各有独立提示，避免把"密钥错""没余额""模型名错"混成一个错误。
+
+时间变量（`.env` 里）：
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `CHILON_DEEPSEEK_API_KEY` | 空 | 必填，形如 `sk-...` |
+| `CHILON_DEEPSEEK_BASE_URL` | `https://api.deepseek.com` | 不要带 `/v1` |
+| `CHILON_DEEPSEEK_MODEL` | `deepseek-chat` | 或 `deepseek-reasoner` |
+| `CHILON_PLANNER` | `deepseek` | 设为 `template` 可离线跑测试 |
+
 ## 设计与契约的状态
 
 设计已完成并冻结：分册 D1（产品闭环与门禁）、D2（信息架构）、D3（页面规格）、D4（动作与错误码）、D5（接口与 SSE）、D6（验收与测试矩阵）、K09（知识库字段设计）。
