@@ -11,7 +11,13 @@ param(
     [string]$Revision = "0001_baseline"
 )
 
-$ErrorActionPreference = "Stop"
+# Native commands write diagnostics to stderr (psql NOTICE, alembic INFO).
+# With 'Stop', PowerShell turns redirected stderr into terminating errors, so we
+# keep 'Continue' and check exit codes explicitly. `throw` is always terminating.
+$ErrorActionPreference = "Continue"
+if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $verify = Join-Path $root "database/tests/verify_schema.sql"
 $python = Join-Path $root ".venv/Scripts/python.exe"

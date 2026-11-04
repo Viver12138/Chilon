@@ -228,8 +228,8 @@ def main() -> int:
         return 0
 
     OUT_DIR.mkdir(parents=True, exist_ok=True)
-    sql_path.write_text(sql, encoding="utf-8")
-    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
+    sql_path.write_text(sql, encoding="utf-8", newline="\n")
+    manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2) + "\n", encoding="utf-8", newline="\n")
     print(f"wrote {sql_path.relative_to(ROOT)} ({len(sql.splitlines())} lines)")
     print(f"wrote {manifest_path.relative_to(ROOT)}")
     print(f"registry_hash {manifest['registry_hash'][:12]}  schema_hash {manifest['schema_hash'][:12]}")

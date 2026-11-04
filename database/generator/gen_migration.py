@@ -162,7 +162,7 @@ def main() -> int:
         tables_list=json.dumps(tables, indent=4),
         sql=sql.rstrip(),
     )
-    target.write_text(content, encoding="utf-8")
+    target.write_text(content, encoding="utf-8", newline="\n")
     compile(content, str(target), "exec")
     print(f"wrote {target.relative_to(ROOT)}")
     print(f"schema_hash {manifest['schema_hash'][:12]}  tables {len(tables)}")
