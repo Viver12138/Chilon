@@ -83,6 +83,9 @@ pwsh -NoProfile -File database/tests/run_step_test.ps1
 
 # 工具调用：能力/审批闸门、幂等键、参数键序无关
 pwsh -NoProfile -File database/tests/run_tool_test.ps1
+
+# 运行映射与未知结果对账：超时不等于失败，对账从不重试
+pwsh -NoProfile -File database/tests/run_run_test.ps1
 ```
 
 ## 设计与契约的状态

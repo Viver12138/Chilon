@@ -72,3 +72,6 @@ jobs:
       # 10) Tools: capability/approval gates and idempotency across retries.
       - name: Verify tool invocation gates
         run: pwsh -NoProfile -File database/tests/run_tool_test.ps1
+      # 11) Runs and unknown-outcome reconciliation (never retries a side effect).
+      - name: Verify run mapping and reconciliation
+        run: pwsh -NoProfile -File database/tests/run_run_test.ps1
