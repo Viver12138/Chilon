@@ -54,6 +54,29 @@
     { "name": "pgcrypto", "required": false, "notes": "仅当需要数据库侧随机函数时启用；UUIDv7 由应用生成" },
     { "name": "pgvector", "required": false, "notes": "可选；仅 knowledge_question_embeddings 使用" }
   ],
+  "functions": [
+    {
+      "name": "app_current_user_id",
+      "returns": "uuid",
+      "volatility": "STABLE",
+      "setting": "app.current_user_id",
+      "description": "事务级 GUC 中的当前用户；未设置时返回 NULL"
+    },
+    {
+      "name": "app_current_request_id",
+      "returns": "uuid",
+      "volatility": "STABLE",
+      "setting": "app.current_request_id",
+      "description": "事务级 GUC 中的请求 ID"
+    },
+    {
+      "name": "app_current_execution_id",
+      "returns": "uuid",
+      "volatility": "STABLE",
+      "setting": "app.current_execution_id",
+      "description": "事务级 GUC 中的执行 ID"
+    }
+  ],
   "modules": [
     { "id": "K002", "name": "Identity & Account", "status": "PENDING", "registry_file": null },
     { "id": "K009", "name": "Knowledge Base", "status": "DESIGNED", "registry_file": "fields/k009.json" },

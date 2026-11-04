@@ -1,12 +1,31 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 363eaca8c17f53f7c724dac7ed23604b3ef12801a45df579f4d9ca1d4033ed2e
+-- registry_hash: a2f4cded965f6aab131ed67b64574234db225d9d36efde4ea41c7403bcfbef5b
+-- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
--- Optional extension required by some tables:
+-- skipped optional tables: knowledge_question_embeddings
+-- include them with: python database/generator/generate_ddl.py --with-optional
 -- CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- optional: 仅当需要数据库侧随机函数时启用；UUIDv7 由应用生成
 -- CREATE EXTENSION IF NOT EXISTS pgvector;  -- optional: 可选；仅 knowledge_question_embeddings 使用
+
+-- Session context functions (master §10.3)
+-- 事务级 GUC 中的当前用户；未设置时返回 NULL
+CREATE OR REPLACE FUNCTION public.app_current_user_id() RETURNS uuid
+LANGUAGE sql STABLE AS $$
+    SELECT nullif(current_setting('app.current_user_id', true), '')::uuid
+$$;
+-- 事务级 GUC 中的请求 ID
+CREATE OR REPLACE FUNCTION public.app_current_request_id() RETURNS uuid
+LANGUAGE sql STABLE AS $$
+    SELECT nullif(current_setting('app.current_request_id', true), '')::uuid
+$$;
+-- 事务级 GUC 中的执行 ID
+CREATE OR REPLACE FUNCTION public.app_current_execution_id() RETURNS uuid
+LANGUAGE sql STABLE AS $$
+    SELECT nullif(current_setting('app.current_execution_id', true), '')::uuid
+$$;
 
 -- 分类树；平台提供四个默认分类，教师可新建私有分类
 CREATE TABLE knowledge_categories (
@@ -182,24 +201,6 @@ ALTER TABLE knowledge_annotations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_annotations FORCE ROW LEVEL SECURITY;
 
 CREATE UNIQUE INDEX ix_knowledge_annotations_active ON knowledge_annotations ("question_id", "annotation_type") WHERE superseded_by IS NULL;
-
--- OPTIONAL TABLE (requires pgvector): skip if absent
--- 向量；派生数据，可重建
-CREATE TABLE knowledge_question_embeddings (
-    "id" UUID NOT NULL,
-    "question_id" UUID NOT NULL,
-    "model" VARCHAR(120) NOT NULL,
-    "dim" SMALLINT NOT NULL,
-    "embedding" VECTOR NOT NULL,
-    "content_hash" CHAR(64) NOT NULL,
-    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
-    CONSTRAINT pk_knowledge_question_embeddings PRIMARY KEY ("id"),
-    CONSTRAINT fk_knowledge_question_embeddings_question_id FOREIGN KEY ("question_id") REFERENCES knowledge_questions(id) ON DELETE CASCADE,
-    CONSTRAINT uq_knowledge_question_embeddings_model UNIQUE ("question_id", "model")
-);
-
-ALTER TABLE knowledge_question_embeddings ENABLE ROW LEVEL SECURITY;
-ALTER TABLE knowledge_question_embeddings FORCE ROW LEVEL SECURITY;
 
 -- 处理记录；扫描、解析、切分、分类、索引各阶段
 CREATE TABLE knowledge_ingestion_runs (
