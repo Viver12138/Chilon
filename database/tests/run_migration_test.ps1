@@ -45,7 +45,10 @@ if ($LASTEXITCODE -ne 0) { throw "docker run failed" }
 
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
-    docker exec $Container pg_isready -U postgres -d chilon 2>&1 | Out-Null
+    # Probe over TCP: during initdb the entrypoint runs a temporary instance that
+    # listens on the unix socket only, so a socket-only probe reports ready while the
+    # server is about to be shut down. TCP exists only on the real instance.
+    docker exec $Container pg_isready -h 127.0.0.1 -p 5432 -U postgres -d chilon 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) { $ready = $true; break }
     Start-Sleep -Milliseconds 500
 }
@@ -55,10 +58,8 @@ function Invoke-Psql {
     param([string]$File, [string[]]$ExtraArgs)
     $psqlArgs = @("exec", $Container, "psql", "-U", "postgres", "-d", "chilon", "-v", "ON_ERROR_STOP=1", "-f", $File)
     if ($ExtraArgs) { $psqlArgs += $ExtraArgs }
-    $ErrorActionPreference = "Continue"
     $raw = & docker @psqlArgs 2>&1
     $code = $LASTEXITCODE
-    $ErrorActionPreference = "Stop"
     if ($raw) { $raw | ForEach-Object { "$_" } | Write-Host }
     return $code
 }
