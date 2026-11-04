@@ -12,17 +12,17 @@ ENV PYTHONUNBUFFERED=1 \
     CHILON_EXPORT_DIR=/data/exports \
     CHILON_UPLOAD_DIR=/data/uploads
 
-# libpq is what psycopg[binary] links against; curl is used by the container healthcheck
-RUN apt-get update \
- && apt-get install -y --no-install-recommends libpq5 curl \
- && rm -rf /var/lib/apt/lists/*
-
+# No apt packages on purpose: psycopg[binary] bundles its own libpq, and the
+# healthcheck uses the interpreter that is already here. Fewer moving parts, and the
+# image builds without a Debian mirror (the first build attempt failed here: apt
+# could not reach a repository at all).
 WORKDIR /app
 
 COPY backend/requirements.txt ./backend/requirements.txt
-RUN pip install --no-cache-dir -r backend/requirements.txt
+RUN pip install --no-cache-dir --timeout 20 --retries 2 -r backend/requirements.txt
 
 COPY backend ./backend
+COPY schemas ./schemas
 COPY database ./database
 COPY scripts ./scripts
 
