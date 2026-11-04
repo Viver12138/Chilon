@@ -1,0 +1,49 @@
+# One command to run Chilon locally.
+#
+#   docker compose up -d --build
+#   open http://127.0.0.1:8000/
+#
+# The database password is read from .env (CHILON_DB_PASSWORD) so the same file that
+# the backend uses for local development also drives the container deployment.
+services:
+  db:
+    image: postgres:17
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: ${CHILON_DB_PASSWORD:-chilon_dev_only}
+      POSTGRES_DB: chilon
+    volumes:
+      - chilon-pgdata:/var/lib/postgresql/data
+    healthcheck:
+      # probe over TCP: during initdb the server listens on the unix socket only,
+      # so a socket probe reports ready while the database is still shutting down
+      test: ["CMD-SHELL", "pg_isready -h 127.0.0.1 -p 5432 -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    environment:
+      CHILON_DATABASE_URL: postgresql+psycopg://postgres:${CHILON_DB_PASSWORD:-chilon_dev_only}@db:5432/chilon
+      CHILON_PLANNER: ${CHILON_PLANNER:-template}
+      CHILON_DEEPSEEK_API_KEY: ${CHILON_DEEPSEEK_API_KEY:-}
+      CHILON_DEEPSEEK_BASE_URL: ${CHILON_DEEPSEEK_BASE_URL:-https://api.deepseek.com}
+      CHILON_DEEPSEEK_MODEL: ${CHILON_DEEPSEEK_MODEL:-deepseek-chat}
+    ports:
+      - "${CHILON_PORT:-8000}:8000"
+    volumes:
+      # exports and uploads live outside the container: a redeploy must not delete
+      # the files a teacher already downloaded
+      - chilon-data:/data
+    restart: unless-stopped
+
+volumes:
+  chilon-pgdata:
+  chilon-data:

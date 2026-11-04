@@ -156,3 +156,23 @@ python backend/tests/check_llm.py
 - **场景 B/C/D 未做教师走查**，只有场景 A 有一次真实教师验证。D3 冻结时保留了 `unverified` 清单，而不是宣称已验证。
 - **`created_by` 一类字段暂无外键**：它们常由系统 Worker 写入，而 Worker 不是用户。需要先设计"系统主体"概念。
 - **`0001_baseline` 仍是可重建基线**：一旦有环境部署过就必须冻结，之后只能新增 revision。
+## 用 docker compose 跑起来
+
+`ash
+cp .env.example .env          # 填入 CHILON_DB_PASSWORD（本地开发可用默认值）
+docker compose up -d --build
+`
+
+打开 http://127.0.0.1:8000/ 注册一个账号，然后写一句话、批准方案、下载教师版和学生版。
+
+容器启动时会依次做三件事，**每次启动都做，不只是第一次**：
+
+1. 等数据库可连接（用 psycopg 探测，不用 pg_isready——它不在这个镜像里）；
+2. lembic upgrade head（已是当前版本时是无操作）；
+3. 应用 database/seed/platform_tools.sql（ON CONFLICT DO NOTHING，幂等）。
+
+任何一步失败，服务器都不会启动——不会留下一个半死不活的进程。
+
+/healthz 只回报进程存活，**不查数据库**：依赖故障不应该让进程看起来也死了，否则编排器会去重启一个本身正常的服务。
+
+导出与上传文件存放在 chilon-data 卷的 /data 下（CHILON_EXPORT_DIR / CHILON_UPLOAD_DIR），**重新部署不会删掉教师已经下载过的文件**。
