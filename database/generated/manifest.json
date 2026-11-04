@@ -1,8 +1,8 @@
 {
   "generator_version": "0.1.0",
   "registry_version": "0.1.0",
-  "registry_hash": "7819f4d88585a6a3ac2ba264628fe108e91002c22abc84e43f4abc5dc16d8cd6",
-  "schema_hash": "0e94ba838076ae7e41f5e82f8cd3c2cf39be611a09267f2969fb84596d18e4c4",
+  "registry_hash": "d7ba0b70705b1b0ab153b1af992e4fd96ec8afe7b559b38aed45f6aeb42b655c",
+  "schema_hash": "39dd901d12b1027b68b51b652ee5ceb3af86c9ac942ddd1afb89088de9bc3127",
   "variant": "core",
   "tables": 81,
   "fields": 803,
