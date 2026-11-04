@@ -44,7 +44,6 @@ DO $$
 DECLARE
     n_materials int;
     n_projects  int;
-    n_users     int;
     touched     int;
     blocked     boolean := false;
 BEGIN
@@ -58,10 +57,12 @@ BEGIN
         RAISE EXCEPTION 'SELECT leaked: Alice sees % projects, expected 1', n_projects;
     END IF;
 
-    SELECT count(*) INTO n_users FROM users;
-    IF n_users <> 1 THEN
-        RAISE EXCEPTION 'SELECT leaked: Alice sees % users, expected only herself', n_users;
-    END IF;
+    -- `users` is deliberately NOT asserted here. Identity lookup has to find a
+    -- user by username before any user context exists, so that table is
+    -- service-scoped (see D.34): RLS cannot express "read before you know who
+    -- you are". Tenant data keeps full isolation; profile exposure is an API
+    -- layer decision. Credentials and sessions are service-scoped for the same
+    -- reason and never leave the service layer.
 
     -- UPDATE isolation: Bob's row must not be reachable
     UPDATE materials SET title = 'hijacked' WHERE id = 'b0000000-0000-0000-0000-000000000002';
