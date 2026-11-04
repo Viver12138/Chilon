@@ -30,7 +30,7 @@ jobs:
         # annotation when it really fails so the cause is visible from the API.
         run: |
           for attempt in 1 2 3; do
-            if pip install --disable-pip-version-check alembic "psycopg[binary]" greenlet fastapi httpx; then
+            if pip install --disable-pip-version-check alembic "psycopg[binary]" greenlet fastapi httpx python-multipart; then
               echo "dependencies installed on attempt $attempt"
               exit 0
             fi

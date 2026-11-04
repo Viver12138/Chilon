@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 4206c7c26e73fb92cb41b84ecf3b7d01f7d1cab1cbd1cf5c43d7fa809e934d8c
+-- registry_hash: 84e86f0826372d0142b65d3c24bfe4785bdac00e472576bdb846c7d1e5e4dc40
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -246,7 +246,7 @@ CREATE TABLE material_versions (
 
 ALTER TABLE material_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE material_versions FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_material_versions_owner ON material_versions FOR SELECT USING (owner_id = public.app_current_user_id());
+CREATE POLICY pol_material_versions_owner ON material_versions FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
 
 CREATE INDEX ix_material_versions_material ON material_versions ("material_id", "version_no");
 
@@ -479,6 +479,7 @@ CREATE TABLE agent_tool_grants (
 ALTER TABLE agent_tool_grants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tool_grants FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_agent_tool_grants_owner ON agent_tool_grants FOR SELECT USING (owner_id = public.app_current_user_id());
+CREATE POLICY pol_agent_tool_grants_owner_all ON agent_tool_grants FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
 
 -- 执行；持有 Lease 与 Fencing Token
 CREATE TABLE agent_executions (
@@ -877,7 +878,7 @@ CREATE TABLE material_draft_revisions (
 
 ALTER TABLE material_draft_revisions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE material_draft_revisions FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_material_draft_revisions_owner ON material_draft_revisions FOR SELECT USING (owner_id = public.app_current_user_id());
+CREATE POLICY pol_material_draft_revisions_owner ON material_draft_revisions FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
 
 CREATE INDEX ix_material_draft_revisions_draft ON material_draft_revisions ("draft_id", "revision_no");
 
@@ -1667,6 +1668,7 @@ CREATE TABLE knowledge_categories (
 ALTER TABLE knowledge_categories ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_categories FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_categories_select ON knowledge_categories FOR SELECT USING (scope = 'platform' OR owner_id = public.app_current_user_id());
+CREATE POLICY pol_knowledge_categories_owner_all ON knowledge_categories FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
 
 CREATE INDEX ix_knowledge_categories_owner ON knowledge_categories ("scope", "owner_id", "sort_order");
 CREATE INDEX ix_knowledge_categories_parent ON knowledge_categories ("parent_id");
@@ -1740,6 +1742,7 @@ CREATE TABLE knowledge_document_versions (
 ALTER TABLE knowledge_document_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_document_versions FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_document_versions_read ON knowledge_document_versions FOR SELECT USING (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
+CREATE POLICY pol_knowledge_document_versions_write ON knowledge_document_versions FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
 
 CREATE INDEX ix_knowledge_document_versions_source ON knowledge_document_versions ("source_id", "version_no");
 CREATE INDEX ix_knowledge_document_versions_status ON knowledge_document_versions ("lifecycle_status");
@@ -1766,6 +1769,7 @@ CREATE TABLE knowledge_chunks (
 ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_chunks FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_chunks_read ON knowledge_chunks FOR SELECT USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
+CREATE POLICY pol_knowledge_chunks_write ON knowledge_chunks FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
 
 CREATE INDEX ix_knowledge_chunks_version_order ON knowledge_chunks ("document_version_id", "ordinal");
 
@@ -1796,6 +1800,7 @@ CREATE TABLE knowledge_questions (
 ALTER TABLE knowledge_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_questions FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_questions_read ON knowledge_questions FOR SELECT USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
+CREATE POLICY pol_knowledge_questions_write ON knowledge_questions FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
 
 CREATE INDEX ix_knowledge_questions_version_order ON knowledge_questions ("document_version_id", "ordinal");
 CREATE INDEX ix_knowledge_questions_paper_type ON knowledge_questions ("current_paper_question_type");
@@ -1845,6 +1850,7 @@ CREATE TABLE knowledge_ingestion_runs (
 
 ALTER TABLE knowledge_ingestion_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_ingestion_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_knowledge_ingestion_runs_write ON knowledge_ingestion_runs FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
 
 CREATE INDEX ix_knowledge_ingestion_runs_version ON knowledge_ingestion_runs ("document_version_id", "stage", "started_at");
 
@@ -1867,6 +1873,7 @@ CREATE TABLE knowledge_reviews (
 
 ALTER TABLE knowledge_reviews ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_reviews FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_knowledge_reviews_write ON knowledge_reviews FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
 
 CREATE INDEX ix_knowledge_reviews_version ON knowledge_reviews ("document_version_id", "review_type");
 CREATE INDEX ix_knowledge_reviews_target ON knowledge_reviews ("target_id");
@@ -1890,6 +1897,7 @@ CREATE TABLE knowledge_indexing_jobs (
 
 ALTER TABLE knowledge_indexing_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_indexing_jobs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_knowledge_indexing_jobs_write ON knowledge_indexing_jobs FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
 
 CREATE INDEX ix_knowledge_indexing_jobs_queue ON knowledge_indexing_jobs ("status", "scheduled_at") WHERE status IN ('queued','running');
 

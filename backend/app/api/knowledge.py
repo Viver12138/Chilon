@@ -1,0 +1,185 @@
+"""Teacher knowledge upload.
+
+A teacher uploads a whole exam paper; the system records the source and a document
+version. **Parsing and segmentation are not implemented here** — the version stays in
+`processing` until a parser exists. That is deliberate: a version marked `indexed`
+with no chunks behind it would let retrieval silently return nothing while looking
+healthy.
+
+Uploads are always `scope=teacher`, owned by the caller, `rights_status=unverified`
+and `distribution_scope=private_teacher`. The platform layer is licensed content and
+cannot be created through this endpoint — a teacher cannot promote their own upload
+into shared material by passing a flag.
+"""
+
+from __future__ import annotations
+
+import hashlib
+import uuid
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import APIRouter, File, Form, UploadFile
+from sqlalchemy import text
+
+from app.api.deps import ApiError, SessionDep, UserDep
+
+router = APIRouter(tags=["knowledge"], prefix="/knowledge")
+
+UPLOAD_ROOT = Path("var/uploads")
+ALLOWED_MIME = {
+    "application/pdf": ".pdf",
+    "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+}
+MAX_BYTES = 50 * 1024 * 1024
+DEFAULT_CATEGORY_KEY = "teacher_uploads"
+
+
+async def _category_for(session, owner_id: uuid.UUID) -> uuid.UUID:
+    """One private 'uploads' category per teacher, created on first use."""
+    existing = (
+        await session.execute(
+            text(
+                """
+                SELECT id FROM knowledge_categories
+                WHERE scope = 'teacher' AND owner_id = :owner AND key = :key
+                """
+            ),
+            {"owner": owner_id, "key": DEFAULT_CATEGORY_KEY},
+        )
+    ).scalar()
+    if existing:
+        return existing
+    return (
+        await session.execute(
+            text(
+                """
+                INSERT INTO knowledge_categories (id, scope, owner_id, key, name, is_system)
+                VALUES (gen_random_uuid(), 'teacher', :owner, :key, '我的上传', false)
+                RETURNING id
+                """
+            ),
+            {"owner": owner_id, "key": DEFAULT_CATEGORY_KEY},
+        )
+    ).scalar_one()
+
+
+@router.post("/sources", status_code=201)
+async def upload_source(
+    session: SessionDep,
+    user: UserDep,
+    file: Annotated[UploadFile, File()],
+    title: Annotated[str, Form(min_length=1, max_length=500)],
+    source_type: Annotated[str, Form()] = "other",
+) -> dict:
+    if file.content_type not in ALLOWED_MIME:
+        raise ApiError(
+            422,
+            "AST_INVALID",
+            f"unsupported file type {file.content_type!r}; expected PDF or DOCX",
+        )
+    if source_type not in ("textbook", "workbook", "gaokao_paper", "mock_exam", "other"):
+        raise ApiError(422, "AST_INVALID", f"unknown source_type {source_type!r}")
+
+    data = await file.read()
+    if not data:
+        raise ApiError(422, "AST_INVALID", "empty file")
+    if len(data) > MAX_BYTES:
+        raise ApiError(422, "AST_INVALID", f"file exceeds {MAX_BYTES // (1024 * 1024)} MB")
+
+    category_id = await _category_for(session, user)
+    checksum = hashlib.sha256(data).hexdigest()
+
+    source_id = uuid.uuid4()
+    await session.execute(
+        text(
+            """
+            INSERT INTO knowledge_sources
+                (id, scope, owner_id, category_id, source_type, title, rights_status,
+                 distribution_scope, created_by)
+            VALUES
+                (:id, 'teacher', :owner, :category, :type, :title, 'unverified',
+                 'private_teacher', :owner)
+            """
+        ),
+        {
+            "id": source_id,
+            "owner": user,
+            "category": category_id,
+            "type": source_type,
+            "title": title.strip(),
+        },
+    )
+
+    version_id = uuid.uuid4()
+    suffix = ALLOWED_MIME[file.content_type]
+    storage_key = f"uploads/{source_id}/{version_id}{suffix}"
+    destination = UPLOAD_ROOT / str(source_id)
+    destination.mkdir(parents=True, exist_ok=True)
+    (destination / f"{version_id}{suffix}").write_bytes(data)
+
+    await session.execute(
+        text(
+            """
+            INSERT INTO knowledge_document_versions
+                (id, source_id, version_no, storage_key, checksum_sha256, mime_type,
+                 file_size_bytes, lifecycle_status, uploaded_by)
+            VALUES
+                (:id, :source, 1, :key, :checksum, :mime, :size, 'processing', :owner)
+            """
+        ),
+        {
+            "id": version_id,
+            "source": source_id,
+            "key": storage_key,
+            "checksum": checksum,
+            "mime": file.content_type,
+            "size": len(data),
+            "owner": user,
+        },
+    )
+
+    return {
+        "source_id": str(source_id),
+        "document_version_id": str(version_id),
+        "title": title.strip(),
+        "source_type": source_type,
+        "scope": "teacher",
+        "rights_status": "unverified",
+        "distribution_scope": "private_teacher",
+        "lifecycle_status": "processing",
+        "checksum_sha256": checksum,
+        "file_size_bytes": len(data),
+        "note": "已保存；解析与切分尚未实现，该版本会停在 processing",
+    }
+
+
+@router.get("/sources")
+async def list_sources(session: SessionDep, user: UserDep) -> dict:
+    rows = (
+        await session.execute(
+            text(
+                """
+                SELECT s.id, s.scope, s.title, s.source_type, s.rights_status,
+                       (SELECT count(*) FROM knowledge_document_versions v WHERE v.source_id = s.id) AS versions
+                FROM knowledge_sources s
+                WHERE s.deleted_at IS NULL
+                ORDER BY s.created_at DESC
+                LIMIT 200
+                """
+            )
+        )
+    ).all()
+    return {
+        "items": [
+            {
+                "source_id": str(r.id),
+                "scope": r.scope,
+                "title": r.title,
+                "source_type": r.source_type,
+                "rights_status": r.rights_status,
+                "versions": int(r.versions),
+            }
+            for r in rows
+        ]
+    }
