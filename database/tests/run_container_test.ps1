@@ -67,7 +67,7 @@ if ($existing) {
 }
 
 Write-Host "==> starting postgres:17" -ForegroundColor Cyan
-& # Nine throwaway containers in one CI job is enough that a transient
+# Nine throwaway containers in one CI job is enough that a transient
  # daemon error looks like a broken commit. Retry: the operation is idempotent
  # (fixed name, removed before each attempt) and the error is printed if it
  # really is permanent.
