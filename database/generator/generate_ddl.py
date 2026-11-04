@@ -45,7 +45,9 @@ def column_sql(table: str, field: dict, schema: dict) -> str:
     return " ".join(parts)
 
 
-def render_table(table: dict, schema: dict, known: set[str], external: set[str]) -> list[str]:
+def render_table(
+    table: dict, schema: dict, known: set[str], external: set[str], deferred: list[str]
+) -> list[str]:
     name = table["name"]
     lines = [f"-- {table.get('purpose', '')}", f"CREATE TABLE {name} ("]
     cols = [column_sql(name, f, schema) for f in table["fields"]]
@@ -53,6 +55,15 @@ def render_table(table: dict, schema: dict, known: set[str], external: set[str])
     cols.append(f'    CONSTRAINT pk_{name} PRIMARY KEY ("{pk}")')
 
     for field in table["fields"]:
+        dfk = field.get("deferred_fk")
+        if dfk and dfk["table"] in known:
+            deferred.append(
+                f'ALTER TABLE {{name}} ADD CONSTRAINT fk_{{name}}_{{field}} FOREIGN KEY ("{{field}}") '
+                f'REFERENCES {{target}}(id) ON DELETE {{action}};'
+            )
+            deferred[-1] = deferred[-1].format(
+                name=name, field=field["name"], target=dfk["table"], action=dfk.get("on_delete", "RESTRICT")
+            )
         fk = field.get("fk")
         if fk and fk["table"] in known:
             cols.append(
@@ -76,7 +87,7 @@ def render_table(table: dict, schema: dict, known: set[str], external: set[str])
         if fk and fk["table"] in external:
             lines.append(
                 f'-- DEFERRED FK: {name}."{field["name"]}" -> {fk["table"]}(id) '
-                f'(target owned by another module; add after that module is created)'
+                f'(target owned by another module, add it once that module exists)'
             )
     if any(f.get("fk", {}).get("table") in external for f in table["fields"]):
         lines.append("")
@@ -106,10 +117,7 @@ def generate(reg: dict, include_optional: bool = False) -> tuple[str, dict]:
     known = set(tables)
     external = set(schema.get("external_tables", []))
 
-    order: list[str] = []
-    for mod in reg["modules"].values():
-        order = order or mod.get("table_order", [])
-    order = order or sorted(tables)
+    order = schema.get("table_order") or sorted(tables)
 
     optional = {t["name"] for t in tables.values() if t.get("optional")}
     included = [n for n in order if include_optional or n not in optional]
@@ -154,9 +162,15 @@ def generate(reg: dict, include_optional: bool = False) -> tuple[str, dict]:
             )
         body.append("")
 
+    deferred_statements: list[str] = []
     for name in included:
         table = tables[name]
-        body.extend(render_table(table, schema, known, external))
+        body.extend(render_table(table, schema, known, external, deferred_statements))
+
+    if deferred_statements:
+        body.append("-- Deferred foreign keys (circular or forward references)")
+        body.extend(deferred_statements)
+        body.append("")
 
     body.append("-- Grants are intentionally not generated: they depend on deployment roles.")
     body.append(f"-- Runtime role must not own tables or have BYPASSRLS (see §10.2).")
@@ -165,6 +179,14 @@ def generate(reg: dict, include_optional: bool = False) -> tuple[str, dict]:
 
     def count(key: str) -> int:
         return sum(len(tables[n].get(key, [])) for n in included)
+
+    internal_fks = sum(
+        1
+        for name in included
+        for field in tables[name]["fields"]
+        for key in ("fk", "deferred_fk")
+        if ((field.get(key) or {}).get("table") or "") in known
+    )
 
     manifest = {
         "generator_version": GENERATOR_VERSION,
@@ -176,11 +198,12 @@ def generate(reg: dict, include_optional: bool = False) -> tuple[str, dict]:
         "fields": sum(len(tables[n]["fields"]) for n in included),
         "indexes": count("indexes"),
         "policies": count("policies"),
+        "min_foreign_keys": internal_fks,
         "included_tables": included,
         "skipped_tables": skipped,
         "extensions_enabled": needs_ext,
         "external_tables": sorted(external),
-        "output": "database/generated/k009.sql",
+        "output": "database/generated/schema.sql",
     }
     return sql, manifest
 
@@ -190,7 +213,7 @@ def main() -> int:
     include_optional = "--with-optional" in sys.argv
     sql, manifest = generate(reg, include_optional=include_optional)
 
-    sql_path = OUT_DIR / "k009.sql"
+    sql_path = OUT_DIR / "schema.sql"
     manifest_path = OUT_DIR / "manifest.json"
 
     if "--check" in sys.argv:

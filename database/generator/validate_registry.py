@@ -69,9 +69,6 @@ def validate(reg: dict) -> list[str]:
         fail(f"schema.json tables and module files disagree: only-in-schema={sorted(declared - set(tables))} only-in-module={sorted(set(tables) - declared)}")
 
     order = schema.get("table_order", [])
-    if not order:
-        for mod in reg["modules"].values():
-            order = order or mod.get("table_order", [])
     if set(order) != set(tables):
         fail(f"table_order does not cover every table: missing={sorted(set(tables) - set(order))}")
     if len(order) != len(set(order)):
@@ -128,7 +125,7 @@ def validate(reg: dict) -> list[str]:
             if sens not in schema["sensitivity_levels"]:
                 fail(f"{name}.{fname}: FLD-009 invalid sensitivity {sens!r}")
 
-            fk = field.get("fk")
+            fk = field.get("fk") or field.get("deferred_fk")
             if fk:
                 if fk["table"] not in known:
                     fail(f"{name}.{fname}: FK target {fk['table']!r} is neither a registry table nor an external table")

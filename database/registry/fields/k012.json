@@ -1,0 +1,320 @@
+{
+  "module": "K012",
+  "title": "Project & Material",
+  "registry_version": "0.1.0",
+  "status": "DESIGNED",
+  "source_docs": [
+    "Chilon_Project_Design_Master_Document.md §16、§21.7、§21.9、§21.10",
+    "design/Chilon_Design_Volume_D1_Product_Closure_Protocol.md §4",
+    "design/Chilon_Design_Volume_D3_Page_Specifications.md"
+  ],
+  "tables": [
+    {
+      "name": "projects",
+      "purpose": "教学专题；一个 Project 对应一个教学专题",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "name", "type": "varchar", "length": 160, "nullable": false, "sensitivity": "internal", "desc": "专题名" },
+        { "name": "description", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "说明" },
+        { "name": "subject", "type": "varchar", "length": 32, "nullable": false, "default": "'mathematics'", "sensitivity": "public", "desc": "学科" },
+        { "name": "grade", "type": "varchar", "length": 32, "nullable": false, "default": "'senior_high'", "sensitivity": "public", "desc": "年级" },
+        { "name": "cover_storage_key", "type": "varchar", "length": 500, "nullable": true, "sensitivity": "confidential", "desc": "封面图 Key（候选字段，待确认是否纳入）" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / archived" },
+        { "name": "archived_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "归档时间；归档不自动归档其 Material" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" },
+        { "name": "deleted_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "软删除；删除走专门 Workflow，不级联材料" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_projects_status", "expr": "status IN ('active','archived')" }
+      ],
+      "indexes": [
+        { "name": "ix_projects_owner", "columns": ["owner_id", "status", "updated_at"], "where": "deleted_at IS NULL" }
+      ],
+      "policies": [
+        { "name": "pol_projects_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "materials",
+      "purpose": "教学材料身份；primary_project_id 为空表示个人材料库",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "primary_project_id", "type": "uuid", "nullable": true, "fk": { "table": "projects", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "主归属项目；NULL 表示个人材料库" },
+        { "name": "title", "type": "varchar", "length": 500, "nullable": false, "sensitivity": "internal", "desc": "材料标题" },
+        { "name": "document_kind", "type": "varchar", "length": 32, "nullable": false, "default": "'mixed'", "sensitivity": "public", "desc": "lesson / exercise_set / worksheet / mixed" },
+        { "name": "current_version_id", "type": "uuid", "nullable": true, "deferred_fk": { "table": "material_versions", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "当前正式版本指针；与 material_versions 互相引用，用延迟外键" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" },
+        { "name": "deleted_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "软删除" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_materials_document_kind", "expr": "document_kind IN ('lesson','exercise_set','worksheet','mixed')" }
+      ],
+      "indexes": [
+        { "name": "ix_materials_owner", "columns": ["owner_id", "updated_at"], "where": "deleted_at IS NULL" },
+        { "name": "ix_materials_project", "columns": ["primary_project_id"], "where": "deleted_at IS NULL" }
+      ],
+      "policies": [
+        { "name": "pol_materials_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "material_versions",
+      "purpose": "不可变正式版本；修改必须创建新版本",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "material_id", "type": "uuid", "nullable": false, "fk": { "table": "materials", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "所属材料" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师（冗余用于 RLS）" },
+        { "name": "version_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "材料内递增版本号" },
+        { "name": "document_schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "固定不迁移" },
+        { "name": "document_content", "type": "jsonb", "nullable": false, "sensitivity": "confidential", "desc": "AST 快照" },
+        { "name": "content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "canonical JSON 的 SHA-256" },
+        { "name": "change_summary", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "相对上一版本的变更说明" },
+        { "name": "source_draft_revision_id", "type": "uuid", "nullable": true, "deferred_fk": { "table": "material_draft_revisions", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "来源草稿 Revision" },
+        { "name": "publication_approval_id", "type": "uuid", "nullable": true, "deferred_fk": { "table": "material_publication_approvals", "on_delete": "RESTRICT" }, "sensitivity": "internal", "desc": "发布审批（单次消费）" },
+        { "name": "idempotency_key", "type": "varchar", "length": 255, "nullable": false, "sensitivity": "internal", "desc": "发布幂等键，防止重复建版本" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_material_versions_material_version", "columns": ["material_id", "version_no"] },
+        { "type": "unique", "name": "uq_material_versions_idempotency", "columns": ["owner_id", "idempotency_key"] }
+      ],
+      "indexes": [
+        { "name": "ix_material_versions_material", "columns": ["material_id", "version_no"] }
+      ],
+      "policies": [
+        { "name": "pol_material_versions_owner", "command": "SELECT", "using": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "material_drafts",
+      "purpose": "可编辑草稿；基版本、当前 Revision 指针与状态机",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "material_id", "type": "uuid", "nullable": false, "fk": { "table": "materials", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "所属材料" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "base_version_id", "type": "uuid", "nullable": true, "fk": { "table": "material_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "基版本；为空表示全新材料" },
+        { "name": "current_revision_id", "type": "uuid", "nullable": true, "deferred_fk": { "table": "material_draft_revisions", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "当前 Revision 指针" },
+        { "name": "current_revision_no", "type": "integer", "nullable": false, "default": "0", "sensitivity": "public", "desc": "当前 Revision 序号" },
+        { "name": "current_content_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "当前内容 Hash，用于 ETag 与门禁新鲜度" },
+        { "name": "status", "type": "varchar", "length": 32, "nullable": false, "default": "'editing'", "sensitivity": "public", "desc": "草稿状态机" },
+        { "name": "state_version", "type": "integer", "nullable": false, "default": "0", "sensitivity": "public", "desc": "CAS 版本，单调递增" },
+        { "name": "state_changed_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "状态变更时间" },
+        { "name": "status_reason_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "状态原因码" },
+        { "name": "status_reason", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "状态原因说明" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_material_drafts_status", "expr": "status IN ('editing','checking','changes_required','awaiting_review','approved','needs_rebase','needs_attention','published','abandoned','superseded')" },
+        { "type": "check", "name": "ck_material_drafts_state_version", "expr": "state_version >= 0 AND current_revision_no >= 0" }
+      ],
+      "indexes": [
+        { "name": "ix_material_drafts_material", "columns": ["material_id", "status"] },
+        { "name": "ix_material_drafts_owner_status", "columns": ["owner_id", "status"] }
+      ],
+      "policies": [
+        { "name": "pol_material_drafts_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "material_draft_revisions",
+      "purpose": "不可变草稿修订快照；被检查或审批引用后永久保留",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "draft_id", "type": "uuid", "nullable": false, "fk": { "table": "material_drafts", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属草稿" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "revision_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "草稿内单调递增" },
+        { "name": "parent_revision_id", "type": "uuid", "nullable": true, "fk": { "table": "material_draft_revisions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "父 Revision" },
+        { "name": "document_schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "文档 Schema 版本" },
+        { "name": "content", "type": "jsonb", "nullable": false, "sensitivity": "confidential", "desc": "AST 完整快照" },
+        { "name": "content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "内容 Hash" },
+        { "name": "change_origin", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "teacher_edit / chat_revision / agent_generation / rebase / restore / import" },
+        { "name": "revision_class", "type": "varchar", "length": 16, "nullable": false, "default": "'checkpoint'", "sensitivity": "public", "desc": "checkpoint / autosave" },
+        { "name": "change_summary", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "变更摘要" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_material_draft_revisions_draft_no", "columns": ["draft_id", "revision_no"] },
+        { "type": "check", "name": "ck_material_draft_revisions_origin", "expr": "change_origin IN ('teacher_edit','chat_revision','agent_generation','rebase','restore','import')" },
+        { "type": "check", "name": "ck_material_draft_revisions_class", "expr": "revision_class IN ('checkpoint','autosave')" }
+      ],
+      "indexes": [
+        { "name": "ix_material_draft_revisions_draft", "columns": ["draft_id", "revision_no"] }
+      ],
+      "policies": [
+        { "name": "pol_material_draft_revisions_owner", "command": "SELECT", "using": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "document_schema_definitions",
+      "purpose": "Teaching Document Schema Registry；K014 引用来执行检查",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "schema_id", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "如 chilon.teaching_document" },
+        { "name": "schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "如 1.1.0" },
+        { "name": "json_schema", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "JSON Schema 原文" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / deprecated" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_document_schema_definitions_id_version", "columns": ["schema_id", "schema_version"] },
+        { "type": "check", "name": "ck_document_schema_definitions_status", "expr": "status IN ('active','deprecated')" }
+      ],
+      "indexes": [],
+      "policies": []
+    },
+    {
+      "name": "material_references",
+      "purpose": "材料间引用；latest 跟随、pinned 固定版本",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "source_material_id", "type": "uuid", "nullable": false, "fk": { "table": "materials", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "发起引用的材料" },
+        { "name": "target_material_id", "type": "uuid", "nullable": false, "fk": { "table": "materials", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "被引用的材料" },
+        { "name": "target_version_id", "type": "uuid", "nullable": true, "fk": { "table": "material_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "pinned 时必填" },
+        { "name": "mode", "type": "varchar", "length": 16, "nullable": false, "default": "'latest'", "sensitivity": "public", "desc": "latest / pinned" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_material_references_mode", "expr": "(mode = 'latest' AND target_version_id IS NULL) OR (mode = 'pinned' AND target_version_id IS NOT NULL)" }
+      ],
+      "indexes": [
+        { "name": "ix_material_references_source", "columns": ["source_material_id"] },
+        { "name": "ix_material_references_target", "columns": ["target_material_id"] }
+      ],
+      "policies": [
+        { "name": "pol_material_references_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "task_material_links",
+      "purpose": "任务与具体 Material Version 的交付关系",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "task_id", "type": "uuid", "nullable": false, "fk": { "table": "tasks", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "K011 的任务" },
+        { "name": "material_id", "type": "uuid", "nullable": false, "fk": { "table": "materials", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "材料" },
+        { "name": "material_version_id", "type": "uuid", "nullable": false, "fk": { "table": "material_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "必须引用具体版本" },
+        { "name": "relation", "type": "varchar", "length": 32, "nullable": false, "default": "'deliverable'", "sensitivity": "public", "desc": "deliverable / reference" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_task_material_links_task_version", "columns": ["task_id", "material_version_id"] },
+        { "type": "check", "name": "ck_task_material_links_relation", "expr": "relation IN ('deliverable','reference')" }
+      ],
+      "indexes": [
+        { "name": "ix_task_material_links_version", "columns": ["material_version_id"] }
+      ],
+      "policies": [
+        { "name": "pol_task_material_links_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "material_publication_approvals",
+      "purpose": "单次消费的发布授权；固定 Revision、Gate 快照与权利快照",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "material_id", "type": "uuid", "nullable": false, "fk": { "table": "materials", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "材料" },
+        { "name": "draft_id", "type": "uuid", "nullable": false, "fk": { "table": "material_drafts", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "草稿" },
+        { "name": "draft_revision_id", "type": "uuid", "nullable": false, "fk": { "table": "material_draft_revisions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "被批准的 Revision" },
+        { "name": "draft_content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "被批准内容的 Hash" },
+        { "name": "base_version_id", "type": "uuid", "nullable": true, "fk": { "table": "material_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "基版本" },
+        { "name": "document_schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "文档 Schema 版本" },
+        { "name": "required_quality_run_ids", "type": "text_array", "nullable": true, "sensitivity": "public", "desc": "K014 检查运行 ID 列表" },
+        { "name": "required_math_run_ids", "type": "text_array", "nullable": true, "sensitivity": "public", "desc": "K014 数学验证运行 ID 列表" },
+        { "name": "quality_policy_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "规则政策 Hash" },
+        { "name": "gate_snapshot_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "门禁快照 Hash" },
+        { "name": "citation_snapshot_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "Citation 快照 Hash" },
+        { "name": "profile_config_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "Teacher/Student Profile 配置 Hash" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'pending'", "sensitivity": "public", "desc": "pending / approved / rejected / invalidated / expired / consumed" },
+        { "name": "approver_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "审批人" },
+        { "name": "approved_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "批准时间" },
+        { "name": "expires_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "失效时间" },
+        { "name": "consumed_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "被发布消费的时间" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_material_publication_approvals_status", "expr": "status IN ('pending','approved','rejected','invalidated','expired','consumed')" },
+        { "type": "check", "name": "ck_material_publication_approvals_consumed", "expr": "(status = 'consumed') = (consumed_at IS NOT NULL)" }
+      ],
+      "indexes": [
+        { "name": "ix_material_publication_approvals_draft", "columns": ["draft_id", "status"] },
+        { "name": "ix_material_publication_approvals_owner", "columns": ["owner_id", "status"] }
+      ],
+      "policies": [
+        { "name": "pol_material_publication_approvals_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "material_exports",
+      "purpose": "导出记录；固定版本、Profile、Renderer 与选项 Hash",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
+        { "name": "material_version_id", "type": "uuid", "nullable": false, "fk": { "table": "material_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "被导出的版本" },
+        { "name": "profile", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "teacher / student" },
+        { "name": "format", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "docx / pdf" },
+        { "name": "renderer_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "渲染器版本" },
+        { "name": "options_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "导出选项 Hash" },
+        { "name": "source_document_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "源文档 Hash，用于校验一致性" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "queued / rendering / uploading / ready / failed / cancelled / outcome_unknown / expired" },
+        { "name": "storage_key", "type": "varchar", "length": 500, "nullable": true, "sensitivity": "confidential", "desc": "产物 Key；ready 后必填" },
+        { "name": "file_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "产物 Hash" },
+        { "name": "file_size_bytes", "type": "bigint", "nullable": true, "sensitivity": "public", "desc": "产物大小" },
+        { "name": "idempotency_key", "type": "varchar", "length": 255, "nullable": false, "sensitivity": "internal", "desc": "导出幂等键" },
+        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "失败错误码" },
+        { "name": "expires_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "产物保留到期时间" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "进入终态的时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_material_exports_idempotency", "columns": ["owner_id", "idempotency_key"] },
+        { "type": "check", "name": "ck_material_exports_profile", "expr": "profile IN ('teacher','student')" },
+        { "type": "check", "name": "ck_material_exports_format", "expr": "format IN ('docx','pdf')" },
+        { "type": "check", "name": "ck_material_exports_status", "expr": "status IN ('queued','rendering','uploading','ready','failed','cancelled','outcome_unknown','expired')" },
+        { "type": "check", "name": "ck_material_exports_ready_storage", "expr": "status <> 'ready' OR storage_key IS NOT NULL" }
+      ],
+      "indexes": [
+        { "name": "ix_material_exports_version", "columns": ["material_version_id", "created_at"] },
+        { "name": "ix_material_exports_owner", "columns": ["owner_id", "status"] }
+      ],
+      "policies": [
+        { "name": "pol_material_exports_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    }
+  ],
+  "table_order": [
+    "projects",
+    "materials",
+    "material_versions",
+    "material_drafts",
+    "material_draft_revisions",
+    "document_schema_definitions",
+    "material_references",
+    "task_material_links",
+    "material_publication_approvals",
+    "material_exports"
+  ]
+}

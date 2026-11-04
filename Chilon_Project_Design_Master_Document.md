@@ -84,6 +84,7 @@
   - [D.22 2026-11-04 验收与测试矩阵（分册 D6）](#d22-2026-11-04-验收与测试矩阵分册-d6)
   - [D.23 2026-11-04 Registry 与工程骨架](#d23-2026-11-04-registry-与工程骨架)
   - [D.24 2026-11-04 Alembic 基线与迁移闭环](#d24-2026-11-04-alembic-基线与迁移闭环)
+  - [D.25 2026-11-04 K012 入库与流水线复用验证](#d25-2026-11-04-k012-入库与流水线复用验证)
 
 [//]: # (toc:end)
 
@@ -3556,6 +3557,39 @@ alembic downgrade base           → 剩余表 0、剩余函数 0
 **过程中环境给的两个教训：** `pip install` 首次尝试 20 分钟无进展（网络索引慢），改成分步安装后 1 分钟内完成；PowerShell 5.1 的管道会破坏 UTF-8，所以 SQL 改用 `docker cp` 进容器执行，脚本也不再依赖 `cmd /c`。
 
 **下一步**：其余模块的字段级设计（K012 优先），以及把 K009 的 13 张表补进 `--with-optional` 变体的容器验证。
+
+## D.25 2026-11-04 K012 入库与流水线复用验证
+
+**本轮交付：** K012 的字段级设计直接落成 Registry，并用它验证“这套流水线能不能复用”。
+
+| 产物 | 内容 |
+| --- | --- |
+| `database/registry/fields/k012.json` | 10 张表：projects、materials、material_versions、material_drafts、material_draft_revisions、document_schema_definitions、material_references、task_material_links、material_publication_approvals、material_exports |
+| 生成器升级 | **延迟外键**支持；全局 `table_order` 移到 `schema.json` |
+| 产物改名 | `generated/k009.sql` → `generated/schema.sql`（已跨两个模块） |
+| 迁移 | `0001_baseline`（22 表），替换原 K009 单模块基线 |
+| 测试参数化 | 期望表数/策略数/索引数/外键数取自 manifest，不再硬编码 |
+
+**Registry 规模**：23 张表、266 个字段、34 个索引、13 条 RLS 策略。
+
+**三个复用中发现的新问题：**
+
+1. **互相引用需要延迟外键。** `materials.current_version_id` 与 `material_versions.material_id` 构成环，另有三个跨表前向引用。生成器新增 `deferred_fk`：先建表，最后统一 `ALTER TABLE ... ADD CONSTRAINT`。K009 从未遇到这种情况，说明流水线在前一个模块上“够用”不代表“完整”。
+2. **psql 变量不能用在 `$$` 块内。** 期望值最初用 `:'expected_tables'` 传入，直接在 DO 块里报语法错误。改为块外 `SET` 自定义参数、块内 `current_setting()` 读取。
+3. **切分器把注释里的分号当成语句结束。** 生成的注释 `-- (target owned by another module; add after ...)` 被切成两半，错误只在 Alembic 执行时才暴露。切分器已支持行注释，注释本身也不再用分号，并加了回归用例。
+
+**验证结果（真实 PostgreSQL 17）：**
+
+```text
+直接应用 DDL        → 22 表 / 13 策略 / 34 索引 / 37 外键 / 3 函数
+领域约束            → 两层知识库约束与 pinned 引用规则均按设计拒绝坏数据
+alembic upgrade     → 0001_baseline
+alembic downgrade   → 剩余表 0、剩余函数 0
+```
+
+**结论**：流水线可以复用，但每接一个新模块都会暴露一类新问题。这正是“先做两个模块”比“一次做五个”更稳的原因——**第三个模块的边际成本已经接近零**。
+
+----------------------------------------
 
 ----------------------------------------
 

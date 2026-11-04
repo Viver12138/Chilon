@@ -1,14 +1,25 @@
 {
   "generator_version": "0.1.0",
   "registry_version": "0.1.0",
-  "registry_hash": "a2f4cded965f6aab131ed67b64574234db225d9d36efde4ea41c7403bcfbef5b",
-  "schema_hash": "402bc511a55ab06055523b00d8afd090b3bdeb0e13a6d65a8a4faa6ef8c1af98",
+  "registry_hash": "2498a7b7307f650aa6ffed6bd4798cb1a6919c8a0d904f94fa4c741054e6e64b",
+  "schema_hash": "2f9d864c625c6f1e9ca30478e96926ac0c460be0bc69dd0e687ca586244cf8d1",
   "variant": "core",
-  "tables": 12,
-  "fields": 136,
-  "indexes": 20,
-  "policies": 4,
+  "tables": 22,
+  "fields": 259,
+  "indexes": 34,
+  "policies": 13,
+  "min_foreign_keys": 37,
   "included_tables": [
+    "projects",
+    "materials",
+    "material_versions",
+    "material_drafts",
+    "material_draft_revisions",
+    "document_schema_definitions",
+    "material_references",
+    "task_material_links",
+    "material_publication_approvals",
+    "material_exports",
     "knowledge_categories",
     "knowledge_sources",
     "knowledge_document_versions",
@@ -27,7 +38,7 @@
   ],
   "extensions_enabled": [],
   "external_tables": [
-    "material_versions"
+    "tasks"
   ],
-  "output": "database/generated/k009.sql"
+  "output": "database/generated/schema.sql"
 }

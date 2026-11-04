@@ -31,7 +31,7 @@ def main() -> int:
     stub.op = object()
     sys.modules.setdefault("alembic", stub)
 
-    path = ROOT / "backend" / "migrations" / "versions" / "0001_k009_baseline.py"
+    path = ROOT / "backend" / "migrations" / "versions" / "0001_baseline.py"
     if not path.exists():
         print(f"missing {path.relative_to(ROOT)}")
         return 1
@@ -64,6 +64,21 @@ def main() -> int:
     print(f"unbalanced $$     : {len(unbalanced_dollar)}")
     print(f"unbalanced quote  : {len(unbalanced_quote)}")
 
+    # regression: a ';' inside a line comment must not end the statement.
+    # This actually happened: a generated comment read
+    # "-- (target owned by another module; add after ...)" and the splitter cut
+    # the statement in half, which only surfaced when Alembic executed it.
+    tricky = (
+        "-- note: a; b; c\n"
+        "CREATE TABLE t1 (id int);\n"
+        "-- trailing; comment\n"
+        "ALTER TABLE t1 ENABLE ROW LEVEL SECURITY;\n"
+    )
+    tricky_stmts = mod.split_statements(tricky)
+    comment_ok = len(tricky_stmts) == 2 and all("CREATE TABLE" in s or "ALTER TABLE" in s for s in tricky_stmts)
+    print(f"comment-semicolon case: {'OK' if comment_ok else 'BROKEN'} ({len(tricky_stmts)} statements)")
+
+
     failures = []
     if create_tables != len(mod.TABLES):
         failures.append("CREATE TABLE count mismatch")
@@ -71,6 +86,8 @@ def main() -> int:
         failures.append("function count mismatch")
     if unbalanced_dollar or unbalanced_quote:
         failures.append("unbalanced quoting")
+    if not comment_ok:
+        failures.append("semicolon inside a comment split a statement")
     if failures:
         print("FAILED: " + ", ".join(failures))
         return 1

@@ -17,7 +17,7 @@ import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent.parent
-DDL = ROOT / "database" / "generated" / "k009.sql"
+DDL = ROOT / "database" / "generated" / "schema.sql"
 MANIFEST = ROOT / "database" / "generated" / "manifest.json"
 VERSIONS = ROOT / "backend" / "migrations" / "versions"
 
@@ -53,15 +53,34 @@ SQL = r"""--- generated DDL ---
 
 
 def split_statements(sql: str) -> list[str]:
-    """Split on ';' while respecting single quotes and $$ dollar-quoted bodies."""
+    """Split on ';' while respecting single quotes, line comments and $$ bodies.
+
+    Line comments matter: a ';' inside `-- ...` would otherwise cut a statement
+    in half, and the failure only shows up when Alembic executes it.
+    """
     out: list[str] = []
     buf: list[str] = []
     i = 0
     n = len(sql)
     in_single = False
     in_dollar = False
+    in_line_comment = False
     while i < n:
         ch = sql[i]
+        if ch == "\\n":
+            in_line_comment = False
+            buf.append(ch)
+            i += 1
+            continue
+        if in_line_comment:
+            buf.append(ch)
+            i += 1
+            continue
+        if not in_single and not in_dollar and sql.startswith("--", i):
+            in_line_comment = True
+            buf.append("--")
+            i += 2
+            continue
         if not in_single and sql.startswith("$$", i):
             in_dollar = not in_dollar
             buf.append("$$")
