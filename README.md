@@ -80,6 +80,9 @@ pwsh -NoProfile -File database/tests/run_exec_test.ps1
 
 # 步骤 DAG：不可执行的计划在创建时被拒，按依赖调度
 pwsh -NoProfile -File database/tests/run_step_test.ps1
+
+# 工具调用：能力/审批闸门、幂等键、参数键序无关
+pwsh -NoProfile -File database/tests/run_tool_test.ps1
 ```
 
 ## 设计与契约的状态

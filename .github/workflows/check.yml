@@ -69,3 +69,6 @@ jobs:
       # 9) Step DAG: rejected at creation if unexecutable, scheduled by dependencies.
       - name: Verify plan step DAG
         run: pwsh -NoProfile -File database/tests/run_step_test.ps1
+      # 10) Tools: capability/approval gates and idempotency across retries.
+      - name: Verify tool invocation gates
+        run: pwsh -NoProfile -File database/tests/run_tool_test.ps1
