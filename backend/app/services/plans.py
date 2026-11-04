@@ -29,7 +29,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.outbox import dispatcher
-from app.services import contract
+from app.services import contract, steps
 
 PLAN_VERSION = contract.load("plan_version")
 PLAN_APPROVAL = contract.load("plan_approval")
@@ -138,6 +138,9 @@ async def create_plan_version(
         text("UPDATE agent_plans SET latest_version_id = :v, updated_at = now() WHERE id = :p"),
         {"v": version_id, "p": plan_id},
     )
+    # Validate and materialise the DAG here, not at execution time: an
+    # unexecutable plan must never reach the approval screen.
+    await steps.materialise(session, version_id, content)
     await dispatcher.enqueue(
         session,
         aggregate_type="plan_version",
