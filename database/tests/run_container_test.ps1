@@ -4,7 +4,8 @@
 #   .\database\tests\run_container_test.ps1 -KeepContainer
 #
 # Expected counts come from database/generated/manifest.json, so the test cannot
-# drift from the registry. Requires Docker Desktop running.
+# drift from the registry. Requires Docker running (Docker Desktop locally, the
+# preinstalled daemon on GitHub runners).
 
 param(
     [string]$Container = "chilon-pg-test",
@@ -13,10 +14,35 @@ param(
     [switch]$KeepContainer
 )
 
-$ErrorActionPreference = "Stop"
+# Native commands write diagnostics to stderr (psql NOTICE, docker pull progress).
+# With 'Stop', PowerShell turns redirected stderr into terminating errors, so we
+# keep 'Continue' and check exit codes explicitly. `throw` is always terminating.
+$ErrorActionPreference = "Continue"
+if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
+
 $root = Split-Path -Parent (Split-Path -Parent $PSScriptRoot)
 $ddl = Join-Path $root "database/generated/schema.sql"
 $verify = Join-Path $root "database/tests/verify_schema.sql"
+
+# Any terminating error prints enough context to diagnose from CI logs alone.
+# Details are also emitted as ::error:: annotations, which are readable through
+# the GitHub API without admin rights on the repository.
+trap {
+    $detail = "$_"
+    Write-Host "::error::container test failed: $detail"
+    Write-Host "::error::PowerShell $($PSVersionTable.PSVersion) on $([System.Environment]::OSVersion.VersionString)"
+    Write-Host "::error::at $($_.InvocationInfo.PositionMessage -replace "`r?`n", ' | ')"
+    Write-Host "PowerShell      : $($PSVersionTable.PSVersion)"
+    Write-Host "Root            : $root"
+    Write-Host "Error           : $detail"
+    Write-Host "--- docker ps -a ---"
+    docker ps -a 2>&1 | ForEach-Object { Write-Host "  $_" }
+    Write-Host "--- container logs ---"
+    docker logs --tail 40 $Container 2>&1 | ForEach-Object { Write-Host "  $_" }
+    exit 1
+}
 
 if (-not (Test-Path $ddl)) { throw "Missing $ddl - run: python database/generator/generate_ddl.py" }
 
@@ -27,41 +53,46 @@ $verifyArgs = @(
     "-v", "expected_indexes=$($manifest.indexes)",
     "-v", "expected_min_fk=$($manifest.min_foreign_keys)"
 )
+Write-Host "==> expected: $($manifest.tables) tables, $($manifest.policies) policies, $($manifest.indexes) indexes" -ForegroundColor Cyan
 
 Write-Host "==> docker daemon" -ForegroundColor Cyan
-docker version --format "{{.Server.Version}}" | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "Docker is not running" }
+$version = & docker version --format "{{.Server.Version}}" 2>&1
+Write-Host "    server $version (exit $LASTEXITCODE)"
+if ($LASTEXITCODE -ne 0) { throw "Docker is not reachable: $version" }
 
-if (docker ps -a --filter "name=^/$Container$" --format "{{.Names}}") {
-    docker rm -f $Container | Out-Null
+$existing = (& docker ps -a --filter "name=^/$Container$" --format "{{.Names}}" 2>&1)
+if ($existing) {
+    Write-Host "==> removing previous container" -ForegroundColor Cyan
+    & docker rm -f $Container 2>&1 | Out-Null
 }
 
 Write-Host "==> starting postgres:17" -ForegroundColor Cyan
-docker run -d --name $Container -e "POSTGRES_PASSWORD=$Password" -e "POSTGRES_DB=chilon" -p "${Port}:5432" postgres:17 | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "docker run failed" }
+& docker run -d --name $Container -e "POSTGRES_PASSWORD=$Password" -e "POSTGRES_DB=chilon" -p "${Port}:5432" postgres:17 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "docker run failed (exit $LASTEXITCODE)" }
 
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
-    docker exec $Container pg_isready -U postgres -d chilon 2>&1 | Out-Null
+    & docker exec $Container pg_isready -U postgres -d chilon *> $null
     if ($LASTEXITCODE -eq 0) { $ready = $true; break }
     Start-Sleep -Milliseconds 500
 }
-if (-not $ready) { docker logs --tail 40 $Container; throw "PostgreSQL not ready" }
+if (-not $ready) { throw "PostgreSQL did not become ready in 30s" }
+Write-Host "    ready after $([math]::Round($i * 0.5, 1))s"
 
 Write-Host "==> copying SQL into the container" -ForegroundColor Cyan
-docker cp $ddl "${Container}:/tmp/schema.sql" | Out-Null
-docker cp $verify "${Container}:/tmp/verify_schema.sql" | Out-Null
+& docker cp $ddl "${Container}:/tmp/schema.sql" 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "docker cp (schema.sql) failed" }
+& docker cp $verify "${Container}:/tmp/verify_schema.sql" 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { throw "docker cp (verify_schema.sql) failed" }
 
 function Invoke-Psql {
     param([string]$File, [string[]]$ExtraArgs, [switch]$Quiet)
     $psqlArgs = @("exec", $Container, "psql", "-U", "postgres", "-d", "chilon", "-v", "ON_ERROR_STOP=1", "-f", $File)
     if ($ExtraArgs) { $psqlArgs += $ExtraArgs }
     if ($Quiet) { $psqlArgs += "-q" }
-    $ErrorActionPreference = "Continue"
     $raw = & docker @psqlArgs 2>&1
     $code = $LASTEXITCODE
-    $ErrorActionPreference = "Stop"
-    if ($raw) { $raw | ForEach-Object { "$_" } | Write-Host }
+    if ($raw) { $raw | ForEach-Object { Write-Host "    $_" } }
     return $code
 }
 
@@ -75,7 +106,7 @@ Write-Host ""
 Write-Host "PASS: DDL applied and verified on postgres:17" -ForegroundColor Green
 
 if (-not $KeepContainer) {
-    docker rm -f $Container | Out-Null
+    & docker rm -f $Container 2>&1 | Out-Null
 } else {
     Write-Host "container kept: $Container (port $Port)" -ForegroundColor Yellow
 }
