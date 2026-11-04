@@ -39,6 +39,44 @@ def _hash(value: Any) -> str:
     ).hexdigest()
 
 
+
+
+async def publish_progress(
+    session: AsyncSession,
+    execution_id: uuid.UUID,
+    event_type: str,
+    payload: dict[str, Any],
+) -> None:
+    """Mirror a step event into the task's conversation stream, if it has one.
+
+    The stream is the teacher's view of what is happening. Writing it in the same
+    transaction as the step keeps the two from disagreeing: a step that committed
+    always has its event, and an event never describes a step that rolled back.
+    """
+    from app.services import event_stream
+
+    conversation_id = (
+        await session.execute(
+            text(
+                """
+                SELECT c.id
+                FROM conversations c
+                JOIN tasks t ON t.id = c.task_id
+                JOIN agent_executions e ON e.task_id = t.id
+                WHERE e.id = :exec
+                ORDER BY c.created_at
+                LIMIT 1
+                """
+            ),
+            {"exec": execution_id},
+        )
+    ).scalar()
+    if conversation_id is None:
+        return
+    await event_stream.append_event(
+        session, conversation_id, event_type, payload, aggregate="execution", aggregate_id=execution_id
+    )
+
 async def _plan_context(session: AsyncSession, execution_id: uuid.UUID) -> dict[str, Any]:
     row = (
         await session.execute(
@@ -216,6 +254,12 @@ async def run_once(
             )
             await tools.record_result(session, invocation.id, output, succeeded=True)
             await steps.finish_step(session, step_exec_id, succeeded=True)
+            await publish_progress(
+                session,
+                execution_id,
+                "execution.progress",
+                {"step": key, "tool": tool_key, "status": "succeeded"},
+            )
 
             reason = "replayed" if invocation.replayed else "executed"
             processed.append({"step_key": key, "tool": tool_key, "result": reason})
