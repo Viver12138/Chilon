@@ -72,6 +72,8 @@ pwsh -NoProfile -File database/tests/run_identity_test.ps1
 
 # 任务生命周期：契约里每条迁移都能走通，每个非法组合都被拒绝
 pwsh -NoProfile -File database/tests/run_task_test.ps1
+# 方案审批：单次消费、内容 Hash 绑定、过期失效
+pwsh -NoProfile -File database/tests/run_plan_test.ps1
 ```
 
 ## 设计与契约的状态

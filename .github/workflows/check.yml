@@ -48,3 +48,6 @@ jobs:
       # 6) Task lifecycle: every contract transition, every illegal pair, CAS.
       - name: Verify task lifecycle against the contract
         run: pwsh -NoProfile -File database/tests/run_task_test.ps1
+      # 7) Plan approval: single consumption, hash binding, expiry.
+      - name: Verify plan approval contract
+        run: pwsh -NoProfile -File database/tests/run_plan_test.ps1

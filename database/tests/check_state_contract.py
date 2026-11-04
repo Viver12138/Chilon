@@ -63,10 +63,12 @@ def main() -> int:
         states = agg["states"]
 
         enum_values = None
+        enum_expr = None
         for con in table.get("constraints", []):
             expr = con.get("expr") or ""
             if re.search(rf"\b{field_name}\b\s+IN\s*\(", expr):
                 enum_values = re.findall(r"'([a-z_0-9]+)'", expr)
+                enum_expr = expr
                 break
 
         if enum_values is None:
@@ -89,6 +91,23 @@ def main() -> int:
             if literal not in states:
                 errors.append(
                     f"{agg['id']}: {table_name}.{field_name} default {literal!r} is not a contract state"
+                )
+
+        # Any other constraint that compares the status column to a literal naming
+        # a state must use a state that can actually occur. A constraint written
+        # against a status the enum forbids is either dead or, worse, unsatisfiable
+        # — `(status = 'consumed') = (consumed_at IS NOT NULL)` inverts into
+        # "consumed_at is always NULL" once 'consumed' stops being a state.
+        for con in table.get("constraints", []):
+            expr = con.get("expr") or ""
+            if expr is enum_expr:
+                continue
+            referenced = set(re.findall(rf"\b{field_name}\b\s*=\s*'([a-z_0-9]+)'", expr))
+            unreachable = sorted(referenced - set(states))
+            if unreachable:
+                errors.append(
+                    f"{agg['id']}: {table_name}.{field_name} constraint {con['name']} "
+                    f"references state(s) the enum forbids: {unreachable}"
                 )
 
     print(f"aggregates with a status enum: {checked}/{len(mapping)}")
