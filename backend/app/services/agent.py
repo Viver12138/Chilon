@@ -107,6 +107,32 @@ def extract_requirement(text: str) -> Requirement:
     return Requirement(topic=topic, sources=sources, question_count=count, raw_text=text)
 
 
+async def ensure_default_grants(session: AsyncSession, owner_id: uuid.UUID) -> int:
+    """Grant a new teacher every enabled platform tool.
+
+    Without this a fresh account can plan nothing: the planner refuses when no tool is
+    available, which is correct behaviour for an *unprivileged* account and useless
+    behaviour for a newly created one. The grant is per teacher, so the platform
+    default has to be materialised per teacher at some point — registration is the
+    only moment that is guaranteed to happen.
+
+    Returns how many tools are now granted.
+    """
+    result = await session.execute(
+        text(
+            """
+            INSERT INTO agent_tool_grants (id, owner_id, tool_definition_id, capability)
+            SELECT gen_random_uuid(), :owner, d.id, 'invoke'
+            FROM agent_tool_definitions d
+            WHERE d.is_enabled
+            ON CONFLICT (owner_id, tool_definition_id) DO NOTHING
+            """
+        ),
+        {"owner": owner_id},
+    )
+    return result.rowcount or 0
+
+
 async def available_tools(session: AsyncSession, owner_id: uuid.UUID) -> list[planner.ToolSpec]:
     """Tools this teacher may actually use: enabled and granted."""
     rows = (

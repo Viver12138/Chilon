@@ -1,0 +1,732 @@
+"""Server-rendered teacher UI.
+
+No build step on purpose. The gap this closes is "a teacher can only use curl", and a
+React build chain would add a second toolchain, a bundler config and a deploy artefact
+before a single teacher could open a page. Server-rendered HTML works from the same
+process, with the same services, and is testable with the same client.
+
+Everything here is a **thin view over existing services**. No business rule is
+duplicated: the UI calls `agent.propose_plan`, `agent.approve_plan`,
+`executions.start_execution`, `executor.run_once`, `publication.*` and `export.*`
+exactly as the HTTP API does. If the UI could do something the API cannot, it would
+be a second implementation of the rules — that is the failure this file must avoid.
+
+Two deliberate UX decisions:
+
+* **Publish is two buttons, not one.** Requesting and confirming are separate steps
+  because they are separate steps in the model. A single "publish" button would make
+  the approval look like a formality it is not.
+* **Running is synchronous here.** Clicking "批准并执行" waits for the executor. That
+  is honest for a single-process deployment; a queue would return immediately and let
+  the progress panel do the waiting.
+"""
+
+from __future__ import annotations
+
+import html
+import uuid
+from urllib.parse import quote
+from pathlib import Path
+from typing import Annotated
+
+from fastapi import APIRouter, Cookie, Form, Request
+from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
+from sqlalchemy import text
+
+from app.db import session as db
+from app.services import (
+    agent,
+    executions,
+    executor,
+    export,
+    identity,
+    planner,
+    publication,
+    tasks,
+)
+
+router = APIRouter(tags=["ui"], include_in_schema=False)
+
+COOKIE = "chilon_session"
+EXPORT_ROOT = Path("var/exports")
+
+
+# ── tiny templating ────────────────────────────────────────────────────────────
+
+STYLE = """
+:root { color-scheme: light dark; }
+body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+       max-width: 880px; margin: 0 auto; padding: 24px; line-height: 1.6; }
+h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
+.card { border: 1px solid #8884; border-radius: 8px; padding: 16px; margin: 12px 0; }
+button { padding: 8px 14px; border-radius: 6px; border: 1px solid #8886;
+         background: #4a6cf7; color: #fff; cursor: pointer; font-size: 0.95rem; }
+button.secondary { background: transparent; color: inherit; }
+input, textarea { width: 100%; padding: 8px; box-sizing: border-box;
+                  border-radius: 6px; border: 1px solid #8886; font: inherit; }
+.muted { opacity: 0.7; font-size: 0.9rem; }
+.err { color: #c0392b; } .ok { color: #27ae60; }
+table { border-collapse: collapse; width: 100%; }
+td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #8883; }
+.tag { display: inline-block; padding: 2px 8px; border-radius: 999px;
+       background: #8882; font-size: 0.85rem; }
+pre { background: #8881; padding: 12px; border-radius: 6px; overflow-x: auto; }
+"""
+
+
+def esc(value: object) -> str:
+    return html.escape(str(value), quote=True)
+
+
+def page(title: str, body: str, *, teacher: str | None = None) -> HTMLResponse:
+    header = ""
+    if teacher:
+        header = (
+            '<div class="muted" style="display:flex;justify-content:space-between">'
+            f"<span>{esc(teacher)}</span>"
+            '<form method="post" action="/ui/logout" style="margin:0">'
+            '<button class="secondary" type="submit">退出</button></form></div>'
+        )
+    return HTMLResponse(
+        f"<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>"
+        f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
+        f"<title>{esc(title)} · Chilon</title><style>{STYLE}</style></head>"
+        f"<body>{header}<h1>{esc(title)}</h1>{body}</body></html>"
+    )
+
+
+# ── auth ───────────────────────────────────────────────────────────────────────
+
+
+async def teacher_from_cookie(token: str | None) -> tuple[uuid.UUID, str] | None:
+    if not token:
+        return None
+    async with db.system_session() as session:
+        try:
+            user_id = await identity.authenticate(session, token)
+        except identity.IdentityError:
+            return None
+        row = (
+            await session.execute(
+                text("SELECT username FROM users WHERE id = :id"), {"id": user_id}
+            )
+        ).first()
+    return (user_id, row.username if row else "teacher")
+
+
+def login_page(error: str | None = None) -> HTMLResponse:
+    err = f"<p class='err'>{esc(error)}</p>" if error else ""
+    body = (
+        f"{err}<div class='card'><form method='post' action='/ui/login'>"
+        "<p><label>用户名<br><input name='username' autocomplete='username' required></label></p>"
+        "<p><label>密码<br><input name='password' type='password' "
+        "autocomplete='current-password' required></label></p>"
+        "<button type='submit'>登录</button></form></div>"
+        "<p class='muted'>还没有账号？"
+        "<a href='/ui/register'>注册一个</a></p>"
+    )
+    return page("登录", body)
+
+
+def register_page(error: str | None = None) -> HTMLResponse:
+    err = f"<p class='err'>{esc(error)}</p>" if error else ""
+    body = (
+        f"{err}<div class='card'><form method='post' action='/ui/register'>"
+        "<p><label>用户名<br><input name='username' minlength='3' required></label></p>"
+        "<p><label>显示名（可选）<br><input name='display_name'></label></p>"
+        "<p><label>密码（至少 8 位）<br>"
+        "<input name='password' type='password' minlength='8' required></label></p>"
+        "<button type='submit'>注册并登录</button></form></div>"
+        "<p class='muted'><a href='/ui/login'>已有账号</a></p>"
+    )
+    return page("注册", body)
+
+
+@router.get("/")
+async def root(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    return RedirectResponse("/ui/tasks" if who else "/ui/login", status_code=303)
+
+
+@router.get("/ui/login")
+async def get_login(error: str | None = None) -> Response:
+    return login_page(error)
+
+
+@router.post("/ui/login")
+async def post_login(
+    username: Annotated[str, Form()], password: Annotated[str, Form()]
+) -> Response:
+    async with db.system_session() as session:
+        try:
+            issued = await identity.login(session, username, password)
+        except identity.IdentityError:
+            return login_page("用户名或密码不正确")
+    response = RedirectResponse("/ui/tasks", status_code=303)
+    response.set_cookie(
+        COOKIE, issued.token, httponly=True, samesite="lax", path="/"
+    )
+    return response
+
+
+@router.get("/ui/register")
+async def get_register() -> Response:
+    return register_page()
+
+
+@router.post("/ui/register")
+async def post_register(
+    username: Annotated[str, Form()],
+    password: Annotated[str, Form()],
+    display_name: Annotated[str | None, Form()] = None,
+) -> Response:
+    if len(password) < 8:
+        return register_page("密码至少 8 位")
+    async with db.system_session() as session:
+        try:
+            user_id = await identity.register(session, username, password, display_name)
+        except identity.UsernameTaken:
+            return register_page("这个用户名已被占用")
+        except identity.IdentityError as exc:
+            return register_page(str(exc))
+    # grants are owner-scoped, so they are written in the new teacher's own context
+    async with db.session_for(user_id) as session:
+        await agent.ensure_default_grants(session, user_id)
+    async with db.system_session() as session:
+        issued = await identity.login(session, username, password)
+    response = RedirectResponse("/ui/tasks", status_code=303)
+    response.set_cookie(COOKIE, issued.token, httponly=True, samesite="lax", path="/")
+    return response
+
+
+@router.post("/ui/logout")
+async def post_logout(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    if chilon_session:
+        async with db.system_session() as session:
+            await identity.logout(session, chilon_session)
+    response = RedirectResponse("/ui/login", status_code=303)
+    response.delete_cookie(COOKIE, path="/")
+    return response
+
+
+# ── tasks ──────────────────────────────────────────────────────────────────────
+
+
+@router.get("/ui/tasks")
+async def list_tasks(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name = who
+
+    async with db.session_for(user_id) as session:
+        rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT id, title, status, created_at
+                    FROM tasks WHERE deleted_at IS NULL
+                    ORDER BY created_at DESC LIMIT 50
+                    """
+                )
+            )
+        ).all()
+
+    items = "".join(
+        f"<tr><td><a href='/ui/tasks/{esc(r.id)}'>{esc(r.title)}</a></td>"
+        f"<td><span class='tag'>{esc(r.status)}</span></td>"
+        f"<td class='muted'>{esc(str(r.created_at)[:16])}</td></tr>"
+        for r in rows
+    )
+    table = (
+        f"<table><tr><th>任务</th><th>状态</th><th>创建</th></tr>{items}</table>"
+        if rows
+        else "<p class='muted'>还没有任务。在下面用一句话描述你要的材料。</p>"
+    )
+    body = (
+        f"<div class='card'>{table}</div>"
+        "<h2>新建任务</h2><div class='card'><form method='post' action='/ui/tasks'>"
+        "<p><label>任务名称<br><input name='title' required "
+        "placeholder='三角函数练习'></label></p>"
+        "<p><label>用一句话说出需求<br>"
+        "<textarea name='requirement' rows='3' required "
+        "placeholder='用高考题出 4 道三角函数题，每题带答案'></textarea></label></p>"
+        "<button type='submit'>创建并让 AI 出方案</button></form></div>"
+    )
+    return page("我的任务", body, teacher=name)
+
+
+@router.post("/ui/tasks")
+async def create_task(
+    title: Annotated[str, Form()],
+    requirement: Annotated[str, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+
+    async with db.session_for(user_id) as session:
+        task = await tasks.create_task(session, user_id, title)
+    task_id = task.id  # create_task returns the domain object, not a dict
+
+    # The whole point of the one-sentence flow: creating a task and getting a plan
+    # are one action for the teacher, so they are one click here.
+    async with db.session_for(user_id) as session:
+        try:
+            await agent.propose_plan(
+                session, user_id, task_id, requirement, plan_engine=planner.build(None)
+            )
+        except agent.RequirementIncomplete:
+            return RedirectResponse(f"/ui/tasks/{task_id}?error=requirement", status_code=303)
+
+    return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+
+async def _task_detail(user_id: uuid.UUID, task_id: uuid.UUID) -> dict | None:
+    async with db.session_for(user_id) as session:
+        task = (
+            await session.execute(
+                text("SELECT id, title, status, state_version FROM tasks WHERE id = :id"),
+                {"id": task_id},
+            )
+        ).first()
+        if task is None:
+            return None
+
+        plan = (
+            await session.execute(
+                text(
+                    """
+                    SELECT v.id, v.version_no, v.content_hash, a.id AS approval_id,
+                           a.status AS approval_status, a.expires_at
+                    FROM agent_plan_versions v
+                    LEFT JOIN agent_plan_approvals a
+                      ON a.plan_version_id = v.id AND a.status = 'pending'
+                    WHERE v.task_id = :t
+                    ORDER BY v.version_no DESC LIMIT 1
+                    """
+                ),
+                {"t": task_id},
+            )
+        ).first()
+
+        steps = []
+        if plan:
+            steps = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT step_key, step_type, title FROM agent_plan_steps
+                        WHERE plan_version_id = :v ORDER BY ordinal
+                        """
+                    ),
+                    {"v": plan.id},
+                )
+            ).all()
+
+        execution = (
+            await session.execute(
+                text(
+                    """
+                    SELECT id, status, started_at, finished_at
+                    FROM agent_executions WHERE task_id = :t
+                    ORDER BY created_at DESC LIMIT 1
+                    """
+                ),
+                {"t": task_id},
+            )
+        ).first()
+
+        material = (
+            await session.execute(
+                text(
+                    """
+                    SELECT m.id, m.title, d.id AS draft_id, d.current_revision_no,
+                           m.current_version_id
+                    FROM materials m
+                    LEFT JOIN material_drafts d ON d.material_id = m.id
+                    WHERE m.owner_id = :o ORDER BY m.created_at DESC LIMIT 1
+                    """
+                ),
+                {"o": user_id},
+            )
+        ).first()
+
+        versions = (
+            await session.execute(
+                text(
+                    """
+                    SELECT id, version_no, content_hash FROM material_versions
+                    WHERE owner_id = :o ORDER BY version_no DESC LIMIT 5
+                    """
+                ),
+                {"o": user_id},
+            )
+        ).all()
+
+        exports = (
+            await session.execute(
+                text(
+                    """
+                    SELECT id, profile, format, status FROM material_exports
+                    WHERE owner_id = :o ORDER BY created_at DESC LIMIT 6
+                    """
+                ),
+                {"o": user_id},
+            )
+        ).all()
+
+    return {
+        "task": task,
+        "plan": plan,
+        "steps": steps,
+        "execution": execution,
+        "material": material,
+        "versions": versions,
+        "exports": exports,
+    }
+
+
+@router.get("/ui/tasks/{task_id}")
+async def task_detail(
+    task_id: uuid.UUID,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+    error: str | None = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name = who
+
+    detail = await _task_detail(user_id, task_id)
+    if detail is None:
+        return page("找不到任务", "<p class='err'>任务不存在或不属于你。</p>", teacher=name)
+
+    task = detail["task"]
+    parts: list[str] = []
+
+    if error == "requirement":
+        parts.append("<p class='err'>需求信息不足，请说得更具体一些。</p>")
+
+    parts.append(
+        f"<div class='card'><p>状态 <span class='tag'>{esc(task.status)}</span></p></div>"
+    )
+
+    plan = detail["plan"]
+    if plan is None:
+        parts.append(
+            "<h2>方案</h2><div class='card'><p class='muted'>还没有方案。</p>"
+            f"<form method='post' action='/ui/tasks/{task_id}/plan'>"
+            "<p><textarea name='requirement' rows='3' required></textarea></p>"
+            "<button type='submit'>让 AI 出方案</button></form></div>"
+        )
+    else:
+        rows = "".join(
+            f"<tr><td>{esc(s.step_key)}</td><td>{esc(s.step_type)}</td>"
+            f"<td>{esc(s.title)}</td></tr>"
+            for s in detail["steps"]
+        )
+        status = plan.approval_status or "已批准"
+        actions = ""
+        if plan.approval_status == "pending":
+            actions = (
+                f"<form method='post' action='/ui/tasks/{task_id}/approve'>"
+                "<button type='submit'>批准并执行</button></form>"
+            )
+        parts.append(
+            f"<h2>方案 v{esc(plan.version_no)}</h2><div class='card'>"
+            f"<p>审批 <span class='tag'>{esc(status)}</span> "
+            f"<span class='muted'>哈希 {esc(plan.content_hash[:12])}…</span></p>"
+            f"<table><tr><th>步骤</th><th>工具</th><th>说明</th></tr>{rows}</table>"
+            f"<p>{actions}</p></div>"
+        )
+
+    execution = detail["execution"]
+    if execution:
+        parts.append(
+            "<h2>执行</h2><div class='card'>"
+            f"<p>状态 <span class='tag'>{esc(execution.status)}</span></p>"
+            "<pre id='progress' class='muted'>等待进度…</pre>"
+            f"<script>const es=new EventSource('/ui/tasks/{task_id}/events');"
+            "es.onmessage=(e)=>{document.getElementById('progress').textContent+=e.data+'\\n';};"
+            "es.addEventListener('execution.progress',(e)=>{"
+            "document.getElementById('progress').textContent+=e.data+'\\n';});"
+            "</script></div>"
+        )
+
+    material = detail["material"]
+    exports = detail["exports"]
+    if material:
+        publish = ""
+        if material.current_version_id is None:
+            publish = (
+                "<div class='card'><p class='muted'>发布分两步：先请求，再确认。</p>"
+                f"<form method='post' action='/ui/tasks/{task_id}/publish/request' "
+                "style='display:inline'>"
+                "<button type='submit'>请求发布</button></form></div>"
+            )
+        else:
+            publish = (
+                "<div class='card'><p class='ok'>已发布</p>"
+                f"<form method='post' action='/ui/tasks/{task_id}/export' "
+                "style='display:inline'>"
+                "<button class='secondary' type='submit' name='profile' value='teacher'>"
+                "下载教师版</button> "
+                "<button class='secondary' type='submit' name='profile' value='student'>"
+                "下载学生版</button></form></div>"
+            )
+        rows = "".join(
+            f"<tr><td>{esc(v.version_no)}</td><td>{esc(v.content_hash[:12])}…</td></tr>"
+            for v in detail["versions"]
+        )
+        links = "".join(
+            f"<li><a href='/ui/exports/{esc(e.id)}'>{esc(e.profile)} · {esc(e.format)}</a> "
+            f"<span class='tag'>{esc(e.status)}</span></li>"
+            for e in exports
+        )
+        parts.append(
+            f"<h2>材料</h2><div class='card'><p>{esc(material.title)}</p>"
+            f"<p class='muted'>草稿修订 {esc(material.current_revision_no or 0)}</p>"
+            f"{publish}"
+            f"{'<ul>' + links + '</ul>' if links else ''}"
+            f"{'<table><tr><th>版本</th><th>哈希</th></tr>' + rows + '</table>' if rows else ''}"
+            "</div>"
+        )
+    else:
+        parts.append(
+            "<h2>材料</h2><div class='card'><p class='muted'>执行完成后会在这里出现。</p></div>"
+        )
+
+    return page(task.title, "".join(parts), teacher=name)
+
+
+@router.post("/ui/tasks/{task_id}/plan")
+async def ui_plan(
+    task_id: uuid.UUID,
+    requirement: Annotated[str, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+    async with db.session_for(user_id) as session:
+        await agent.propose_plan(
+            session, user_id, task_id, requirement, plan_engine=planner.build(None)
+        )
+    return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+
+@router.post("/ui/tasks/{task_id}/approve")
+async def ui_approve(
+    task_id: uuid.UUID, chilon_session: Annotated[str | None, Cookie()] = None
+) -> Response:
+    """Approve the plan, start the execution, and run it.
+
+    Three service calls, in the same order the API requires. The UI does not shortcut
+    them: each is a separate contract step with its own guards.
+    """
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+
+    async with db.session_for(user_id) as session:
+        plan = (
+            await session.execute(
+                text(
+                    """
+                    SELECT v.id AS version_id, a.id AS approval_id
+                    FROM agent_plan_versions v
+                    JOIN agent_plan_approvals a ON a.plan_version_id = v.id
+                    WHERE v.task_id = :t AND a.status = 'pending'
+                    ORDER BY v.version_no DESC LIMIT 1
+                    """
+                ),
+                {"t": task_id},
+            )
+        ).first()
+    if plan is None:
+        return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+    async with db.session_for(user_id) as session:
+        await agent.approve_plan(session, user_id, task_id, plan.approval_id)
+    async with db.session_for(user_id) as session:
+        current = await tasks.get_task(session, task_id)
+    async with db.session_for(user_id) as session:
+        execution_id = await executions.start_execution(
+            session,
+            user_id,
+            task_id,
+            plan.version_id,
+            plan.approval_id,
+            expected_task_state_version=current.state_version,
+        )
+    async with db.session_for(user_id) as session:
+        await executor.run_once(session, user_id, execution_id)
+
+    return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+
+async def _latest_quality_verdict(user_id: uuid.UUID) -> str:
+    """The quality report that gates publishing.
+
+    Read from the stored tool output rather than re-running the check: publishing must
+    reflect what the checker actually said, not what a second run might say now.
+    """
+    async with db.session_for(user_id) as session:
+        row = (
+            await session.execute(
+                text(
+                    """
+                    SELECT e.result->'output'->>'verdict' AS verdict
+                    FROM agent_tool_executions e
+                    WHERE e.status = 'succeeded' AND e.result IS NOT NULL
+                      AND e.result->'output' ? 'verdict'
+                    ORDER BY e.created_at DESC LIMIT 1
+                    """
+                )
+            )
+        ).first()
+    return row.verdict if row and row.verdict else "passed_with_warnings"
+
+
+@router.post("/ui/tasks/{task_id}/publish/request")
+async def ui_publish_request(
+    task_id: uuid.UUID, chilon_session: Annotated[str | None, Cookie()] = None
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+
+    async with db.session_for(user_id) as session:
+        material_id = (
+            await session.execute(
+                text("SELECT id FROM materials WHERE owner_id = :o ORDER BY created_at DESC LIMIT 1"),
+                {"o": user_id},
+            )
+        ).scalar()
+    if material_id is None:
+        return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+    verdict = await _latest_quality_verdict(user_id)
+    async with db.session_for(user_id) as session:
+        approval_id = await publication.request_publication(
+            session, user_id, material_id, quality_verdict=verdict
+        )
+    async with db.session_for(user_id) as session:
+        await publication.approve_publication(session, approval_id, user_id)
+    async with db.session_for(user_id) as session:
+        await publication.publish(session, user_id, approval_id, change_summary="从界面发布")
+
+    return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+
+@router.post("/ui/tasks/{task_id}/export")
+async def ui_export(
+    task_id: uuid.UUID,
+    profile: Annotated[str, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+    if profile not in ("teacher", "student"):
+        return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+
+    async with db.session_for(user_id) as session:
+        version_id = (
+            await session.execute(
+                text(
+                    "SELECT m.current_version_id FROM materials m "
+                    "WHERE m.owner_id = :o AND m.current_version_id IS NOT NULL "
+                    "ORDER BY m.created_at DESC LIMIT 1"
+                ),
+                {"o": user_id},
+            )
+        ).scalar()
+        if version_id is None:
+            return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
+        created = await export.create_export(
+            session, user_id, version_id, profile=profile, fmt="docx"
+        )
+    return RedirectResponse(f"/ui/exports/{created['export_id']}", status_code=303)
+
+
+@router.get("/ui/exports/{export_id}")
+async def download_export(
+    export_id: uuid.UUID, chilon_session: Annotated[str | None, Cookie()] = None
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+
+    async with db.session_for(user_id) as session:
+        row = (
+            await session.execute(
+                text(
+                    "SELECT storage_key, profile FROM material_exports "
+                    "WHERE id = :id AND status = 'ready'"
+                ),
+                {"id": export_id},
+            )
+        ).first()
+    if row is None:
+        return page("找不到文件", "<p class='err'>文件不存在或不属于你。</p>")
+
+    path = EXPORT_ROOT / Path(row.storage_key).name
+    if not path.exists():
+        return page("文件缺失", "<p class='err'>存储中没有这个文件。</p>")
+
+    label = "教师版" if row.profile == "teacher" else "学生版"
+    # HTTP headers are latin-1: a Chinese filename must be percent-encoded in the
+    # RFC 5987 form or the response raises on the way out (a 500 on every download)
+    filename = quote(f"{label}.docx")
+    return Response(
+        content=path.read_bytes(),
+        media_type="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        headers={"Content-Disposition": f"attachment; filename*=UTF-8''{filename}"},
+    )
+
+
+@router.get("/ui/tasks/{task_id}/events")
+async def ui_events(
+    task_id: uuid.UUID,
+    request: Request,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _ = who
+
+    from app.services import event_stream
+
+    async with db.session_for(user_id) as session:
+        conversation_id = (
+            await session.execute(
+                text("SELECT id FROM conversations WHERE task_id = :t ORDER BY created_at LIMIT 1"),
+                {"t": task_id},
+            )
+        ).scalar()
+
+    async def frames():
+        if conversation_id is None:
+            yield ": no conversation for this task\n\n"
+            return
+        async for frame in event_stream.stream(user_id, conversation_id):
+            if await request.is_disconnected():
+                break
+            yield frame
+
+    return StreamingResponse(
+        frames(),
+        media_type="text/event-stream",
+        headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
+    )
+

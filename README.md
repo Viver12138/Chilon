@@ -113,6 +113,9 @@ pwsh -NoProfile -File database/tests/run_publish_export_test.ps1
 # 认证：注册 → 登录拿 token → 用它建任务 → 登出立即失效
 pwsh -NoProfile -File database/tests/run_auth_test.ps1
 
+# 教师界面：注册 → 一句话 → 批准执行 → 发布 → 下载两份 DOCX
+pwsh -NoProfile -File database/tests/run_ui_test.ps1
+
 # SSE：Last-Event-ID 回放、实时跟随、空闲心跳
 pwsh -NoProfile -File database/tests/run_sse_test.ps1
 
