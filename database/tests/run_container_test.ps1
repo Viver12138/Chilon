@@ -72,7 +72,10 @@ if ($LASTEXITCODE -ne 0) { throw "docker run failed (exit $LASTEXITCODE)" }
 
 $ready = $false
 for ($i = 0; $i -lt 60; $i++) {
-    & docker exec $Container pg_isready -U postgres -d chilon *> $null
+    # Probe over TCP (-h 127.0.0.1): during initdb the entrypoint runs a temporary
+    # instance that listens on the unix socket only, so a socket-only probe reports
+    # ready while the server is about to be shut down. TCP exists only on the real one.
+    & docker exec $Container pg_isready -h 127.0.0.1 -p 5432 -U postgres -d chilon *> $null
     if ($LASTEXITCODE -eq 0) { $ready = $true; break }
     Start-Sleep -Milliseconds 500
 }
