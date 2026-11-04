@@ -4,6 +4,11 @@
 
 ![contracts](https://github.com/Viver12138/Chilon/actions/workflows/check.yml/badge.svg)
 
+## 文档
+
+- [Chilon 使用说明（教师版）](docs/Chilon-用户功能说明.md) —— 面向老师的用法说明，不含技术细节
+- 设计基线：`Chilon_Project_Design_Master_Document.md`（技术向）
+
 ## 这个仓库里有什么
 
 ```text
