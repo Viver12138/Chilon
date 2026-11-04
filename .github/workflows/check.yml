@@ -26,7 +26,19 @@ jobs:
           python-version: "3.12"
       - name: Install migration dependencies
         # greenlet is required by SQLAlchemy's asyncio extension at import time.
-        run: pip install alembic "psycopg[binary]" greenlet
+        # PyPI occasionally stalls or fails on shared runners; retry, and emit an
+        # annotation when it really fails so the cause is visible from the API.
+        run: |
+          for attempt in 1 2 3; do
+            if pip install --disable-pip-version-check alembic "psycopg[binary]" greenlet; then
+              echo "dependencies installed on attempt $attempt"
+              exit 0
+            fi
+            echo "::warning::pip install attempt $attempt failed"
+            sleep 5
+          done
+          echo "::error::pip install failed after 3 attempts"
+          exit 1
 
       # 1) Apply the generated DDL directly and assert structure + constraints.
       - name: Apply generated DDL to PostgreSQL 17
