@@ -35,3 +35,6 @@ jobs:
       #    back and assert nothing is left behind.
       - name: Apply baseline via Alembic and verify rollback
         run: pwsh -NoProfile -File database/tests/run_migration_test.ps1
+      # 3) Prove row-level security actually isolates tenants.
+      - name: Verify row-level security isolation
+        run: pwsh -NoProfile -File database/tests/run_rls_test.ps1
