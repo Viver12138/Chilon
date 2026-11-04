@@ -22,6 +22,21 @@ REGISTRY = ROOT / "database" / "registry"
 SNAKE = re.compile(r"^[a-z][a-z0-9_]*$")
 SHA256_TYPE = "sha256"
 
+# Identifiers in a CHECK expression that are not column references. Anything not
+# listed here and not a column is reported: better a noisy false positive than a
+# typo going unnoticed.
+SQL_KEYWORDS = {
+    "and", "or", "not", "null", "is", "in", "true", "false", "like", "ilike",
+    "between", "any", "all", "exists", "case", "when", "then", "else", "end",
+    "interval", "public", "cast",
+}
+SQL_FUNCTIONS = {
+    "now", "current_date", "current_timestamp", "trim", "btrim", "lower", "upper",
+    "length", "char_length", "coalesce", "nullif", "greatest", "least", "abs",
+    "round", "floor", "ceil", "date_trunc", "extract", "jsonb_typeof",
+    "array_length", "cardinality", "regexp_replace", "substring", "concat",
+}
+
 
 def load_registry() -> dict:
     schema = json.loads((REGISTRY / "schema.json").read_text(encoding="utf-8"))
@@ -140,13 +155,13 @@ def validate(reg: dict) -> list[str]:
                     fail(f"{name}: constraint {con['name']} references unknown column {col!r}")
             expr = con.get("expr")
             if expr:
-                # strip string literals before extracting identifiers
+                # strip string literals, then compare identifiers against columns
                 bare = re.sub(r"'[^']*'", "''", expr)
                 refs = set(re.findall(r"\b([a-z][a-z0-9_]*)\b", bare))
                 for ref in refs:
-                    if ref in {"and", "or", "not", "null", "is", "in", "true", "false", "now"}:
+                    if ref in SQL_KEYWORDS or ref in SQL_FUNCTIONS:
                         continue
-                    if ref not in seen and ref not in {"public"}:
+                    if ref not in seen:
                         fail(f"{name}: check {con['name']} references unknown column {ref!r}")
             if con["type"] not in {"unique", "check"}:
                 fail(f"{name}: unsupported constraint type {con['type']!r}")
