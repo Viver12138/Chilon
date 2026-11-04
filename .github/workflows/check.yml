@@ -51,3 +51,6 @@ jobs:
       # 7) Plan approval: single consumption, hash binding, expiry.
       - name: Verify plan approval contract
         run: pwsh -NoProfile -File database/tests/run_plan_test.ps1
+      # 8) Execution: spends the approval once, fencing refuses stale workers.
+      - name: Verify execution lifecycle and fencing
+        run: pwsh -NoProfile -File database/tests/run_exec_test.ps1
