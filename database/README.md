@@ -91,6 +91,8 @@ python -m venv .venv
 | K009 Knowledge Base | 13 | 已入库（含 1 张可选表） |
 | K011 Task & Agent Orchestration | 17 | 已入库 |
 | K012 Project & Material | 10 | 已入库 |
+| K013 Conversation & Activity | 7 | 已入库（消息修订表判定为非 MVP） |
 | K014 Quality & Evaluation | 24 | 已入库 |
+| K021 Administrative Security | 4 | 已入库（无 K002 外键） |
 
-core 变体生成了 63 张表（K009 的可选向量表默认跳过）。其余模块待字段级设计完成后加入。
+core 变体生成了 74 张表（K009 的可选向量表默认跳过）。其余模块待字段级设计完成后加入。

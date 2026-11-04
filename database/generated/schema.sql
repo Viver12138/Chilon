@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: e31b3af1c90a3d9338a4efd750731090455841d42e30ed618306cd16dcd7bc52
+-- registry_hash: 413028e70652f6f16474744a8f229fbe51e6fd563c2c1dec3d59943f68e9006f
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -506,6 +506,158 @@ ALTER TABLE outbox_events FORCE ROW LEVEL SECURITY;
 
 CREATE INDEX ix_outbox_events_dispatch ON outbox_events ("status", "available_at") WHERE status IN ('pending','failed');
 CREATE INDEX ix_outbox_events_aggregate ON outbox_events ("aggregate_type", "aggregate_id");
+
+-- 交流上下文；Task 可有多个对话
+CREATE TABLE conversations (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "task_id" UUID,
+    "title" VARCHAR(300),
+    "status" VARCHAR(16) NOT NULL DEFAULT 'active',
+    "last_message_at" TIMESTAMPTZ,
+    "created_by" UUID NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "deleted_at" TIMESTAMPTZ,
+    CONSTRAINT pk_conversations PRIMARY KEY ("id"),
+    CONSTRAINT fk_conversations_task_id FOREIGN KEY ("task_id") REFERENCES tasks(id) ON DELETE SET NULL,
+    CONSTRAINT ck_conversations_status CHECK (status IN ('active','archived'))
+);
+
+ALTER TABLE conversations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversations FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_conversations_owner ON conversations FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_conversations_owner ON conversations ("owner_id", "updated_at") WHERE deleted_at IS NULL;
+CREATE INDEX ix_conversations_task ON conversations ("task_id") WHERE task_id IS NOT NULL;
+
+-- 教师与 Agent 可见的消息；工具调用不是 Message Role
+CREATE TABLE conversation_messages (
+    "id" UUID NOT NULL,
+    "conversation_id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "seq" BIGINT NOT NULL,
+    "role" VARCHAR(16) NOT NULL,
+    "content_blocks" JSONB NOT NULL,
+    "content_schema_version" VARCHAR(20) NOT NULL,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'completed',
+    "error_code" VARCHAR(80),
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "completed_at" TIMESTAMPTZ,
+    CONSTRAINT pk_conversation_messages PRIMARY KEY ("id"),
+    CONSTRAINT fk_conversation_messages_conversation_id FOREIGN KEY ("conversation_id") REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_conversation_messages_seq UNIQUE ("conversation_id", "seq"),
+    CONSTRAINT ck_conversation_messages_role CHECK (role IN ('user','assistant','system')),
+    CONSTRAINT ck_conversation_messages_status CHECK (status IN ('streaming','completed','interrupted','failed'))
+);
+
+ALTER TABLE conversation_messages ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_messages FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_conversation_messages_owner ON conversation_messages FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_conversation_messages_conv ON conversation_messages ("conversation_id", "seq");
+
+-- 追加式事件流；SSE Last-Event-ID 的事实来源
+CREATE TABLE conversation_events (
+    "id" UUID NOT NULL,
+    "conversation_id" UUID NOT NULL,
+    "seq" BIGINT NOT NULL,
+    "event_type" VARCHAR(80) NOT NULL,
+    "payload" JSONB NOT NULL,
+    "occurred_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_conversation_events PRIMARY KEY ("id"),
+    CONSTRAINT fk_conversation_events_conversation_id FOREIGN KEY ("conversation_id") REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_conversation_events_seq UNIQUE ("conversation_id", "seq")
+);
+
+ALTER TABLE conversation_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_events FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_conversation_events_conv ON conversation_events ("conversation_id", "seq");
+
+-- 教师可理解的进度；可更新，不是 append-only 事件
+CREATE TABLE agent_activities (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "conversation_id" UUID,
+    "task_id" UUID,
+    "execution_id" UUID,
+    "label" VARCHAR(300) NOT NULL,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'running',
+    "progress" SMALLINT,
+    "detail" JSONB,
+    "started_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_agent_activities PRIMARY KEY ("id"),
+    CONSTRAINT fk_agent_activities_conversation_id FOREIGN KEY ("conversation_id") REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_agent_activities_task_id FOREIGN KEY ("task_id") REFERENCES tasks(id) ON DELETE SET NULL,
+    CONSTRAINT fk_agent_activities_execution_id FOREIGN KEY ("execution_id") REFERENCES agent_executions(id) ON DELETE SET NULL,
+    CONSTRAINT ck_agent_activities_status CHECK (status IN ('pending','running','done','failed','cancelled')),
+    CONSTRAINT ck_agent_activities_progress CHECK (progress IS NULL OR (progress >= 0 AND progress <= 100))
+);
+
+ALTER TABLE agent_activities ENABLE ROW LEVEL SECURITY;
+ALTER TABLE agent_activities FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_activities_owner ON agent_activities FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_agent_activities_conversation ON agent_activities ("conversation_id", "started_at");
+
+-- 对话附件；内容存对象存储，库内只存引用
+CREATE TABLE conversation_attachments (
+    "id" UUID NOT NULL,
+    "conversation_id" UUID NOT NULL,
+    "message_id" UUID,
+    "owner_id" UUID NOT NULL,
+    "storage_key" VARCHAR(500) NOT NULL,
+    "mime_type" VARCHAR(120) NOT NULL,
+    "file_size_bytes" BIGINT NOT NULL,
+    "checksum_sha256" CHAR(64) NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_conversation_attachments PRIMARY KEY ("id"),
+    CONSTRAINT fk_conversation_attachments_conversation_id FOREIGN KEY ("conversation_id") REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT fk_conversation_attachments_message_id FOREIGN KEY ("message_id") REFERENCES conversation_messages(id) ON DELETE SET NULL
+);
+
+ALTER TABLE conversation_attachments ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_attachments FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_conversation_attachments_owner ON conversation_attachments FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_conversation_attachments_conv ON conversation_attachments ("conversation_id");
+
+-- 对话参与者；区分教师、Agent 与系统
+CREATE TABLE conversation_participants (
+    "id" UUID NOT NULL,
+    "conversation_id" UUID NOT NULL,
+    "participant_type" VARCHAR(16) NOT NULL,
+    "participant_id" UUID,
+    "role" VARCHAR(32),
+    "joined_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_conversation_participants PRIMARY KEY ("id"),
+    CONSTRAINT fk_conversation_participants_conversation_id FOREIGN KEY ("conversation_id") REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_conversation_participants UNIQUE ("conversation_id", "participant_type"),
+    CONSTRAINT ck_conversation_participants_type CHECK (participant_type IN ('teacher','agent','system'))
+);
+
+ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_participants FORCE ROW LEVEL SECURITY;
+
+-- 每教师每对话的读取与投递水位；SSE 重连与对账用
+CREATE TABLE conversation_cursors (
+    "id" UUID NOT NULL,
+    "conversation_id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "last_read_event_seq" BIGINT NOT NULL DEFAULT 0,
+    "last_delivered_event_seq" BIGINT NOT NULL DEFAULT 0,
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_conversation_cursors PRIMARY KEY ("id"),
+    CONSTRAINT fk_conversation_cursors_conversation_id FOREIGN KEY ("conversation_id") REFERENCES conversations(id) ON DELETE CASCADE,
+    CONSTRAINT uq_conversation_cursors_owner UNIQUE ("conversation_id", "owner_id"),
+    CONSTRAINT ck_conversation_cursors_monotonic CHECK (last_read_event_seq >= 0 AND last_delivered_event_seq >= 0)
+);
+
+ALTER TABLE conversation_cursors ENABLE ROW LEVEL SECURITY;
+ALTER TABLE conversation_cursors FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_conversation_cursors_owner ON conversation_cursors FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
 
 -- 可编辑草稿；基版本、当前 Revision 指针与状态机
 CREATE TABLE material_drafts (
@@ -1222,6 +1374,101 @@ ALTER TABLE quality_release_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_release_events FORCE ROW LEVEL SECURITY;
 
 CREATE INDEX ix_quality_release_events_release ON quality_release_events ("release_id", "occurred_at");
+
+-- 高风险管理员操作的申请；审批绑定版本与参数 Hash
+CREATE TABLE admin_operation_requests (
+    "id" UUID NOT NULL,
+    "request_type" VARCHAR(80) NOT NULL,
+    "request_version" INTEGER NOT NULL DEFAULT 1,
+    "parameters" JSONB NOT NULL,
+    "parameters_hash" CHAR(64) NOT NULL,
+    "target_type" VARCHAR(64) NOT NULL,
+    "target_id" UUID,
+    "target_owner_id" UUID,
+    "status" VARCHAR(24) NOT NULL DEFAULT 'pending',
+    "justification" TEXT,
+    "requested_by" UUID NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_admin_operation_requests PRIMARY KEY ("id"),
+    CONSTRAINT ck_admin_operation_requests_status CHECK (status IN ('pending','approved','rejected','executing','executed','failed','cancelled','expired'))
+);
+
+ALTER TABLE admin_operation_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_operation_requests FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_admin_operation_requests_read ON admin_operation_requests FOR SELECT USING (true);
+
+CREATE INDEX ix_admin_operation_requests_status ON admin_operation_requests ("status", "created_at");
+CREATE INDEX ix_admin_operation_requests_target ON admin_operation_requests ("target_type", "target_id");
+
+-- 管理员操作审批；绑定 request_version 与 parameters_hash
+CREATE TABLE admin_operation_approvals (
+    "id" UUID NOT NULL,
+    "request_id" UUID NOT NULL,
+    "request_version" INTEGER NOT NULL,
+    "parameters_hash" CHAR(64) NOT NULL,
+    "policy_version" VARCHAR(64) NOT NULL,
+    "decision" VARCHAR(16) NOT NULL,
+    "approver_id" UUID NOT NULL,
+    "reason" TEXT,
+    "decided_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "expires_at" TIMESTAMPTZ,
+    CONSTRAINT pk_admin_operation_approvals PRIMARY KEY ("id"),
+    CONSTRAINT fk_admin_operation_approvals_request_id FOREIGN KEY ("request_id") REFERENCES admin_operation_requests(id) ON DELETE CASCADE,
+    CONSTRAINT ck_admin_operation_approvals_decision CHECK (decision IN ('approved','rejected'))
+);
+
+ALTER TABLE admin_operation_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_operation_approvals FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_admin_operation_approvals_request ON admin_operation_approvals ("request_id", "decision");
+
+-- 执行记录；执行前重新校验审批、Hash 与权限
+CREATE TABLE admin_operation_executions (
+    "id" UUID NOT NULL,
+    "request_id" UUID NOT NULL,
+    "approval_id" UUID NOT NULL,
+    "status" VARCHAR(24) NOT NULL DEFAULT 'queued',
+    "idempotency_key" VARCHAR(255) NOT NULL,
+    "attempt" SMALLINT NOT NULL DEFAULT 0,
+    "result" JSONB,
+    "error_code" VARCHAR(80),
+    "executed_by" UUID NOT NULL,
+    "started_at" TIMESTAMPTZ,
+    "finished_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_admin_operation_executions PRIMARY KEY ("id"),
+    CONSTRAINT fk_admin_operation_executions_request_id FOREIGN KEY ("request_id") REFERENCES admin_operation_requests(id) ON DELETE CASCADE,
+    CONSTRAINT fk_admin_operation_executions_approval_id FOREIGN KEY ("approval_id") REFERENCES admin_operation_approvals(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_admin_operation_executions_idempotency UNIQUE ("idempotency_key"),
+    CONSTRAINT ck_admin_operation_executions_status CHECK (status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown'))
+);
+
+ALTER TABLE admin_operation_executions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_operation_executions FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_admin_operation_executions_request ON admin_operation_executions ("request_id", "status");
+
+-- 管理侧安全事件；append-only，不可抵赖
+CREATE TABLE admin_security_events (
+    "id" UUID NOT NULL,
+    "event_type" VARCHAR(80) NOT NULL,
+    "actor_id" UUID,
+    "request_id" UUID,
+    "target_type" VARCHAR(64),
+    "target_id" UUID,
+    "target_owner_id" UUID,
+    "detail" JSONB,
+    "occurred_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_admin_security_events PRIMARY KEY ("id"),
+    CONSTRAINT fk_admin_security_events_request_id FOREIGN KEY ("request_id") REFERENCES admin_operation_requests(id) ON DELETE SET NULL
+);
+
+ALTER TABLE admin_security_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE admin_security_events FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_admin_security_events_occurred ON admin_security_events ("occurred_at");
+CREATE INDEX ix_admin_security_events_actor ON admin_security_events ("actor_id", "occurred_at");
 
 -- 分类树；平台提供四个默认分类，教师可新建私有分类
 CREATE TABLE knowledge_categories (
