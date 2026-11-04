@@ -24,6 +24,7 @@ from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import create_async_engine  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services import export, materials, pdf  # noqa: E402
 
@@ -104,7 +105,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: run as the app role; material_versions write policy still denies
+    db.init(await provision_runtime_role(url))
     try:
         user_id, token = await make_user_session(f"pdfup_{uuid.uuid4().hex[:8]}")
         headers = {"Authorization": f"Bearer {token}"}
@@ -155,7 +156,7 @@ async def main() -> int:
         # runs under RLS. A superuser connection would have hidden the difference.
         async with db.session_for(user_id) as s:
             saved = await materials.save_draft(s, user_id, document, title="三角函数练习")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             await s.execute(
                 text(
                     """
@@ -167,7 +168,7 @@ async def main() -> int:
             )
         # direct version insert: this test is about export plumbing, not publishing
         version_id = uuid.uuid4()
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             await s.execute(
                 text(
                     """
@@ -187,7 +188,7 @@ async def main() -> int:
                     "key": f"test:{version_id}",
                 },
             )
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             docx_export = await export.create_export(
                 s, user_id, version_id, profile="teacher", fmt="docx", base_dir=Path("var/exports")
             )
@@ -221,7 +222,7 @@ async def main() -> int:
             "the checksum matches the bytes received",
         )
 
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             stored = (
                 await s.execute(
                     text("SELECT count(*) FROM knowledge_document_versions WHERE source_id = :s"),

@@ -23,6 +23,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.services import event_stream  # noqa: E402
 
 FAILURES: list[str] = []
@@ -78,12 +79,12 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: policy predicate not yet correct under RLS
+    db.init(await provision_runtime_role(url))
     try:
         user_id, conversation_id = await make_user()
 
         print("1. events get monotonic per-conversation sequences")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             seqs = [
                 await event_stream.append_event(s, conversation_id, "execution.progress", {"step": i})
                 for i in range(3)
@@ -119,7 +120,7 @@ async def main() -> int:
         task = asyncio.create_task(consume())
         await asyncio.sleep(0.05)
         check(task.done() is False, "the stream is waiting when there is nothing new")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             await event_stream.append_event(s, conversation_id, "activity.updated", {"note": "live"})
         await asyncio.wait_for(task, timeout=3)
         check(len(frames) == 1, f"the live event arrived (got {len(frames)})")
@@ -141,7 +142,7 @@ async def main() -> int:
         check(beat is not None and "comment" in beat, f"a comment frame was emitted ({beat})")
 
         print("5. frames are well formed")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             await event_stream.append_event(
                 s, conversation_id, "approval.requested", {"approval_id": "x"}, aggregate="plan_approval"
             )

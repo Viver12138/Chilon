@@ -153,7 +153,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
+    db.init(url)  # TODO: seeding needs an owner context; see D.50
     try:
         async with db.system_session() as s:
             user_id, chunk_id = await seed(s)

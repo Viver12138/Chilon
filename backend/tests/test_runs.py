@@ -84,7 +84,7 @@ async def running_execution(uid: uuid.UUID) -> uuid.UUID:
 async def granted_tool(uid: uuid.UUID) -> str:
     key = f"test.rec_{uuid.uuid4().hex[:6]}"
     tool_id = uuid.uuid4()
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         await s.execute(
             text(
                 """
@@ -152,7 +152,7 @@ async def scenario_run(uid: uuid.UUID) -> None:
         except runs.IllegalRunTransition:
             check(True, "an illegal run transition is refused")
 
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         hashes = (
             await s.execute(
                 text("SELECT count(*) FROM agent_runtime_events WHERE payload_hash IS NOT NULL")
@@ -260,7 +260,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
+    db.init(url)  # TODO: seeding needs an owner context; see D.50
     try:
         uid = await make_user()
         await scenario_run(uid)
