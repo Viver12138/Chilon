@@ -1,0 +1,319 @@
+{
+  "schema": "chilon.navigation",
+  "schema_version": "1.0.0",
+  "title": "Chilon Navigation & Gate Policy v1",
+  "source": "D2 信息架构与导航树；门禁编号来自 D1 §1.2",
+  "freeze_status": "FROZEN FOR IMPLEMENTATION",
+  "updated_at": "2026-11-04",
+  "ia": {
+    "model": "workflow-oriented",
+    "principle": "一个教学专题对应一个 Project；一个交付物对应一个 Material；草稿与版本都属于 Material",
+    "depth_limit": 3
+  },
+  "navigation": [
+    {
+      "group": "全局",
+      "items": [
+        { "id": "nav.home", "label": "工作台", "page": "home" },
+        { "id": "nav.projects", "label": "项目", "page": "project_list" },
+        { "id": "nav.materials", "label": "材料库", "page": "material_list" },
+        { "id": "nav.knowledge", "label": "知识库", "page": "knowledge_base" }
+      ]
+    },
+    {
+      "group": "项目内",
+      "items": [
+        { "id": "nav.project.overview", "label": "概览", "page": "project_overview" },
+        { "id": "nav.project.tasks", "label": "任务", "page": "task_detail" },
+        { "id": "nav.project.materials", "label": "材料", "page": "material_list" }
+      ]
+    },
+    {
+      "group": "材料内",
+      "items": [
+        { "id": "nav.material.draft", "label": "编辑", "page": "draft_editor" },
+        { "id": "nav.material.check", "label": "检查", "page": "quality_report" },
+        { "id": "nav.material.publish", "label": "发布", "page": "publish_review" },
+        { "id": "nav.material.versions", "label": "版本", "page": "version_viewer" },
+        { "id": "nav.material.exports", "label": "导出", "page": "export_center" }
+      ]
+    }
+  ],
+  "pages": [
+    {
+      "id": "home",
+      "title": "工作台",
+      "tier": "shell",
+      "path": "/",
+      "params": [],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/me", "/activity"],
+      "actions": []
+    },
+    {
+      "id": "project_list",
+      "title": "项目列表",
+      "tier": "shell",
+      "path": "/projects",
+      "params": [],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/projects"],
+      "actions": []
+    },
+    {
+      "id": "project_overview",
+      "title": "项目概览",
+      "tier": "shell",
+      "path": "/projects/{project_id}",
+      "params": ["project_id"],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/projects/{project_id}", "/projects/{project_id}/materials"],
+      "actions": []
+    },
+    {
+      "id": "task_detail",
+      "title": "任务详情与计划审批",
+      "tier": "golden_path",
+      "path": "/projects/{project_id}/tasks/{task_id}",
+      "params": ["project_id", "task_id"],
+      "auth": "owner",
+      "gates": ["G2", "G3"],
+      "reads": ["/tasks/{task_id}", "/tasks/{task_id}/plan", "/executions/{execution_id}"],
+      "actions": [
+        "task.submit_requirement",
+        "task.approve_plan",
+        "task.request_plan_revision",
+        "task.replan",
+        "task.retry",
+        "task.cancel",
+        "task.request_cancel",
+        "plan_version.reject",
+        "plan_approval.revoke",
+        "execution.request_pause",
+        "execution.resume"
+      ]
+    },
+    {
+      "id": "material_list",
+      "title": "材料库",
+      "tier": "shell",
+      "path": "/materials",
+      "params": [],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/materials"],
+      "actions": []
+    },
+    {
+      "id": "draft_editor",
+      "title": "材料编辑与 AI 对话",
+      "tier": "golden_path",
+      "path": "/materials/{material_id}/drafts/{draft_id}",
+      "params": ["material_id", "draft_id"],
+      "auth": "owner",
+      "gates": ["G4"],
+      "reads": [
+        "/materials/{material_id}",
+        "/drafts/{draft_id}",
+        "/drafts/{draft_id}/revisions",
+        "/conversations/{conversation_id}/messages"
+      ],
+      "actions": ["draft.submit_check", "draft.abandon", "draft.cancel_check", "draft.resolve_issue"]
+    },
+    {
+      "id": "quality_report",
+      "title": "质量报告与数学验证",
+      "tier": "golden_path",
+      "path": "/materials/{material_id}/drafts/{draft_id}/check",
+      "params": ["material_id", "draft_id"],
+      "auth": "owner",
+      "gates": ["G5"],
+      "reads": ["/drafts/{draft_id}/quality-runs", "/quality-runs/{run_id}", "/drafts/{draft_id}/math-runs"],
+      "actions": ["draft.retry_check", "draft.resolve_issue", "draft.submit_check"]
+    },
+    {
+      "id": "publish_review",
+      "title": "发布审核",
+      "tier": "golden_path",
+      "path": "/materials/{material_id}/drafts/{draft_id}/publish",
+      "params": ["material_id", "draft_id"],
+      "auth": "owner",
+      "gates": ["G5", "G6"],
+      "reads": ["/drafts/{draft_id}", "/drafts/{draft_id}/quality-runs", "/quality-runs/{run_id}"],
+      "actions": [
+        "draft.approve",
+        "draft.publish",
+        "draft.request_changes",
+        "draft.withdraw_approval"
+      ]
+    },
+    {
+      "id": "version_viewer",
+      "title": "正式版本（只读）",
+      "tier": "shell",
+      "path": "/materials/{material_id}/versions/{version_id}",
+      "params": ["material_id", "version_id"],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/materials/{material_id}/versions/{version_id}"],
+      "actions": []
+    },
+    {
+      "id": "export_center",
+      "title": "导出中心",
+      "tier": "golden_path",
+      "path": "/materials/{material_id}/exports",
+      "params": ["material_id"],
+      "auth": "owner",
+      "gates": ["G7"],
+      "reads": ["/exports/{export_id}", "/exports/{export_id}/download-url"],
+      "actions": ["export.cancel"]
+    },
+    {
+      "id": "knowledge_base",
+      "title": "知识库",
+      "tier": "deferred",
+      "path": "/knowledge",
+      "params": [],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/knowledge/sources", "/knowledge/search"],
+      "actions": []
+    },
+    {
+      "id": "source_review",
+      "title": "资料审核",
+      "tier": "deferred",
+      "path": "/knowledge/sources/{source_id}",
+      "params": ["source_id"],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/knowledge/sources/{source_id}"],
+      "actions": []
+    },
+    {
+      "id": "account_settings",
+      "title": "账户与偏好",
+      "tier": "deferred",
+      "path": "/settings",
+      "params": [],
+      "auth": "owner",
+      "gates": [],
+      "reads": ["/me"],
+      "actions": []
+    }
+  ],
+  "gate_policy": {
+    "gates": ["G1", "G2", "G3", "G4", "G5", "G6", "G7"],
+    "values": ["required", "auto", "not_applicable"],
+    "allowed_values": {
+      "G1": ["required", "not_applicable"],
+      "G2": ["required", "not_applicable"],
+      "G3": ["required", "auto", "not_applicable"],
+      "G4": ["required"],
+      "G5": ["required"],
+      "G6": ["required"],
+      "G7": ["required"]
+    },
+    "rationale": {
+      "G1": "需求完整性决定后续一切，不能自动跳过",
+      "G2": "计划可执行性是生成前唯一能发现来源不足的地方",
+      "G3": "计划审批是唯一可自动化的门禁：仅当任务不引入新来源时，Agent 可代批，教师仍可随时中止",
+      "G4": "内容合法性是数据结构问题，不存在自动放行",
+      "G5": "质量与数学门禁已有 S1 人工例外通道，门禁本身不可关闭",
+      "G6": "发布授权是教师最终审核权，符合 ADR-005",
+      "G7": "导出范围涉及权利与答案泄漏，不可自动通过"
+    }
+  },
+  "archetypes": [
+    {
+      "id": "full_generation",
+      "label": "从零生成教学材料",
+      "default": true,
+      "policy": {
+        "G1": "required",
+        "G2": "required",
+        "G3": "required",
+        "G4": "required",
+        "G5": "required",
+        "G6": "required",
+        "G7": "required"
+      },
+      "notes": "黄金路径默认。任何引入新检索范围的任务都属于这一类。"
+    },
+    {
+      "id": "scoped_generation",
+      "label": "仅使用已授权范围内的资料生成",
+      "default": false,
+      "policy": {
+        "G1": "required",
+        "G2": "required",
+        "G3": "auto",
+        "G4": "required",
+        "G5": "required",
+        "G6": "required",
+        "G7": "required"
+      },
+      "notes": "来源全部为已审核且在既有范围内的资料时，Agent 可代批准计划；计划仍全程可见。"
+    },
+    {
+      "id": "quick_worksheet",
+      "label": "快速课堂小测",
+      "default": false,
+      "policy": {
+        "G1": "required",
+        "G2": "required",
+        "G3": "auto",
+        "G4": "required",
+        "G5": "required",
+        "G6": "required",
+        "G7": "required"
+      },
+      "notes": "短内容、低结构风险；仍必须过质量与数学门禁，学生版仍受答案排除约束。"
+    },
+    {
+      "id": "derived_from_version",
+      "label": "从已发布版本派生",
+      "default": false,
+      "policy": {
+        "G1": "required",
+        "G2": "required",
+        "G3": "auto",
+        "G4": "required",
+        "G5": "required",
+        "G6": "required",
+        "G7": "required"
+      },
+      "notes": "基于已通过门禁的版本修改；来源集合已在原版本中确认。"
+    },
+    {
+      "id": "local_revision",
+      "label": "草稿内局部修改",
+      "default": false,
+      "policy": {
+        "G1": "not_applicable",
+        "G2": "not_applicable",
+        "G3": "not_applicable",
+        "G4": "required",
+        "G5": "required",
+        "G6": "required",
+        "G7": "required"
+      },
+      "notes": "不新建 Task，因此不涉及需求与计划门禁；内容、质量、发布、导出门禁照常。对应 D1 的 E0/E1 变更。"
+    }
+  ],
+  "interaction_steps": {
+    "note": "门禁是服务端强制点，交互步骤是前端呈现。一个页面可以承载多个门禁，减少教师点击次数。",
+    "mapping": [
+      { "page": "task_detail", "gates": ["G2", "G3"], "steps": 1 },
+      { "page": "draft_editor", "gates": ["G4"], "steps": 0 },
+      { "page": "quality_report", "gates": ["G5"], "steps": 1 },
+      { "page": "publish_review", "gates": ["G5", "G6"], "steps": 1 },
+      { "page": "export_center", "gates": ["G7"], "steps": 1 }
+    ],
+    "max_clicks_full_generation": 4
+  }
+}

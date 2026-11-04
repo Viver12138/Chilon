@@ -1,0 +1,1593 @@
+{
+  "schema": "chilon.actions",
+  "schema_version": "1.0.0",
+  "title": "Chilon Action Registry v1",
+  "source": "derived from schemas/state_machines.v1.json; labels and error codes defined in design volume D4",
+  "freeze_status": "FROZEN FOR IMPLEMENTATION",
+  "updated_at": "2026-11-04",
+  "notes": [
+    "每个动作由 (aggregate, trigger) 唯一标识，transitions 列出它在状态机中对应的迁移 id。",
+    "actor = teacher 时 label 必填；actor 为 system/worker 的动作不对教师暴露，只有 description。",
+    "compound 相同的动作必须由同一条业务命令在同一个事务内完成。"
+  ],
+  "error_codes": [
+    {
+      "code": "STATE_CONFLICT",
+      "http_status": 409,
+      "when": "当前状态不允许该动作，或 state_version 不匹配"
+    },
+    {
+      "code": "TERMINAL_STATE",
+      "http_status": 409,
+      "when": "目标已处于终止态，不能再次变更"
+    },
+    {
+      "code": "REVISION_CONFLICT",
+      "http_status": 409,
+      "when": "If-Match / expected_revision_no 与当前 Revision 不一致"
+    },
+    {
+      "code": "PLAN_NOT_APPROVED",
+      "http_status": 409,
+      "when": "Plan 或 Approval 已失效、被撤销，或 Hash 不匹配"
+    },
+    {
+      "code": "STALE_GATE",
+      "http_status": 409,
+      "when": "质量或数学证据已过期，不再是当前 Revision 的有效证据"
+    },
+    {
+      "code": "APPROVAL_CONSUMED",
+      "http_status": 409,
+      "when": "发布审批已被消费，不能重复使用"
+    },
+    {
+      "code": "CHECK_IN_PROGRESS",
+      "http_status": 409,
+      "when": "该 Draft 已有检查在运行"
+    },
+    {
+      "code": "AST_INVALID",
+      "http_status": 422,
+      "when": "Teaching Document Schema 或 §20.9 语义规则不通过"
+    },
+    {
+      "code": "CITATION_INVALID",
+      "http_status": 422,
+      "when": "Citation 完整性、定位或 Hash 校验失败"
+    },
+    {
+      "code": "SOURCE_NOT_AUTHORIZED",
+      "http_status": 409,
+      "when": "引用的来源未通过审核或不在已授权范围"
+    },
+    {
+      "code": "RIGHTS_BLOCKED",
+      "http_status": 409,
+      "when": "来源权利范围不满足目标导出 Profile"
+    },
+    {
+      "code": "CAPABILITY_GAP",
+      "http_status": 409,
+      "when": "source_requirements 无法被现有资料满足"
+    },
+    {
+      "code": "SCOPE_EXPANSION_REQUIRED",
+      "http_status": 409,
+      "when": "请求命中 E2 范围扩展，必须先重新规划"
+    },
+    {
+      "code": "EXPORT_NOT_READY",
+      "http_status": 409,
+      "when": "导出文件尚未生成或已过期"
+    },
+    {
+      "code": "WORKER_LEASE_LOST",
+      "http_status": 409,
+      "when": "执行租约或 Fencing Token 已失效"
+    },
+    {
+      "code": "OUTCOME_UNKNOWN",
+      "http_status": 409,
+      "when": "上一次副作用结果未对账，禁止重试"
+    },
+    {
+      "code": "FORBIDDEN",
+      "http_status": 403,
+      "when": "身份、Owner 或 Project 权限不足"
+    },
+    {
+      "code": "NOT_FOUND",
+      "http_status": 404,
+      "when": "对象不存在或不属于当前 Owner"
+    }
+  ],
+  "compound_commands": [
+    {
+      "id": "submit_requirement",
+      "members": [
+        "task.submit_requirement",
+        "requirement_version.submit"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "approve_plan",
+      "members": [
+        "task.approve_plan",
+        "plan_version.approve",
+        "plan_approval.approve"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "reject_plan",
+      "members": [
+        "plan_version.reject",
+        "plan_approval.reject"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "request_plan_revision",
+      "members": [
+        "task.request_plan_revision",
+        "plan_version.supersede"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "revoke_plan_approval",
+      "members": [
+        "plan_approval.revoke"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "retry_task",
+      "members": [
+        "task.retry"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "replan_task",
+      "members": [
+        "task.replan"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "cancel_task",
+      "members": [
+        "task.request_cancel",
+        "execution.request_cancel"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "cancel_task_immediate",
+      "members": [
+        "task.cancel",
+        "execution.cancel"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "abandon_requirement",
+      "members": [
+        "requirement_version.abandon"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "pause_execution",
+      "members": [
+        "execution.request_pause"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "resume_execution",
+      "members": [
+        "execution.resume"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "submit_check",
+      "members": [
+        "draft.submit_check"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "cancel_check",
+      "members": [
+        "draft.cancel_check"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "approve_draft",
+      "members": [
+        "draft.approve",
+        "publication_approval.approve"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "request_changes",
+      "members": [
+        "draft.request_changes"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "withdraw_draft_approval",
+      "members": [
+        "draft.withdraw_approval",
+        "publication_approval.invalidate"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "publish_material",
+      "members": [
+        "draft.publish",
+        "publication_approval.publish"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "abandon_draft",
+      "members": [
+        "draft.abandon"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "rebase_draft",
+      "members": [
+        "draft.rebase"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "retry_check",
+      "members": [
+        "draft.retry_check"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "resolve_issue",
+      "members": [
+        "draft.resolve_issue"
+      ],
+      "transaction": "single"
+    },
+    {
+      "id": "cancel_export",
+      "members": [
+        "export.cancel"
+      ],
+      "transaction": "single"
+    }
+  ],
+  "aggregates": [
+    {
+      "aggregate": "task",
+      "entity": "tasks",
+      "actions": [
+        {
+          "trigger": "submit_requirement",
+          "label": "提交教学要求",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "REVISION_CONFLICT"
+          ],
+          "compound": "submit_requirement",
+          "transitions": [
+            "T01"
+          ]
+        },
+        {
+          "trigger": "plan_validated",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T02"
+          ],
+          "description": "Plan 通过结构、DAG、Capability 与来源快照校验"
+        },
+        {
+          "trigger": "planning_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T03"
+          ],
+          "description": "重试耗尽、输入不足或不可恢复错误"
+        },
+        {
+          "trigger": "approve_plan",
+          "label": "批准执行计划",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "PLAN_NOT_APPROVED"
+          ],
+          "compound": "approve_plan",
+          "transitions": [
+            "T04"
+          ]
+        },
+        {
+          "trigger": "request_plan_revision",
+          "label": "要求修改计划",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "request_plan_revision",
+          "transitions": [
+            "T05"
+          ]
+        },
+        {
+          "trigger": "plan_expired",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T06"
+          ],
+          "description": "Plan/Approval 过期或失效"
+        },
+        {
+          "trigger": "cancel",
+          "label": "取消任务",
+          "actor": "teacher",
+          "ui": "danger",
+          "errors": [
+            "STATE_CONFLICT",
+            "TERMINAL_STATE"
+          ],
+          "compound": "cancel_task_immediate",
+          "transitions": [
+            "T07",
+            "T16",
+            "T17"
+          ]
+        },
+        {
+          "trigger": "start_execution",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T08"
+          ],
+          "description": "创建 Execution 并成功入队"
+        },
+        {
+          "trigger": "enqueue_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T09"
+          ],
+          "description": "入队失败或 Execution 创建失败"
+        },
+        {
+          "trigger": "approval_invalidated",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T10"
+          ],
+          "description": "Plan/Approval 在执行前失效"
+        },
+        {
+          "trigger": "delivery_complete",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T11"
+          ],
+          "description": "所有必需 Draft 已持久化并完成交付，无活跃 Execution"
+        },
+        {
+          "trigger": "execution_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T12"
+          ],
+          "description": "Execution 失败、结果不确定或阻塞"
+        },
+        {
+          "trigger": "plan_invalidated",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T13"
+          ],
+          "description": "Plan 因输入、工具或策略变化失效，并已停止活跃执行"
+        },
+        {
+          "trigger": "replan",
+          "label": "重新规划",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "replan_task",
+          "transitions": [
+            "T14"
+          ]
+        },
+        {
+          "trigger": "retry",
+          "label": "重试执行",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "PLAN_NOT_APPROVED"
+          ],
+          "compound": "retry_task",
+          "transitions": [
+            "T15"
+          ]
+        },
+        {
+          "trigger": "request_cancel",
+          "label": "请求取消任务",
+          "actor": "teacher",
+          "ui": "danger",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "cancel_task",
+          "transitions": [
+            "T18"
+          ]
+        },
+        {
+          "trigger": "cancellation_confirmed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T19"
+          ],
+          "description": "所有 Execution 已终止或确认无副作用"
+        },
+        {
+          "trigger": "cancellation_unresolved",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "T20"
+          ],
+          "description": "超过取消协调期限且结果不确定"
+        }
+      ]
+    },
+    {
+      "aggregate": "requirement_version",
+      "entity": "task_requirement_versions",
+      "actions": [
+        {
+          "trigger": "submit",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "submit_requirement",
+          "transitions": [
+            "R01"
+          ],
+          "description": "提交时完成 Schema 校验并计算 Hash"
+        },
+        {
+          "trigger": "abandon",
+          "label": "放弃该要求版本",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT",
+            "TERMINAL_STATE"
+          ],
+          "compound": "abandon_requirement",
+          "transitions": [
+            "R02"
+          ]
+        },
+        {
+          "trigger": "supersede",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "R03"
+          ],
+          "description": "教师创建新版本；若已有批准 Plan 或活跃 Execution，必须先回到 planning 或完成取消协调"
+        }
+      ]
+    },
+    {
+      "aggregate": "plan_version",
+      "entity": "agent_plan_versions",
+      "actions": [
+        {
+          "trigger": "validate_plan",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PV01"
+          ],
+          "description": "校验通过并计算 Plan Hash"
+        },
+        {
+          "trigger": "approve",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "approve_plan",
+          "transitions": [
+            "PV02"
+          ],
+          "description": "Approval 为 approved 且 Hash 一致"
+        },
+        {
+          "trigger": "reject",
+          "label": "拒绝该计划",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT",
+            "TERMINAL_STATE"
+          ],
+          "compound": "reject_plan",
+          "transitions": [
+            "PV03"
+          ]
+        },
+        {
+          "trigger": "expire",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PV04"
+          ],
+          "description": "超过 expires_at"
+        },
+        {
+          "trigger": "supersede",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "request_plan_revision",
+          "transitions": [
+            "PV05",
+            "PV07"
+          ],
+          "description": "生成新 Plan Version；Execution 尚未启动且出现新批准 Plan"
+        },
+        {
+          "trigger": "invalidate",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PV06",
+            "PV08"
+          ],
+          "description": "输入或依赖 Hash 失效；审批被撤销、输入变化或关键版本不再匹配"
+        }
+      ]
+    },
+    {
+      "aggregate": "plan_approval",
+      "entity": "agent_plan_approvals",
+      "actions": [
+        {
+          "trigger": "approve",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "approve_plan",
+          "transitions": [
+            "PA01"
+          ],
+          "description": "教师批准"
+        },
+        {
+          "trigger": "reject",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "reject_plan",
+          "transitions": [
+            "PA02"
+          ],
+          "description": "教师拒绝"
+        },
+        {
+          "trigger": "expire",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PA03"
+          ],
+          "description": "超过审批期限"
+        },
+        {
+          "trigger": "revoke",
+          "label": "撤回计划批准",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT",
+            "PLAN_NOT_APPROVED"
+          ],
+          "compound": "revoke_plan_approval",
+          "transitions": [
+            "PA04"
+          ]
+        },
+        {
+          "trigger": "invalidate",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PA05"
+          ],
+          "description": "Plan Hash、Requirement、来源快照或审批期限发生变化"
+        }
+      ]
+    },
+    {
+      "aggregate": "execution",
+      "entity": "agent_executions",
+      "actions": [
+        {
+          "trigger": "acquire_lease",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E01"
+          ],
+          "description": "取得 Lease + Fencing Token，Plan/Approval 复核通过"
+        },
+        {
+          "trigger": "cancel",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "cancel_task_immediate",
+          "transitions": [
+            "E02"
+          ],
+          "description": "启动前教师取消"
+        },
+        {
+          "trigger": "supersede",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E03",
+            "E24"
+          ],
+          "description": "Plan 失效且任务已被替换；旧执行被替换并完成停止协调"
+        },
+        {
+          "trigger": "runtime_started",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E04"
+          ],
+          "description": "Runtime Session 建立并写入首个 Checkpoint"
+        },
+        {
+          "trigger": "start_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E05"
+          ],
+          "description": "建立明确失败"
+        },
+        {
+          "trigger": "start_timeout",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E06"
+          ],
+          "description": "超时且无法确认是否已产生副作用"
+        },
+        {
+          "trigger": "request_pause",
+          "label": "暂停执行",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "pause_execution",
+          "transitions": [
+            "E07"
+          ]
+        },
+        {
+          "trigger": "checkpoint_saved",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E08"
+          ],
+          "description": "安全 Checkpoint 已保存"
+        },
+        {
+          "trigger": "pause_rejected",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E09"
+          ],
+          "description": "当前无法安全暂停"
+        },
+        {
+          "trigger": "resume",
+          "label": "继续执行",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "resume_execution",
+          "transitions": [
+            "E10"
+          ]
+        },
+        {
+          "trigger": "request_cancel",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "cancel_task",
+          "transitions": [
+            "E11",
+            "E12"
+          ],
+          "description": "请求取消；请求取消"
+        },
+        {
+          "trigger": "cancellation_confirmed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E13"
+          ],
+          "description": "没有活跃 Runtime/Tool，或全部已确认终止"
+        },
+        {
+          "trigger": "runtime_acknowledged_cancel",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E14"
+          ],
+          "description": "Runtime 已接收取消"
+        },
+        {
+          "trigger": "cancel_timeout",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E15"
+          ],
+          "description": "取消确认超时"
+        },
+        {
+          "trigger": "cleanup_complete",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E16"
+          ],
+          "description": "所有 Tool/Run 进入终止态且清理完成"
+        },
+        {
+          "trigger": "cleanup_unresolved",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E17"
+          ],
+          "description": "无法确认 Tool/Run 实际结果"
+        },
+        {
+          "trigger": "steps_succeeded",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E18"
+          ],
+          "description": "全部必需 Step 成功，输出 Hash 与结果已持久化"
+        },
+        {
+          "trigger": "unrecoverable_failure",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E19"
+          ],
+          "description": "达到重试上限或出现确定性异常"
+        },
+        {
+          "trigger": "lease_lost",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E20"
+          ],
+          "description": "Lease 丢失或长时间无有效 Heartbeat"
+        },
+        {
+          "trigger": "reconcile_succeeded",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E21"
+          ],
+          "description": "对账确认执行完成并产出合法结果"
+        },
+        {
+          "trigger": "reconcile_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E22"
+          ],
+          "description": "对账确认执行失败"
+        },
+        {
+          "trigger": "reconcile_cancelled",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "E23"
+          ],
+          "description": "对账确认取消完成"
+        }
+      ]
+    },
+    {
+      "aggregate": "agent_run",
+      "entity": "agent_runs",
+      "actions": [
+        {
+          "trigger": "session_ready",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "RUN01"
+          ],
+          "description": "Harness 确认 Session 可执行"
+        },
+        {
+          "trigger": "interrupt",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "RUN02"
+          ],
+          "description": "安全暂停或进程受控中断"
+        },
+        {
+          "trigger": "run_completed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "RUN03"
+          ],
+          "description": "本次 Run 明确结束"
+        },
+        {
+          "trigger": "run_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "RUN04"
+          ],
+          "description": "本次 Run 明确失败"
+        },
+        {
+          "trigger": "lease_lost",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "RUN05"
+          ],
+          "description": "租约或心跳丢失，业务对账交给 Execution"
+        },
+        {
+          "trigger": "supersede",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "RUN06"
+          ],
+          "description": "新 Run 已接管"
+        }
+      ]
+    },
+    {
+      "aggregate": "step_execution",
+      "entity": "agent_step_executions",
+      "actions": [
+        {
+          "trigger": "dependencies_satisfied",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST01"
+          ],
+          "description": "所有 DAG 依赖满足，且 Execution 处于可调度状态"
+        },
+        {
+          "trigger": "step_started",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST02"
+          ],
+          "description": "Step 获得执行权"
+        },
+        {
+          "trigger": "checkpoint_saved",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST03"
+          ],
+          "description": "安全 Checkpoint 已保存"
+        },
+        {
+          "trigger": "resume",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST04"
+          ],
+          "description": "Execution 恢复"
+        },
+        {
+          "trigger": "step_succeeded",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST05"
+          ],
+          "description": "Step 执行成功"
+        },
+        {
+          "trigger": "step_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST06"
+          ],
+          "description": "Step 明确失败"
+        },
+        {
+          "trigger": "upstream_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST07"
+          ],
+          "description": "上游失败导致无法继续"
+        },
+        {
+          "trigger": "skip",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST08"
+          ],
+          "description": "可选 Step 按规则跳过"
+        },
+        {
+          "trigger": "cancel",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST09"
+          ],
+          "description": "Execution 取消"
+        },
+        {
+          "trigger": "supersede",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "ST10"
+          ],
+          "description": "Execution 被替换"
+        }
+      ]
+    },
+    {
+      "aggregate": "tool_execution",
+      "entity": "agent_tool_executions",
+      "actions": [
+        {
+          "trigger": "begin_authorization",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL01"
+          ],
+          "description": "进入身份、Owner、Scope、Capability 与业务审批 Gate"
+        },
+        {
+          "trigger": "authorize",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL02"
+          ],
+          "description": "全部门禁通过"
+        },
+        {
+          "trigger": "reject",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL03"
+          ],
+          "description": "任一门禁不通过"
+        },
+        {
+          "trigger": "dispatch",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL04"
+          ],
+          "description": "准备调用工具"
+        },
+        {
+          "trigger": "tool_running",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL05"
+          ],
+          "description": "工具开始执行"
+        },
+        {
+          "trigger": "tool_succeeded",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL06"
+          ],
+          "description": "工具返回并结果通过业务验证"
+        },
+        {
+          "trigger": "tool_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL07"
+          ],
+          "description": "工具明确失败"
+        },
+        {
+          "trigger": "cancel",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL08"
+          ],
+          "description": "Execution 取消"
+        },
+        {
+          "trigger": "tool_timeout",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "TL09"
+          ],
+          "description": "结果无法确认"
+        }
+      ]
+    },
+    {
+      "aggregate": "draft",
+      "entity": "material_drafts",
+      "actions": [
+        {
+          "trigger": "submit_check",
+          "label": "提交检查",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "CHECK_IN_PROGRESS",
+            "AST_INVALID"
+          ],
+          "compound": "submit_check",
+          "transitions": [
+            "D01",
+            "D11"
+          ]
+        },
+        {
+          "trigger": "base_changed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D02",
+            "D09",
+            "D18"
+          ],
+          "description": "发现 Base Version 已变化；发现 Base Version 已变化；发现 Base Version 已变化"
+        },
+        {
+          "trigger": "abandon",
+          "label": "放弃草稿",
+          "actor": "teacher",
+          "ui": "danger",
+          "errors": [
+            "STATE_CONFLICT",
+            "TERMINAL_STATE"
+          ],
+          "compound": "abandon_draft",
+          "transitions": [
+            "D03",
+            "D21",
+            "D23",
+            "D24"
+          ]
+        },
+        {
+          "trigger": "revision_accepted",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D04",
+            "D14"
+          ],
+          "description": "新 Revision 被接受；新 Revision 被接受"
+        },
+        {
+          "trigger": "cancel_check",
+          "label": "中止检查",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "cancel_check",
+          "transitions": [
+            "D05"
+          ]
+        },
+        {
+          "trigger": "gate_blocked",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D06"
+          ],
+          "description": "全部检查完成且 Gate 为 blocked/inconclusive"
+        },
+        {
+          "trigger": "gate_passed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D07"
+          ],
+          "description": "全部检查完成且 Gate 为 passed/passed_with_warnings"
+        },
+        {
+          "trigger": "check_infra_failed",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D08"
+          ],
+          "description": "检查基础设施失败或结果无法对账"
+        },
+        {
+          "trigger": "revision_created",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D10"
+          ],
+          "description": "教师修改并产生新 Revision"
+        },
+        {
+          "trigger": "approve",
+          "label": "批准草稿",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "STALE_GATE"
+          ],
+          "compound": "approve_draft",
+          "transitions": [
+            "D12"
+          ]
+        },
+        {
+          "trigger": "request_changes",
+          "label": "要求修改",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "request_changes",
+          "transitions": [
+            "D13"
+          ]
+        },
+        {
+          "trigger": "publish",
+          "label": "发布为正式版本",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "STALE_GATE",
+            "APPROVAL_CONSUMED",
+            "AST_INVALID",
+            "CITATION_INVALID",
+            "RIGHTS_BLOCKED",
+            "SOURCE_NOT_AUTHORIZED"
+          ],
+          "compound": "publish_material",
+          "transitions": [
+            "D15"
+          ]
+        },
+        {
+          "trigger": "approval_stale",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D16"
+          ],
+          "description": "编辑或检查/审批快照失效"
+        },
+        {
+          "trigger": "withdraw_approval",
+          "label": "撤回发布批准",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT",
+            "STALE_GATE"
+          ],
+          "compound": "withdraw_draft_approval",
+          "transitions": [
+            "D17"
+          ]
+        },
+        {
+          "trigger": "resolve_issue",
+          "label": "恢复编辑",
+          "actor": "teacher",
+          "ui": "secondary",
+          "errors": [
+            "STATE_CONFLICT"
+          ],
+          "compound": "resolve_issue",
+          "transitions": [
+            "D19"
+          ]
+        },
+        {
+          "trigger": "retry_check",
+          "label": "重试检查",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "CHECK_IN_PROGRESS"
+          ],
+          "compound": "retry_check",
+          "transitions": [
+            "D20"
+          ]
+        },
+        {
+          "trigger": "rebase",
+          "label": "合并到最新版本",
+          "actor": "teacher",
+          "ui": "primary",
+          "errors": [
+            "STATE_CONFLICT",
+            "REVISION_CONFLICT"
+          ],
+          "compound": "rebase_draft",
+          "transitions": [
+            "D22"
+          ]
+        },
+        {
+          "trigger": "supersede",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "D25"
+          ],
+          "description": "教师明确选择另一 Draft 替代"
+        }
+      ]
+    },
+    {
+      "aggregate": "quality_check_run",
+      "entity": "quality_check_runs",
+      "actions": [
+        {
+          "trigger": "worker_claimed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "QC01"
+          ],
+          "description": "Worker 取得任务并固定规则/Validator 版本"
+        },
+        {
+          "trigger": "check_completed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "QC02"
+          ],
+          "description": "检查执行完成并已保存结果与证据"
+        },
+        {
+          "trigger": "check_failed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "QC03"
+          ],
+          "description": "检查程序本身明确失败"
+        },
+        {
+          "trigger": "cancel",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "QC04"
+          ],
+          "description": "被取消或目标已被替换"
+        },
+        {
+          "trigger": "worker_lost",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "QC05"
+          ],
+          "description": "Worker 或 Validator 失联"
+        }
+      ]
+    },
+    {
+      "aggregate": "math_validation_run",
+      "entity": "math_validation_runs",
+      "actions": [
+        {
+          "trigger": "validator_claimed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "MV01"
+          ],
+          "description": "Validator 取得任务并固定版本"
+        },
+        {
+          "trigger": "validation_completed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "MV02"
+          ],
+          "description": "验证完成并保存证据"
+        },
+        {
+          "trigger": "validation_failed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "MV03"
+          ],
+          "description": "Validator 本身明确失败"
+        },
+        {
+          "trigger": "cancel",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "MV04"
+          ],
+          "description": "被取消或目标已被替换"
+        },
+        {
+          "trigger": "validator_lost",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "MV05"
+          ],
+          "description": "Validator 失联"
+        }
+      ]
+    },
+    {
+      "aggregate": "publication_approval",
+      "entity": "material_publication_approvals",
+      "actions": [
+        {
+          "trigger": "approve",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "approve_draft",
+          "transitions": [
+            "PUB01"
+          ],
+          "description": "教师批准当前 Revision + Gate Snapshot"
+        },
+        {
+          "trigger": "reject",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PUB02"
+          ],
+          "description": "教师拒绝"
+        },
+        {
+          "trigger": "expire",
+          "actor": "system",
+          "ui": "hidden",
+          "transitions": [
+            "PUB03"
+          ],
+          "description": "超过失效时间"
+        },
+        {
+          "trigger": "publish",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "publish_material",
+          "transitions": [
+            "PUB04"
+          ],
+          "description": "发布事务成功，且已绑定新建的 Material Version"
+        },
+        {
+          "trigger": "invalidate",
+          "actor": "system",
+          "ui": "hidden",
+          "compound": "withdraw_draft_approval",
+          "transitions": [
+            "PUB05"
+          ],
+          "description": "Draft 产生新 Revision、Base Version 变化、质量结果过期、审批策略变化或教师撤回"
+        }
+      ]
+    },
+    {
+      "aggregate": "export",
+      "entity": "material_exports",
+      "actions": [
+        {
+          "trigger": "worker_claimed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X01"
+          ],
+          "description": "导出 Worker 取得任务"
+        },
+        {
+          "trigger": "cancel",
+          "label": "取消导出",
+          "actor": "teacher",
+          "ui": "danger",
+          "errors": [
+            "STATE_CONFLICT",
+            "TERMINAL_STATE"
+          ],
+          "compound": "cancel_export",
+          "transitions": [
+            "X02",
+            "X10"
+          ]
+        },
+        {
+          "trigger": "render_completed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X03"
+          ],
+          "description": "文件渲染完成"
+        },
+        {
+          "trigger": "render_failed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X04"
+          ],
+          "description": "明确渲染失败"
+        },
+        {
+          "trigger": "upload_completed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X05"
+          ],
+          "description": "Object Storage 上传完成并校验 Hash"
+        },
+        {
+          "trigger": "upload_failed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X06"
+          ],
+          "description": "明确上传失败"
+        },
+        {
+          "trigger": "upload_unknown",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X07"
+          ],
+          "description": "上传结果不确定"
+        },
+        {
+          "trigger": "reconcile_succeeded",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X08"
+          ],
+          "description": "对账确认成功"
+        },
+        {
+          "trigger": "reconcile_failed",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X09"
+          ],
+          "description": "对账确认失败"
+        },
+        {
+          "trigger": "retention_expired",
+          "actor": "worker",
+          "ui": "hidden",
+          "transitions": [
+            "X11"
+          ],
+          "description": "达到保留期限"
+        }
+      ]
+    }
+  ]
+}

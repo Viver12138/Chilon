@@ -1,0 +1,705 @@
+{
+  "schema": "chilon.api_surface",
+  "schema_version": "1.0.0",
+  "title": "Chilon API Surface v1",
+  "source": "teacher actions from schemas/actions.v1.json; resources and SSE defined in design volume D5",
+  "freeze_status": "FROZEN FOR IMPLEMENTATION",
+  "updated_at": "2026-11-04",
+  "base_path": "/api/v1",
+  "conventions": {
+    "versioning": "路径前缀 /api/v1；破坏性变更升 /api/v2，不原地改语义",
+    "idempotency": "所有 POST 动作接口接受 Idempotency-Key；相同键重放返回首次结果（200）而非报错",
+    "optimistic_locking": "草稿保存使用 If-Match: \"<revision_no>-<content_hash_prefix>\"",
+    "state_version": "动作接口必须携带 expected_state_version；不匹配返回 STATE_CONFLICT",
+    "pagination": "cursor 分页：?limit=&cursor=，响应带 next_cursor；不提供 offset",
+    "errors": "错误结构见 D4 §5.3，必须包含 allowed_actions",
+    "auth": "会话 Cookie + Bearer 二选一；跨 Owner 一律 404 而非 403",
+    "uploads": "先申请 upload-intent 拿签名 URL，上传完成后再提交审核",
+    "downloads": "短时效签名 URL，有效期 10 分钟，不暴露 storage_key"
+  },
+  "action_endpoints": [
+    {
+      "name": "task.submit_requirement",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/submit-requirement",
+      "aggregate": "task",
+      "trigger": "submit_requirement",
+      "label": "提交教学要求",
+      "ui": "primary",
+      "compound": "submit_requirement",
+      "errors": [
+        "STATE_CONFLICT",
+        "REVISION_CONFLICT"
+      ],
+      "returns": [
+        "requirement_version_id"
+      ]
+    },
+    {
+      "name": "task.approve_plan",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/approve-plan",
+      "aggregate": "task",
+      "trigger": "approve_plan",
+      "label": "批准执行计划",
+      "ui": "primary",
+      "compound": "approve_plan",
+      "errors": [
+        "STATE_CONFLICT",
+        "PLAN_NOT_APPROVED"
+      ],
+      "returns": [
+        "plan_approval_id",
+        "plan_version_id"
+      ]
+    },
+    {
+      "name": "task.request_plan_revision",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/request-plan-revision",
+      "aggregate": "task",
+      "trigger": "request_plan_revision",
+      "label": "要求修改计划",
+      "ui": "secondary",
+      "compound": "request_plan_revision",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "task.cancel",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/cancel",
+      "aggregate": "task",
+      "trigger": "cancel",
+      "label": "取消任务",
+      "ui": "danger",
+      "compound": "cancel_task_immediate",
+      "errors": [
+        "STATE_CONFLICT",
+        "TERMINAL_STATE"
+      ],
+      "returns": []
+    },
+    {
+      "name": "task.replan",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/replan",
+      "aggregate": "task",
+      "trigger": "replan",
+      "label": "重新规划",
+      "ui": "secondary",
+      "compound": "replan_task",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": [
+        "requirement_version_id"
+      ]
+    },
+    {
+      "name": "task.retry",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/retry",
+      "aggregate": "task",
+      "trigger": "retry",
+      "label": "重试执行",
+      "ui": "primary",
+      "compound": "retry_task",
+      "errors": [
+        "STATE_CONFLICT",
+        "PLAN_NOT_APPROVED"
+      ],
+      "returns": []
+    },
+    {
+      "name": "task.request_cancel",
+      "method": "POST",
+      "path": "/tasks/{task_id}/actions/request-cancel",
+      "aggregate": "task",
+      "trigger": "request_cancel",
+      "label": "请求取消任务",
+      "ui": "danger",
+      "compound": "cancel_task",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "requirement_version.abandon",
+      "method": "POST",
+      "path": "/requirement-versions/{requirement_version_id}/actions/abandon",
+      "aggregate": "requirement_version",
+      "trigger": "abandon",
+      "label": "放弃该要求版本",
+      "ui": "secondary",
+      "compound": "abandon_requirement",
+      "errors": [
+        "STATE_CONFLICT",
+        "TERMINAL_STATE"
+      ],
+      "returns": []
+    },
+    {
+      "name": "plan_version.reject",
+      "method": "POST",
+      "path": "/plan-versions/{plan_version_id}/actions/reject",
+      "aggregate": "plan_version",
+      "trigger": "reject",
+      "label": "拒绝该计划",
+      "ui": "secondary",
+      "compound": "reject_plan",
+      "errors": [
+        "STATE_CONFLICT",
+        "TERMINAL_STATE"
+      ],
+      "returns": []
+    },
+    {
+      "name": "plan_approval.revoke",
+      "method": "POST",
+      "path": "/plan-approvals/{plan_approval_id}/actions/revoke",
+      "aggregate": "plan_approval",
+      "trigger": "revoke",
+      "label": "撤回计划批准",
+      "ui": "secondary",
+      "compound": "revoke_plan_approval",
+      "errors": [
+        "STATE_CONFLICT",
+        "PLAN_NOT_APPROVED"
+      ],
+      "returns": []
+    },
+    {
+      "name": "execution.request_pause",
+      "method": "POST",
+      "path": "/executions/{execution_id}/actions/request-pause",
+      "aggregate": "execution",
+      "trigger": "request_pause",
+      "label": "暂停执行",
+      "ui": "secondary",
+      "compound": "pause_execution",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "execution.resume",
+      "method": "POST",
+      "path": "/executions/{execution_id}/actions/resume",
+      "aggregate": "execution",
+      "trigger": "resume",
+      "label": "继续执行",
+      "ui": "primary",
+      "compound": "resume_execution",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "draft.submit_check",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/submit-check",
+      "aggregate": "draft",
+      "trigger": "submit_check",
+      "label": "提交检查",
+      "ui": "primary",
+      "compound": "submit_check",
+      "errors": [
+        "STATE_CONFLICT",
+        "CHECK_IN_PROGRESS",
+        "AST_INVALID"
+      ],
+      "returns": [
+        "quality_check_run_id",
+        "math_validation_run_id"
+      ]
+    },
+    {
+      "name": "draft.abandon",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/abandon",
+      "aggregate": "draft",
+      "trigger": "abandon",
+      "label": "放弃草稿",
+      "ui": "danger",
+      "compound": "abandon_draft",
+      "errors": [
+        "STATE_CONFLICT",
+        "TERMINAL_STATE"
+      ],
+      "returns": []
+    },
+    {
+      "name": "draft.cancel_check",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/cancel-check",
+      "aggregate": "draft",
+      "trigger": "cancel_check",
+      "label": "中止检查",
+      "ui": "secondary",
+      "compound": "cancel_check",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "draft.approve",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/approve",
+      "aggregate": "draft",
+      "trigger": "approve",
+      "label": "批准草稿",
+      "ui": "primary",
+      "compound": "approve_draft",
+      "errors": [
+        "STATE_CONFLICT",
+        "STALE_GATE"
+      ],
+      "returns": [
+        "publication_approval_id",
+        "gate_snapshot_hash"
+      ]
+    },
+    {
+      "name": "draft.request_changes",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/request-changes",
+      "aggregate": "draft",
+      "trigger": "request_changes",
+      "label": "要求修改",
+      "ui": "secondary",
+      "compound": "request_changes",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "draft.publish",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/publish",
+      "aggregate": "draft",
+      "trigger": "publish",
+      "label": "发布为正式版本",
+      "ui": "primary",
+      "compound": "publish_material",
+      "errors": [
+        "STATE_CONFLICT",
+        "STALE_GATE",
+        "APPROVAL_CONSUMED",
+        "AST_INVALID",
+        "CITATION_INVALID",
+        "RIGHTS_BLOCKED",
+        "SOURCE_NOT_AUTHORIZED"
+      ],
+      "returns": [
+        "material_version_id"
+      ]
+    },
+    {
+      "name": "draft.withdraw_approval",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/withdraw-approval",
+      "aggregate": "draft",
+      "trigger": "withdraw_approval",
+      "label": "撤回发布批准",
+      "ui": "secondary",
+      "compound": "withdraw_draft_approval",
+      "errors": [
+        "STATE_CONFLICT",
+        "STALE_GATE"
+      ],
+      "returns": []
+    },
+    {
+      "name": "draft.resolve_issue",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/resolve-issue",
+      "aggregate": "draft",
+      "trigger": "resolve_issue",
+      "label": "恢复编辑",
+      "ui": "secondary",
+      "compound": "resolve_issue",
+      "errors": [
+        "STATE_CONFLICT"
+      ],
+      "returns": []
+    },
+    {
+      "name": "draft.retry_check",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/retry-check",
+      "aggregate": "draft",
+      "trigger": "retry_check",
+      "label": "重试检查",
+      "ui": "primary",
+      "compound": "retry_check",
+      "errors": [
+        "STATE_CONFLICT",
+        "CHECK_IN_PROGRESS"
+      ],
+      "returns": [
+        "quality_check_run_id"
+      ]
+    },
+    {
+      "name": "draft.rebase",
+      "method": "POST",
+      "path": "/drafts/{draft_id}/actions/rebase",
+      "aggregate": "draft",
+      "trigger": "rebase",
+      "label": "合并到最新版本",
+      "ui": "primary",
+      "compound": "rebase_draft",
+      "errors": [
+        "STATE_CONFLICT",
+        "REVISION_CONFLICT"
+      ],
+      "returns": [
+        "draft_revision_id"
+      ]
+    },
+    {
+      "name": "export.cancel",
+      "method": "POST",
+      "path": "/exports/{export_id}/actions/cancel",
+      "aggregate": "export",
+      "trigger": "cancel",
+      "label": "取消导出",
+      "ui": "danger",
+      "compound": "cancel_export",
+      "errors": [
+        "STATE_CONFLICT",
+        "TERMINAL_STATE"
+      ],
+      "returns": []
+    }
+  ],
+  "resources": [
+    {
+      "method": "GET",
+      "path": "/me",
+      "purpose": "当前账号与权限",
+      "scope": "authenticated",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/projects",
+      "purpose": "项目列表",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "POST",
+      "path": "/projects",
+      "purpose": "创建项目",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/projects/{project_id}",
+      "purpose": "项目详情",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "PATCH",
+      "path": "/projects/{project_id}",
+      "purpose": "修改项目",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/projects/{project_id}/materials",
+      "purpose": "项目下的材料",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/materials",
+      "purpose": "材料库（含 Personal Library）",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/materials/{material_id}",
+      "purpose": "材料详情与当前版本",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/materials/{material_id}/versions",
+      "purpose": "正式版本列表",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/materials/{material_id}/versions/{version_id}",
+      "purpose": "不可变版本内容",
+      "scope": "owner",
+      "concurrency": "immutable"
+    },
+    {
+      "method": "POST",
+      "path": "/materials/{material_id}/drafts",
+      "purpose": "新建草稿",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/drafts/{draft_id}",
+      "purpose": "草稿内容与 ETag",
+      "scope": "owner",
+      "concurrency": "etag"
+    },
+    {
+      "method": "PUT",
+      "path": "/drafts/{draft_id}/revision",
+      "purpose": "保存草稿修订",
+      "scope": "owner",
+      "concurrency": "etag"
+    },
+    {
+      "method": "GET",
+      "path": "/drafts/{draft_id}/revisions",
+      "purpose": "草稿版本历史",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/drafts/{draft_id}/quality-runs",
+      "purpose": "该草稿的检查记录",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/quality-runs/{run_id}",
+      "purpose": "检查结果与证据",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/drafts/{draft_id}/math-runs",
+      "purpose": "该草稿的数学验证记录",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks",
+      "purpose": "任务列表",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "POST",
+      "path": "/tasks",
+      "purpose": "创建任务",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/{task_id}",
+      "purpose": "任务详情与允许动作",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/tasks/{task_id}/plan",
+      "purpose": "当前计划版本与审批状态",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/executions/{execution_id}",
+      "purpose": "执行详情",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/conversations/{conversation_id}/messages",
+      "purpose": "会话消息",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "POST",
+      "path": "/conversations/{conversation_id}/messages",
+      "purpose": "发送教师消息",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/search",
+      "purpose": "检索已审核资料",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/sources",
+      "purpose": "资料来源列表",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/upload-intents",
+      "purpose": "申请上传地址",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/sources/{source_id}",
+      "purpose": "资料与解析、审核状态",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "POST",
+      "path": "/materials/{material_id}/exports",
+      "purpose": "请求导出",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/exports/{export_id}",
+      "purpose": "导出状态",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/exports/{export_id}/download-url",
+      "purpose": "获取短时效下载地址",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/activity",
+      "purpose": "教师可见的 Activity 流",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/questions",
+      "purpose": "题目级检索（按分类、卷面题型、年份过滤）",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/questions/{question_id}",
+      "purpose": "题目详情、切分位置与派生标注",
+      "scope": "owner",
+      "concurrency": "none"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/sources/{source_id}/questions",
+      "purpose": "某张试卷的切分结果",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/questions/{question_id}/segments",
+      "purpose": "提交切分修正（合并 / 拆分 / 改题号）",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/questions/{question_id}/annotations",
+      "purpose": "提交标注修正（题型 / 知识点）",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/knowledge/categories",
+      "purpose": "分类列表（平台分类 + 我的私有分类）",
+      "scope": "owner",
+      "concurrency": "cursor"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/categories",
+      "purpose": "新建教师私有分类",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "POST",
+      "path": "/knowledge/sources",
+      "purpose": "提交上传后的资料进入审核",
+      "scope": "owner",
+      "concurrency": "idempotency"
+    },
+    {
+      "method": "GET",
+      "path": "/exports/{export_id}/preview-url",
+      "purpose": "获取浏览器内预览地址（与下载同一渲染产物）",
+      "scope": "owner",
+      "concurrency": "none"
+    }
+  ],
+  "sse": {
+    "path": "/conversations/{conversation_id}/events",
+    "method": "GET",
+    "replay": "Last-Event-ID 使用 Event Sequence；先回放至高水位，再消费实时通知并去重",
+    "envelope": {
+      "id": "event sequence（整数，单调递增）",
+      "event": "conversation.event | activity.updated | execution.progress | approval.requested",
+      "data": {
+        "seq": "integer",
+        "type": "string",
+        "aggregate": "string",
+        "aggregate_id": "uuid",
+        "occurred_at": "rfc3339",
+        "payload": "object"
+      }
+    },
+    "heartbeat_seconds": 15,
+    "reconnect_backoff_seconds": [
+      1,
+      2,
+      5,
+      10,
+      30
+    ]
+  },
+  "notes": [
+    "一个复合命令对应一个动作接口；服务端在同一事务内完成组内全部聚合更新。",
+    "动作接口不接受直接写 status 的 PATCH；状态只能经 actions 改变。",
+    "响应必须包含 status、state_version、allowed_actions。",
+    "知识库接口按题目级设计：检索与引用单元是 question，不是 document；分类来自 knowledge_categories。",
+    "导出分两步：先渲染并提供预览地址，教师确认后再下载；预览与下载使用同一份渲染产物。"
+  ]
+}

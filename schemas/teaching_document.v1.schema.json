@@ -1,0 +1,1293 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chilon.local/schemas/teaching_document.v1.schema.json",
+  "title": "Chilon Teaching Document v1",
+  "description": "Structured teaching content used for editing, validation, publication and export.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "document_id",
+    "document_kind",
+    "metadata",
+    "citations",
+    "blocks"
+  ],
+  "properties": {
+    "schema": {
+      "const": "chilon.teaching_document"
+    },
+    "schema_version": {
+      "enum": [
+        "1.0.0",
+        "1.1.0"
+      ]
+    },
+    "document_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "document_kind": {
+      "enum": [
+        "lesson",
+        "exercise_set",
+        "worksheet",
+        "mixed"
+      ]
+    },
+    "metadata": {
+      "$ref": "#/$defs/documentMetadata"
+    },
+    "citations": {
+      "type": "array",
+      "items": {
+        "$ref": "source_citation.v1.schema.json"
+      }
+    },
+    "blocks": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "$ref": "#/$defs/block"
+      }
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "inline": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/textInline"
+        },
+        {
+          "$ref": "#/$defs/mathInline"
+        },
+        {
+          "$ref": "#/$defs/citationInline"
+        },
+        {
+          "$ref": "#/$defs/lineBreakInline"
+        }
+      ]
+    },
+    "textInline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "text"
+      ],
+      "properties": {
+        "type": {
+          "const": "text"
+        },
+        "text": {
+          "type": "string"
+        },
+        "marks": {
+          "type": "array",
+          "items": {
+            "enum": [
+              "bold",
+              "italic",
+              "underline",
+              "subscript",
+              "superscript"
+            ]
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "mathInline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "latex",
+        "alt_text"
+      ],
+      "properties": {
+        "type": {
+          "const": "math"
+        },
+        "latex": {
+          "type": "string",
+          "minLength": 1
+        },
+        "alt_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 1000
+        }
+      }
+    },
+    "citationInline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type",
+        "citation_id"
+      ],
+      "properties": {
+        "type": {
+          "const": "citation_ref"
+        },
+        "citation_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "marker": {
+          "type": "string",
+          "maxLength": 50
+        }
+      }
+    },
+    "lineBreakInline": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "type"
+      ],
+      "properties": {
+        "type": {
+          "const": "line_break"
+        }
+      }
+    },
+    "documentMetadata": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "title",
+        "subject",
+        "grade",
+        "curriculum",
+        "language",
+        "topics"
+      ],
+      "properties": {
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 300
+        },
+        "subject": {
+          "const": "mathematics"
+        },
+        "grade": {
+          "const": "senior_high"
+        },
+        "curriculum": {
+          "const": "china_gaokao"
+        },
+        "language": {
+          "const": "zh-CN"
+        },
+        "topics": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        },
+        "description": {
+          "type": "string",
+          "maxLength": 2000
+        },
+        "lesson_count": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "estimated_minutes": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "tags": {
+          "type": "array",
+          "items": {
+            "type": "string",
+            "maxLength": 100
+          },
+          "uniqueItems": true
+        }
+      }
+    },
+    "visibility": {
+      "enum": [
+        "student",
+        "teacher",
+        "internal"
+      ]
+    },
+    "provenance": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "kind",
+        "basis"
+      ],
+      "properties": {
+        "kind": {
+          "enum": [
+            "teacher_authored",
+            "ai_generated",
+            "textbook_example",
+            "workbook_example",
+            "gaokao_question",
+            "mock_question",
+            "licensed_material",
+            "adapted"
+          ]
+        },
+        "basis": {
+          "enum": [
+            "authored",
+            "synthesis",
+            "verbatim",
+            "excerpt",
+            "adaptation"
+          ]
+        },
+        "citation_ids": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/uuid"
+          },
+          "uniqueItems": true
+        },
+        "change_note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "enum": [
+                  "textbook_example",
+                  "workbook_example",
+                  "gaokao_question",
+                  "mock_question"
+                ]
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "basis": {
+                "enum": [
+                  "verbatim",
+                  "excerpt"
+                ]
+              },
+              "citation_ids": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "citation_ids"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "kind": {
+                "const": "adapted"
+              }
+            },
+            "required": [
+              "kind"
+            ]
+          },
+          "then": {
+            "properties": {
+              "basis": {
+                "const": "adaptation"
+              },
+              "citation_ids": {
+                "minItems": 1
+              }
+            },
+            "required": [
+              "citation_ids",
+              "change_note"
+            ]
+          }
+        }
+      ]
+    },
+    "blockBase": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "type": {
+          "type": "string",
+          "minLength": 1
+        },
+        "visibility": {
+          "$ref": "#/$defs/visibility"
+        },
+        "provenance": {
+          "$ref": "#/$defs/provenance"
+        }
+      },
+      "required": [
+        "id",
+        "type",
+        "visibility",
+        "provenance"
+      ]
+    },
+    "sectionBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "section"
+            },
+            "purpose": {
+              "enum": [
+                "overview",
+                "learning_objectives",
+                "prerequisites",
+                "key_concepts",
+                "definitions",
+                "theorems",
+                "formula_summary",
+                "teaching_methods",
+                "worked_examples",
+                "common_mistakes",
+                "knowledge_connections",
+                "summary",
+                "exercises",
+                "worksheet",
+                "source_notes",
+                "custom"
+              ]
+            },
+            "title": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "purpose",
+            "title",
+            "children"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "headingBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "heading"
+            },
+            "level": {
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 4
+            },
+            "content": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "level",
+            "content"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "paragraphBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "paragraph"
+            },
+            "content": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "listBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "list"
+            },
+            "ordered": {
+              "type": "boolean"
+            },
+            "items": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/listItemBlock"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "ordered",
+            "items"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "listItemBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "list_item"
+            },
+            "content": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "formulaBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "formula"
+            },
+            "latex": {
+              "type": "string",
+              "minLength": 1
+            },
+            "display_mode": {
+              "type": "boolean"
+            },
+            "alt_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 200
+            }
+          },
+          "required": [
+            "type",
+            "latex",
+            "display_mode",
+            "alt_text"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "tableBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "table"
+            },
+            "columns": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/tableColumn"
+              }
+            },
+            "rows": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/tableRow"
+              }
+            },
+            "caption": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "columns",
+            "rows"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "tableColumn": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "header"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "header": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/inline"
+          }
+        },
+        "width_percent": {
+          "type": "number",
+          "exclusiveMinimum": 0,
+          "maximum": 100
+        }
+      }
+    },
+    "tableRow": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "cells"
+      ],
+      "properties": {
+        "cells": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/tableCell"
+          }
+        }
+      }
+    },
+    "tableCell": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "content"
+      ],
+      "properties": {
+        "content": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/inline"
+          }
+        },
+        "row_span": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "column_span": {
+          "type": "integer",
+          "minimum": 1
+        }
+      }
+    },
+    "definitionBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "definition"
+            },
+            "term": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 300
+            },
+            "statement": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "conditions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "term",
+            "statement"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "theoremBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "theorem"
+            },
+            "theorem_kind": {
+              "enum": [
+                "theorem",
+                "property",
+                "lemma",
+                "corollary"
+              ]
+            },
+            "name": {
+              "type": "string",
+              "maxLength": 300
+            },
+            "assumptions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "conclusion": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "proof": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "theorem_kind",
+            "conclusion"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "workedExampleBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "worked_example"
+            },
+            "problem": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            },
+            "answer_node_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/uuid"
+              },
+              "uniqueItems": true
+            },
+            "solution_node_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/uuid"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "type",
+            "problem",
+            "children"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "solutionStepBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "solution_step"
+            },
+            "instruction": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "instruction"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "exerciseGroupBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "exercise_group"
+            },
+            "title": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "difficulty": {
+              "$ref": "#/$defs/difficulty"
+            },
+            "children": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "title",
+            "children"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "difficulty": {
+      "enum": [
+        "basic",
+        "medium",
+        "advanced",
+        "challenge"
+      ]
+    },
+    "questionType": {
+      "enum": [
+        "single_choice",
+        "multiple_choice",
+        "fill_blank",
+        "short_answer",
+        "calculation",
+        "proof",
+        "application"
+      ]
+    },
+    "abilityDimension": {
+      "enum": [
+        "knowledge_understanding",
+        "logical_reasoning",
+        "mathematical_operation",
+        "data_analysis",
+        "modeling",
+        "problem_transfer"
+      ]
+    },
+    "exerciseBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "exercise"
+            },
+            "question_type": {
+              "$ref": "#/$defs/questionType"
+            },
+            "difficulty": {
+              "$ref": "#/$defs/difficulty"
+            },
+            "ability_dimensions": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/abilityDimension"
+              },
+              "uniqueItems": true
+            },
+            "stem": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "options": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/exerciseOption"
+              }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            },
+            "answer_node_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/uuid"
+              },
+              "uniqueItems": true
+            },
+            "solution_node_ids": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/uuid"
+              },
+              "uniqueItems": true
+            }
+          },
+          "required": [
+            "type",
+            "question_type",
+            "difficulty",
+            "ability_dimensions",
+            "stem",
+            "children"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "exerciseOption": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "label",
+        "content"
+      ],
+      "properties": {
+        "id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "label": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 20
+        },
+        "content": {
+          "type": "array",
+          "minItems": 1,
+          "items": {
+            "$ref": "#/$defs/inline"
+          }
+        }
+      }
+    },
+    "answerBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "answer"
+            },
+            "content": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "solutionBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "solution"
+            },
+            "content": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            },
+            "children": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "hintBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "hint"
+            },
+            "content": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "content"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "worksheetResponseBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "worksheet_response"
+            },
+            "response_type": {
+              "enum": [
+                "lines",
+                "box",
+                "blank"
+              ]
+            },
+            "label": {
+              "type": "string",
+              "maxLength": 200
+            },
+            "min_lines": {
+              "type": "integer",
+              "minimum": 1
+            },
+            "min_height_mm": {
+              "type": "number",
+              "exclusiveMinimum": 0
+            }
+          },
+          "required": [
+            "type",
+            "response_type"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "calloutBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "callout"
+            },
+            "variant": {
+              "enum": [
+                "note",
+                "tip",
+                "warning",
+                "common_mistake"
+              ]
+            },
+            "children": {
+              "type": "array",
+              "minItems": 1,
+              "items": {
+                "$ref": "#/$defs/block"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "variant",
+            "children"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "imageBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "image"
+            },
+            "asset_id": {
+              "$ref": "#/$defs/uuid"
+            },
+            "alt_text": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 2000
+            },
+            "caption": {
+              "type": "array",
+              "items": {
+                "$ref": "#/$defs/inline"
+              }
+            }
+          },
+          "required": [
+            "type",
+            "asset_id",
+            "alt_text"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "pageBreakBlock": {
+      "allOf": [
+        {
+          "$ref": "#/$defs/blockBase"
+        },
+        {
+          "type": "object",
+          "properties": {
+            "type": {
+              "const": "page_break"
+            }
+          },
+          "required": [
+            "type"
+          ]
+        }
+      ],
+      "unevaluatedProperties": false
+    },
+    "block": {
+      "oneOf": [
+        {
+          "$ref": "#/$defs/sectionBlock"
+        },
+        {
+          "$ref": "#/$defs/headingBlock"
+        },
+        {
+          "$ref": "#/$defs/paragraphBlock"
+        },
+        {
+          "$ref": "#/$defs/listBlock"
+        },
+        {
+          "$ref": "#/$defs/listItemBlock"
+        },
+        {
+          "$ref": "#/$defs/formulaBlock"
+        },
+        {
+          "$ref": "#/$defs/tableBlock"
+        },
+        {
+          "$ref": "#/$defs/definitionBlock"
+        },
+        {
+          "$ref": "#/$defs/theoremBlock"
+        },
+        {
+          "$ref": "#/$defs/workedExampleBlock"
+        },
+        {
+          "$ref": "#/$defs/solutionStepBlock"
+        },
+        {
+          "$ref": "#/$defs/exerciseGroupBlock"
+        },
+        {
+          "$ref": "#/$defs/exerciseBlock"
+        },
+        {
+          "$ref": "#/$defs/answerBlock"
+        },
+        {
+          "$ref": "#/$defs/solutionBlock"
+        },
+        {
+          "$ref": "#/$defs/hintBlock"
+        },
+        {
+          "$ref": "#/$defs/worksheetResponseBlock"
+        },
+        {
+          "$ref": "#/$defs/calloutBlock"
+        },
+        {
+          "$ref": "#/$defs/imageBlock"
+        },
+        {
+          "$ref": "#/$defs/pageBreakBlock"
+        }
+      ]
+    }
+  }
+}
