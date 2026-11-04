@@ -60,6 +60,9 @@ pwsh -NoProfile -File database/tests/run_container_test.ps1
 
 # 迁移 upgrade → 验证 → downgrade → 验证回滚
 pwsh -NoProfile -File database/tests/run_migration_test.ps1
+
+# 行级安全：一个教师读不到、改不了、也伪造不了另一个教师的数据
+pwsh -NoProfile -File database/tests/run_rls_test.ps1
 ```
 
 ## 设计与契约的状态
