@@ -14,29 +14,139 @@
       "purpose": "高风险管理员操作的申请；审批绑定版本与参数 Hash",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "request_type", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "操作类型，如 grant_short_term_access" },
-        { "name": "request_version", "type": "integer", "nullable": false, "default": "1", "sensitivity": "public", "desc": "申请版本；被审批后不可改" },
-        { "name": "parameters", "type": "jsonb", "nullable": false, "sensitivity": "confidential", "desc": "操作参数" },
-        { "name": "parameters_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "参数 Hash，审批绑定它" },
-        { "name": "target_type", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "目标实体类型" },
-        { "name": "target_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "目标 ID" },
-        { "name": "target_owner_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "目标属于教师资源时必填" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'pending'", "sensitivity": "public", "desc": "pending / approved / rejected / executing / executed / failed / cancelled / expired" },
-        { "name": "justification", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "申请理由" },
-        { "name": "requested_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "申请人；不能批准自己的申请" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "request_type",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "操作类型，如 grant_short_term_access"
+        },
+        {
+          "name": "request_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "1",
+          "sensitivity": "public",
+          "desc": "申请版本；被审批后不可改"
+        },
+        {
+          "name": "parameters",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "confidential",
+          "desc": "操作参数"
+        },
+        {
+          "name": "parameters_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "参数 Hash，审批绑定它"
+        },
+        {
+          "name": "target_type",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "目标实体类型"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "目标 ID"
+        },
+        {
+          "name": "target_owner_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "目标属于教师资源时必填"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'pending'",
+          "sensitivity": "public",
+          "desc": "pending / approved / rejected / executing / executed / failed / cancelled / expired"
+        },
+        {
+          "name": "justification",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "申请理由"
+        },
+        {
+          "name": "requested_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "申请人；不能批准自己的申请",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_admin_operation_requests_status", "expr": "status IN ('pending','approved','rejected','executing','executed','failed','cancelled','expired')" }
+        {
+          "type": "check",
+          "name": "ck_admin_operation_requests_status",
+          "expr": "status IN ('pending','approved','rejected','executing','executed','failed','cancelled','expired')"
+        }
       ],
       "indexes": [
-        { "name": "ix_admin_operation_requests_status", "columns": ["status", "created_at"] },
-        { "name": "ix_admin_operation_requests_target", "columns": ["target_type", "target_id"] }
+        {
+          "name": "ix_admin_operation_requests_status",
+          "columns": [
+            "status",
+            "created_at"
+          ]
+        },
+        {
+          "name": "ix_admin_operation_requests_target",
+          "columns": [
+            "target_type",
+            "target_id"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_admin_operation_requests_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_admin_operation_requests_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -44,22 +154,104 @@
       "purpose": "管理员操作审批；绑定 request_version 与 parameters_hash",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "request_id", "type": "uuid", "nullable": false, "fk": { "table": "admin_operation_requests", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属申请" },
-        { "name": "request_version", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "被批准的申请版本" },
-        { "name": "parameters_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "被批准的参数 Hash" },
-        { "name": "policy_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "审批策略版本；旧申请不被新策略静默改变" },
-        { "name": "decision", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "approved / rejected" },
-        { "name": "approver_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "审批人；必须不同于申请人（应用层强制）" },
-        { "name": "reason", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "审批理由" },
-        { "name": "decided_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "决定时间" },
-        { "name": "expires_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "审批失效时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "request_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "admin_operation_requests",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属申请"
+        },
+        {
+          "name": "request_version",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "被批准的申请版本"
+        },
+        {
+          "name": "parameters_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "被批准的参数 Hash"
+        },
+        {
+          "name": "policy_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "审批策略版本；旧申请不被新策略静默改变"
+        },
+        {
+          "name": "decision",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "approved / rejected"
+        },
+        {
+          "name": "approver_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "审批人；必须不同于申请人（应用层强制）",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "审批理由"
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "决定时间"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "审批失效时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_admin_operation_approvals_decision", "expr": "decision IN ('approved','rejected')" }
+        {
+          "type": "check",
+          "name": "ck_admin_operation_approvals_decision",
+          "expr": "decision IN ('approved','rejected')"
+        }
       ],
       "indexes": [
-        { "name": "ix_admin_operation_approvals_request", "columns": ["request_id", "decision"] }
+        {
+          "name": "ix_admin_operation_approvals_request",
+          "columns": [
+            "request_id",
+            "decision"
+          ]
+        }
       ],
       "policies": []
     },
@@ -68,25 +260,132 @@
       "purpose": "执行记录；执行前重新校验审批、Hash 与权限",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "request_id", "type": "uuid", "nullable": false, "fk": { "table": "admin_operation_requests", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属申请" },
-        { "name": "approval_id", "type": "uuid", "nullable": false, "fk": { "table": "admin_operation_approvals", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "消费的审批" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "queued / running / succeeded / failed / cancelled / outcome_unknown" },
-        { "name": "idempotency_key", "type": "varchar", "length": 255, "nullable": false, "sensitivity": "internal", "desc": "幂等键，防止重复执行" },
-        { "name": "attempt", "type": "smallint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "尝试次数" },
-        { "name": "result", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "执行结果" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "错误码" },
-        { "name": "executed_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "执行人" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "request_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "admin_operation_requests",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属申请"
+        },
+        {
+          "name": "approval_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "admin_operation_approvals",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "消费的审批"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'queued'",
+          "sensitivity": "public",
+          "desc": "queued / running / succeeded / failed / cancelled / outcome_unknown"
+        },
+        {
+          "name": "idempotency_key",
+          "type": "varchar",
+          "length": 255,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "幂等键，防止重复执行"
+        },
+        {
+          "name": "attempt",
+          "type": "smallint",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "尝试次数"
+        },
+        {
+          "name": "result",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "执行结果"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "错误码"
+        },
+        {
+          "name": "executed_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "执行人",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_admin_operation_executions_idempotency", "columns": ["idempotency_key"] },
-        { "type": "check", "name": "ck_admin_operation_executions_status", "expr": "status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')" }
+        {
+          "type": "unique",
+          "name": "uq_admin_operation_executions_idempotency",
+          "columns": [
+            "idempotency_key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_admin_operation_executions_status",
+          "expr": "status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')"
+        }
       ],
       "indexes": [
-        { "name": "ix_admin_operation_executions_request", "columns": ["request_id", "status"] }
+        {
+          "name": "ix_admin_operation_executions_request",
+          "columns": [
+            "request_id",
+            "status"
+          ]
+        }
       ],
       "policies": []
     },
@@ -95,20 +394,97 @@
       "purpose": "管理侧安全事件；append-only，不可抵赖",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "event_type", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "事件类型" },
-        { "name": "actor_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "操作者；系统触发时为空" },
-        { "name": "request_id", "type": "uuid", "nullable": true, "fk": { "table": "admin_operation_requests", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "关联的申请" },
-        { "name": "target_type", "type": "varchar", "length": 64, "nullable": true, "sensitivity": "public", "desc": "目标类型" },
-        { "name": "target_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "目标 ID" },
-        { "name": "target_owner_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "目标属于教师资源时记录" },
-        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "事件详情" },
-        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "发生时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "事件类型"
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "操作者；系统触发时为空",
+          "fk": {
+            "table": "users",
+            "on_delete": "SET NULL"
+          }
+        },
+        {
+          "name": "request_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "admin_operation_requests",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "关联的申请"
+        },
+        {
+          "name": "target_type",
+          "type": "varchar",
+          "length": 64,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "目标类型"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "目标 ID"
+        },
+        {
+          "name": "target_owner_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "目标属于教师资源时记录"
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "事件详情"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "发生时间"
+        }
       ],
       "constraints": [],
       "indexes": [
-        { "name": "ix_admin_security_events_occurred", "columns": ["occurred_at"] },
-        { "name": "ix_admin_security_events_actor", "columns": ["actor_id", "occurred_at"] }
+        {
+          "name": "ix_admin_security_events_occurred",
+          "columns": [
+            "occurred_at"
+          ]
+        },
+        {
+          "name": "ix_admin_security_events_actor",
+          "columns": [
+            "actor_id",
+            "occurred_at"
+          ]
+        }
       ],
       "policies": []
     }

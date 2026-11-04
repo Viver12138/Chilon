@@ -79,7 +79,9 @@ DECLARE
     who uuid;
     ok  boolean;
 BEGIN
-    who := gen_random_uuid();
+who := gen_random_uuid();
+    -- owner_id now has a real FK to users: every row must point at a real teacher
+    INSERT INTO users (id, username, display_name) VALUES (who, 'smoke_user', 'Smoke Test');
     INSERT INTO knowledge_categories (id, scope, owner_id, key, name)
     VALUES (gen_random_uuid(), 'platform', NULL, 'tmp_smoke', 'smoke')
     RETURNING id INTO cat;

@@ -14,23 +14,97 @@
       "purpose": "质量规则身份；版本在 quality_rule_versions",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "稳定标识，如 citation.complete" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "规则名" },
-        { "name": "category", "type": "varchar", "length": 40, "nullable": false, "sensitivity": "public", "desc": "structure / citation / math / format / style" },
-        { "name": "default_severity", "type": "varchar", "length": 4, "nullable": false, "sensitivity": "public", "desc": "S0/S1/S2/S3 默认级别" },
-        { "name": "description", "type": "text", "nullable": true, "sensitivity": "public", "desc": "说明" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / deprecated" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "稳定标识，如 citation.complete"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "规则名"
+        },
+        {
+          "name": "category",
+          "type": "varchar",
+          "length": 40,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "structure / citation / math / format / style"
+        },
+        {
+          "name": "default_severity",
+          "type": "varchar",
+          "length": 4,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "S0/S1/S2/S3 默认级别"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "说明"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'active'",
+          "sensitivity": "public",
+          "desc": "active / deprecated"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_rules_key", "columns": ["key"] },
-        { "type": "check", "name": "ck_quality_rules_severity", "expr": "default_severity IN ('S0','S1','S2','S3')" },
-        { "type": "check", "name": "ck_quality_rules_status", "expr": "status IN ('active','deprecated')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_rules_key",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_rules_severity",
+          "expr": "default_severity IN ('S0','S1','S2','S3')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_rules_status",
+          "expr": "status IN ('active','deprecated')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_rules_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_rules_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -38,27 +112,122 @@
       "purpose": "规则版本；不可变",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "rule_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_rules", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "所属规则" },
-        { "name": "version_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "规则内递增" },
-        { "name": "severity", "type": "varchar", "length": 4, "nullable": false, "sensitivity": "public", "desc": "S0/S1/S2/S3" },
-        { "name": "is_blocking", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "public", "desc": "是否默认阻断发布" },
-        { "name": "definition", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "规则定义与参数" },
-        { "name": "definition_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "定义 Hash，供 Snapshot 绑定" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "draft / active / retired" },
-        { "name": "effective_from", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "生效时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "rule_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_rules",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "所属规则"
+        },
+        {
+          "name": "version_no",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "规则内递增"
+        },
+        {
+          "name": "severity",
+          "type": "varchar",
+          "length": 4,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "S0/S1/S2/S3"
+        },
+        {
+          "name": "is_blocking",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "sensitivity": "public",
+          "desc": "是否默认阻断发布"
+        },
+        {
+          "name": "definition",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "规则定义与参数"
+        },
+        {
+          "name": "definition_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "定义 Hash，供 Snapshot 绑定"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "draft / active / retired"
+        },
+        {
+          "name": "effective_from",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "生效时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_rule_versions_rule_no", "columns": ["rule_id", "version_no"] },
-        { "type": "check", "name": "ck_quality_rule_versions_severity", "expr": "severity IN ('S0','S1','S2','S3')" },
-        { "type": "check", "name": "ck_quality_rule_versions_status", "expr": "status IN ('draft','active','retired')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_rule_versions_rule_no",
+          "columns": [
+            "rule_id",
+            "version_no"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_rule_versions_severity",
+          "expr": "severity IN ('S0','S1','S2','S3')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_rule_versions_status",
+          "expr": "status IN ('draft','active','retired')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_rule_versions_rule", "columns": ["rule_id", "version_no"] }
+        {
+          "name": "ix_quality_rule_versions_rule",
+          "columns": [
+            "rule_id",
+            "version_no"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_quality_rule_versions_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_rule_versions_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -66,34 +235,174 @@
       "purpose": "对固定内容快照执行质量规则",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "target_type", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "draft_revision / material_version" },
-        { "name": "target_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "目标聚合 ID" },
-        { "name": "target_content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "被检查内容的 Hash" },
-        { "name": "document_schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "文档 Schema 版本" },
-        { "name": "rule_policy_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "规则政策 Hash" },
-        { "name": "engine_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "检查引擎版本" },
-        { "name": "process_status", "type": "varchar", "length": 24, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "queued / running / succeeded / failed / cancelled / outcome_unknown" },
-        { "name": "gate_result", "type": "varchar", "length": 24, "nullable": false, "default": "'not_evaluated'", "sensitivity": "public", "desc": "not_evaluated / passed / passed_with_warnings / blocked / inconclusive" },
-        { "name": "issue_counts", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "按严重度统计的问题数" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "技术失败错误码" },
-        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "target_type",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "draft_revision / material_version"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "目标聚合 ID"
+        },
+        {
+          "name": "target_content_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "被检查内容的 Hash"
+        },
+        {
+          "name": "document_schema_version",
+          "type": "varchar",
+          "length": 20,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "文档 Schema 版本"
+        },
+        {
+          "name": "rule_policy_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "规则政策 Hash"
+        },
+        {
+          "name": "engine_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "检查引擎版本"
+        },
+        {
+          "name": "process_status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'queued'",
+          "sensitivity": "public",
+          "desc": "queued / running / succeeded / failed / cancelled / outcome_unknown"
+        },
+        {
+          "name": "gate_result",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'not_evaluated'",
+          "sensitivity": "public",
+          "desc": "not_evaluated / passed / passed_with_warnings / blocked / inconclusive"
+        },
+        {
+          "name": "issue_counts",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "按严重度统计的问题数"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "技术失败错误码"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "创建者"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_check_runs_target_type", "expr": "target_type IN ('draft_revision','material_version')" },
-        { "type": "check", "name": "ck_quality_check_runs_process", "expr": "process_status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')" },
-        { "type": "check", "name": "ck_quality_check_runs_gate", "expr": "gate_result IN ('not_evaluated','passed','passed_with_warnings','blocked','inconclusive')" }
+        {
+          "type": "check",
+          "name": "ck_quality_check_runs_target_type",
+          "expr": "target_type IN ('draft_revision','material_version')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_check_runs_process",
+          "expr": "process_status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_check_runs_gate",
+          "expr": "gate_result IN ('not_evaluated','passed','passed_with_warnings','blocked','inconclusive')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_check_runs_target", "columns": ["target_type", "target_id", "created_at"] },
-        { "name": "ix_quality_check_runs_owner", "columns": ["owner_id", "process_status"] }
+        {
+          "name": "ix_quality_check_runs_target",
+          "columns": [
+            "target_type",
+            "target_id",
+            "created_at"
+          ]
+        },
+        {
+          "name": "ix_quality_check_runs_owner",
+          "columns": [
+            "owner_id",
+            "process_status"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_quality_check_runs_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_quality_check_runs_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -101,17 +410,88 @@
       "purpose": "本次 Run 固化的规则快照；保证事后可复现",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "run_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_check_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "检查运行" },
-        { "name": "rule_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_rules", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "规则" },
-        { "name": "rule_version_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_rule_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "规则版本" },
-        { "name": "rule_key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "冗余规则 key" },
-        { "name": "severity", "type": "varchar", "length": 4, "nullable": false, "sensitivity": "public", "desc": "本次生效级别" },
-        { "name": "definition_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "规则定义 Hash" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_check_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "检查运行"
+        },
+        {
+          "name": "rule_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_rules",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "规则"
+        },
+        {
+          "name": "rule_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_rule_versions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "规则版本"
+        },
+        {
+          "name": "rule_key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "冗余规则 key"
+        },
+        {
+          "name": "severity",
+          "type": "varchar",
+          "length": 4,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "本次生效级别"
+        },
+        {
+          "name": "definition_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "规则定义 Hash"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_check_rule_snapshots_run_rule", "columns": ["run_id", "rule_id"] }
+        {
+          "type": "unique",
+          "name": "uq_quality_check_rule_snapshots_run_rule",
+          "columns": [
+            "run_id",
+            "rule_id"
+          ]
+        }
       ],
       "indexes": [],
       "policies": []
@@ -121,22 +501,107 @@
       "purpose": "单条规则的检查结果",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "run_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_check_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "检查运行" },
-        { "name": "rule_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_rules", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "规则" },
-        { "name": "rule_version_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_rule_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "规则版本" },
-        { "name": "node_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "命中的 AST 节点；整篇级结果为空" },
-        { "name": "result", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "passed / failed / warning / not_applicable / inconclusive" },
-        { "name": "message", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "面向教师的一句话" },
-        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "结构化细节" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_check_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "检查运行"
+        },
+        {
+          "name": "rule_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_rules",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "规则"
+        },
+        {
+          "name": "rule_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_rule_versions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "规则版本"
+        },
+        {
+          "name": "node_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "命中的 AST 节点；整篇级结果为空"
+        },
+        {
+          "name": "result",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "passed / failed / warning / not_applicable / inconclusive"
+        },
+        {
+          "name": "message",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "面向教师的一句话"
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结构化细节"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_check_results_result", "expr": "result IN ('passed','failed','warning','not_applicable','inconclusive')" }
+        {
+          "type": "check",
+          "name": "ck_quality_check_results_result",
+          "expr": "result IN ('passed','failed','warning','not_applicable','inconclusive')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_check_results_run", "columns": ["run_id", "result"] },
-        { "name": "ix_quality_check_results_node", "columns": ["node_id"], "where": "node_id IS NOT NULL" }
+        {
+          "name": "ix_quality_check_results_run",
+          "columns": [
+            "run_id",
+            "result"
+          ]
+        },
+        {
+          "name": "ix_quality_check_results_node",
+          "columns": [
+            "node_id"
+          ],
+          "where": "node_id IS NOT NULL"
+        }
       ],
       "policies": []
     },
@@ -145,29 +610,147 @@
       "purpose": "需要教师处理的问题；由检查结果聚合而来",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "run_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_check_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "来源运行" },
-        { "name": "rule_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_rules", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "规则" },
-        { "name": "code", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "问题码" },
-        { "name": "severity", "type": "varchar", "length": 4, "nullable": false, "sensitivity": "public", "desc": "S0/S1/S2/S3" },
-        { "name": "title", "type": "varchar", "length": 300, "nullable": false, "sensitivity": "internal", "desc": "标题" },
-        { "name": "description", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "描述" },
-        { "name": "node_ids", "type": "text_array", "nullable": true, "sensitivity": "public", "desc": "涉及的 AST 节点" },
-        { "name": "resolution_status", "type": "varchar", "length": 24, "nullable": false, "default": "'unresolved'", "sensitivity": "public", "desc": "unresolved / resolved / waived / invalidated / superseded" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_check_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "来源运行"
+        },
+        {
+          "name": "rule_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_rules",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "规则"
+        },
+        {
+          "name": "code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "问题码"
+        },
+        {
+          "name": "severity",
+          "type": "varchar",
+          "length": 4,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "S0/S1/S2/S3"
+        },
+        {
+          "name": "title",
+          "type": "varchar",
+          "length": 300,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "标题"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "描述"
+        },
+        {
+          "name": "node_ids",
+          "type": "text_array",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "涉及的 AST 节点"
+        },
+        {
+          "name": "resolution_status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'unresolved'",
+          "sensitivity": "public",
+          "desc": "unresolved / resolved / waived / invalidated / superseded"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_issues_severity", "expr": "severity IN ('S0','S1','S2','S3')" },
-        { "type": "check", "name": "ck_quality_issues_resolution", "expr": "resolution_status IN ('unresolved','resolved','waived','invalidated','superseded')" }
+        {
+          "type": "check",
+          "name": "ck_quality_issues_severity",
+          "expr": "severity IN ('S0','S1','S2','S3')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_issues_resolution",
+          "expr": "resolution_status IN ('unresolved','resolved','waived','invalidated','superseded')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_issues_run", "columns": ["run_id", "severity"] },
-        { "name": "ix_quality_issues_owner_open", "columns": ["owner_id", "severity"], "where": "resolution_status = 'unresolved'" }
+        {
+          "name": "ix_quality_issues_run",
+          "columns": [
+            "run_id",
+            "severity"
+          ]
+        },
+        {
+          "name": "ix_quality_issues_owner_open",
+          "columns": [
+            "owner_id",
+            "severity"
+          ],
+          "where": "resolution_status = 'unresolved'"
+        }
       ],
       "policies": [
-        { "name": "pol_quality_issues_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_quality_issues_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -175,23 +758,111 @@
       "purpose": "问题或结果的可追溯证据；必须是真实执行产物",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "issue_id", "type": "uuid", "nullable": true, "fk": { "table": "quality_issues", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "关联问题；可为空（结果级证据）" },
-        { "name": "run_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_check_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "检查运行" },
-        { "name": "evidence_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "validator_output / rule_trace / test_run / locator_readback" },
-        { "name": "payload", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "证据内容" },
-        { "name": "payload_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "证据 Hash，防事后替换" },
-        { "name": "tool_name", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "public", "desc": "产出证据的工具" },
-        { "name": "tool_version", "type": "varchar", "length": 64, "nullable": true, "sensitivity": "public", "desc": "工具版本" },
-        { "name": "produced_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "产出时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "issue_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "quality_issues",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "关联问题；可为空（结果级证据）"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_check_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "检查运行"
+        },
+        {
+          "name": "evidence_type",
+          "type": "varchar",
+          "length": 32,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "validator_output / rule_trace / test_run / locator_readback"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "证据内容"
+        },
+        {
+          "name": "payload_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "证据 Hash，防事后替换"
+        },
+        {
+          "name": "tool_name",
+          "type": "varchar",
+          "length": 120,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "产出证据的工具"
+        },
+        {
+          "name": "tool_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "工具版本"
+        },
+        {
+          "name": "produced_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "产出时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_evidence_type", "expr": "evidence_type IN ('validator_output','rule_trace','test_run','locator_readback')" }
+        {
+          "type": "check",
+          "name": "ck_quality_evidence_type",
+          "expr": "evidence_type IN ('validator_output','rule_trace','test_run','locator_readback')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_evidence_run", "columns": ["run_id"] },
-        { "name": "ix_quality_evidence_issue", "columns": ["issue_id"], "where": "issue_id IS NOT NULL" }
+        {
+          "name": "ix_quality_evidence_run",
+          "columns": [
+            "run_id"
+          ]
+        },
+        {
+          "name": "ix_quality_evidence_issue",
+          "columns": [
+            "issue_id"
+          ],
+          "where": "issue_id IS NOT NULL"
+        }
       ],
       "policies": []
     },
@@ -200,31 +871,153 @@
       "purpose": "对固定内容快照执行数学验证",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "target_type", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "draft_revision / material_version" },
-        { "name": "target_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "目标聚合 ID" },
-        { "name": "target_content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "被验证内容的 Hash" },
-        { "name": "validator_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Validator 版本" },
-        { "name": "sympy_version", "type": "varchar", "length": 32, "nullable": true, "sensitivity": "public", "desc": "符号引擎版本" },
-        { "name": "process_status", "type": "varchar", "length": 24, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "queued / running / succeeded / failed / cancelled / outcome_unknown" },
-        { "name": "validation_result", "type": "varchar", "length": 24, "nullable": false, "default": "'not_evaluated'", "sensitivity": "public", "desc": "not_evaluated / validated / failed / inconclusive / unsupported" },
-        { "name": "coverage", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "可判定节点数与覆盖情况" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "技术失败错误码" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "target_type",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "draft_revision / material_version"
+        },
+        {
+          "name": "target_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "目标聚合 ID"
+        },
+        {
+          "name": "target_content_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "被验证内容的 Hash"
+        },
+        {
+          "name": "validator_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Validator 版本"
+        },
+        {
+          "name": "sympy_version",
+          "type": "varchar",
+          "length": 32,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "符号引擎版本"
+        },
+        {
+          "name": "process_status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'queued'",
+          "sensitivity": "public",
+          "desc": "queued / running / succeeded / failed / cancelled / outcome_unknown"
+        },
+        {
+          "name": "validation_result",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'not_evaluated'",
+          "sensitivity": "public",
+          "desc": "not_evaluated / validated / failed / inconclusive / unsupported"
+        },
+        {
+          "name": "coverage",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "可判定节点数与覆盖情况"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "技术失败错误码"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_math_validation_runs_target_type", "expr": "target_type IN ('draft_revision','material_version')" },
-        { "type": "check", "name": "ck_math_validation_runs_process", "expr": "process_status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')" },
-        { "type": "check", "name": "ck_math_validation_runs_result", "expr": "validation_result IN ('not_evaluated','validated','failed','inconclusive','unsupported')" }
+        {
+          "type": "check",
+          "name": "ck_math_validation_runs_target_type",
+          "expr": "target_type IN ('draft_revision','material_version')"
+        },
+        {
+          "type": "check",
+          "name": "ck_math_validation_runs_process",
+          "expr": "process_status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')"
+        },
+        {
+          "type": "check",
+          "name": "ck_math_validation_runs_result",
+          "expr": "validation_result IN ('not_evaluated','validated','failed','inconclusive','unsupported')"
+        }
       ],
       "indexes": [
-        { "name": "ix_math_validation_runs_target", "columns": ["target_type", "target_id", "created_at"] }
+        {
+          "name": "ix_math_validation_runs_target",
+          "columns": [
+            "target_type",
+            "target_id",
+            "created_at"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_math_validation_runs_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_math_validation_runs_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -232,23 +1025,105 @@
       "purpose": "按层记录数学验证证据",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "run_id", "type": "uuid", "nullable": false, "fk": { "table": "math_validation_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "验证运行" },
-        { "name": "node_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "对应 AST 节点" },
-        { "name": "layer", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "formula / symbolic / numerical / solution / cross_material" },
-        { "name": "claim", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "被验证的论断" },
-        { "name": "result", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "validated / failed / inconclusive / unsupported" },
-        { "name": "method", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "public", "desc": "验证方法" },
-        { "name": "payload", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "引擎输出" },
-        { "name": "payload_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "输出 Hash" },
-        { "name": "produced_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "产出时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "math_validation_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "验证运行"
+        },
+        {
+          "name": "node_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "对应 AST 节点"
+        },
+        {
+          "name": "layer",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "formula / symbolic / numerical / solution / cross_material"
+        },
+        {
+          "name": "claim",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "被验证的论断"
+        },
+        {
+          "name": "result",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "validated / failed / inconclusive / unsupported"
+        },
+        {
+          "name": "method",
+          "type": "varchar",
+          "length": 120,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "验证方法"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "引擎输出"
+        },
+        {
+          "name": "payload_hash",
+          "type": "sha256",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "输出 Hash"
+        },
+        {
+          "name": "produced_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "产出时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_math_validation_evidence_layer", "expr": "layer IN ('formula','symbolic','numerical','solution','cross_material')" },
-        { "type": "check", "name": "ck_math_validation_evidence_result", "expr": "result IN ('validated','failed','inconclusive','unsupported')" }
+        {
+          "type": "check",
+          "name": "ck_math_validation_evidence_layer",
+          "expr": "layer IN ('formula','symbolic','numerical','solution','cross_material')"
+        },
+        {
+          "type": "check",
+          "name": "ck_math_validation_evidence_result",
+          "expr": "result IN ('validated','failed','inconclusive','unsupported')"
+        }
       ],
       "indexes": [
-        { "name": "ix_math_validation_evidence_run", "columns": ["run_id", "layer"] }
+        {
+          "name": "ix_math_validation_evidence_run",
+          "columns": [
+            "run_id",
+            "layer"
+          ]
+        }
       ],
       "policies": []
     },
@@ -257,22 +1132,89 @@
       "purpose": "教师对问题的反馈；用于规则改进",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "issue_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_issues", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "问题" },
-        { "name": "feedback_type", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "agree / false_positive / unclear / other" },
-        { "name": "reason", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "理由" },
-        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "issue_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_issues",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "问题"
+        },
+        {
+          "name": "feedback_type",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "agree / false_positive / unclear / other"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "理由"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "创建者"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_issue_feedback_type", "expr": "feedback_type IN ('agree','false_positive','unclear','other')" }
+        {
+          "type": "check",
+          "name": "ck_quality_issue_feedback_type",
+          "expr": "feedback_type IN ('agree','false_positive','unclear','other')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_issue_feedback_issue", "columns": ["issue_id"] }
+        {
+          "name": "ix_quality_issue_feedback_issue",
+          "columns": [
+            "issue_id"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_quality_issue_feedback_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_quality_issue_feedback_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -280,23 +1222,94 @@
       "purpose": "问题处置记录；waive 必须留理由",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "issue_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_issues", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "问题" },
-        { "name": "resolution", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "resolved / waived / invalidated / superseded" },
-        { "name": "reason", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "理由；waived 时必填" },
-        { "name": "decided_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "处置人" },
-        { "name": "decided_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "处置时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "issue_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_issues",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "问题"
+        },
+        {
+          "name": "resolution",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "resolved / waived / invalidated / superseded"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "理由；waived 时必填"
+        },
+        {
+          "name": "decided_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "处置人"
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "处置时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_issue_resolutions_value", "expr": "resolution IN ('resolved','waived','invalidated','superseded')" },
-        { "type": "check", "name": "ck_quality_issue_resolutions_reason", "expr": "resolution <> 'waived' OR (reason IS NOT NULL AND length(trim(reason)) > 0)" }
+        {
+          "type": "check",
+          "name": "ck_quality_issue_resolutions_value",
+          "expr": "resolution IN ('resolved','waived','invalidated','superseded')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_issue_resolutions_reason",
+          "expr": "resolution <> 'waived' OR (reason IS NOT NULL AND length(trim(reason)) > 0)"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_issue_resolutions_issue", "columns": ["issue_id"] }
+        {
+          "name": "ix_quality_issue_resolutions_issue",
+          "columns": [
+            "issue_id"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_quality_issue_resolutions_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_quality_issue_resolutions_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -304,21 +1317,85 @@
       "purpose": "评估数据集身份",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "稳定标识" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "数据集名" },
-        { "name": "domain", "type": "varchar", "length": 40, "nullable": false, "default": "'mathematics'", "sensitivity": "public", "desc": "领域" },
-        { "name": "description", "type": "text", "nullable": true, "sensitivity": "public", "desc": "说明与治理要求" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / archived" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "稳定标识"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "数据集名"
+        },
+        {
+          "name": "domain",
+          "type": "varchar",
+          "length": 40,
+          "nullable": false,
+          "default": "'mathematics'",
+          "sensitivity": "public",
+          "desc": "领域"
+        },
+        {
+          "name": "description",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "说明与治理要求"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'active'",
+          "sensitivity": "public",
+          "desc": "active / archived"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_datasets_key", "columns": ["key"] },
-        { "type": "check", "name": "ck_quality_datasets_status", "expr": "status IN ('active','archived')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_datasets_key",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_datasets_status",
+          "expr": "status IN ('active','archived')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_datasets_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_datasets_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -326,21 +1403,87 @@
       "purpose": "数据集版本；不可变",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "dataset_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_datasets", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "数据集" },
-        { "name": "version_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "版本号" },
-        { "name": "item_count", "type": "integer", "nullable": false, "default": "0", "sensitivity": "public", "desc": "样本数" },
-        { "name": "content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "全部样本的 Hash" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "draft / frozen / retired" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "dataset_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_datasets",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "数据集"
+        },
+        {
+          "name": "version_no",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "版本号"
+        },
+        {
+          "name": "item_count",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "样本数"
+        },
+        {
+          "name": "content_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "全部样本的 Hash"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "draft / frozen / retired"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_dataset_versions_no", "columns": ["dataset_id", "version_no"] },
-        { "type": "check", "name": "ck_quality_dataset_versions_status", "expr": "status IN ('draft','frozen','retired')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_dataset_versions_no",
+          "columns": [
+            "dataset_id",
+            "version_no"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_dataset_versions_status",
+          "expr": "status IN ('draft','frozen','retired')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_dataset_versions_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_dataset_versions_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -348,17 +1491,79 @@
       "purpose": "数据集样本；冻结后不可修改",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "dataset_version_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_dataset_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "数据集版本" },
-        { "name": "item_key", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "样本标识" },
-        { "name": "split", "type": "varchar", "length": 16, "nullable": false, "default": "'test'", "sensitivity": "public", "desc": "train / validation / test" },
-        { "name": "payload", "type": "jsonb", "nullable": false, "sensitivity": "confidential", "desc": "输入样本" },
-        { "name": "expected", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "期望结果" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "dataset_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_dataset_versions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "数据集版本"
+        },
+        {
+          "name": "item_key",
+          "type": "varchar",
+          "length": 120,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "样本标识"
+        },
+        {
+          "name": "split",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'test'",
+          "sensitivity": "public",
+          "desc": "train / validation / test"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "confidential",
+          "desc": "输入样本"
+        },
+        {
+          "name": "expected",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "期望结果"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_dataset_items_key", "columns": ["dataset_version_id", "item_key"] },
-        { "type": "check", "name": "ck_quality_dataset_items_split", "expr": "split IN ('train','validation','test')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_dataset_items_key",
+          "columns": [
+            "dataset_version_id",
+            "item_key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_dataset_items_split",
+          "expr": "split IN ('train','validation','test')"
+        }
       ],
       "indexes": [],
       "policies": []
@@ -368,21 +1573,88 @@
       "purpose": "评估定义；绑定数据集与目的",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "稳定标识" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "评估名" },
-        { "name": "dataset_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_datasets", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "数据集" },
-        { "name": "purpose", "type": "varchar", "length": 40, "nullable": false, "sensitivity": "public", "desc": "regression / release_gate / research" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / archived" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "稳定标识"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "评估名"
+        },
+        {
+          "name": "dataset_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_datasets",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "数据集"
+        },
+        {
+          "name": "purpose",
+          "type": "varchar",
+          "length": 40,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "regression / release_gate / research"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'active'",
+          "sensitivity": "public",
+          "desc": "active / archived"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_evaluations_key", "columns": ["key"] },
-        { "type": "check", "name": "ck_quality_evaluations_status", "expr": "status IN ('active','archived')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_evaluations_key",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_evaluations_status",
+          "expr": "status IN ('active','archived')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_evaluations_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_evaluations_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -390,26 +1662,136 @@
       "purpose": "一次评估运行；固定数据集版本与全部影响结果的版本",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "evaluation_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_evaluations", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "评估定义" },
-        { "name": "dataset_version_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_dataset_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "数据集版本" },
-        { "name": "model", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "模型" },
-        { "name": "prompt_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Prompt 版本" },
-        { "name": "harness_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Harness 版本" },
-        { "name": "plugin_manifest_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "插件清单 Hash" },
-        { "name": "tool_registry_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "工具注册表 Hash" },
-        { "name": "validator_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Validator 版本" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "queued / running / succeeded / failed / cancelled" },
-        { "name": "result_summary", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "汇总指标" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "evaluation_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_evaluations",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "评估定义"
+        },
+        {
+          "name": "dataset_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_dataset_versions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "数据集版本"
+        },
+        {
+          "name": "model",
+          "type": "varchar",
+          "length": 120,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "模型"
+        },
+        {
+          "name": "prompt_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Prompt 版本"
+        },
+        {
+          "name": "harness_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Harness 版本"
+        },
+        {
+          "name": "plugin_manifest_hash",
+          "type": "sha256",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "插件清单 Hash"
+        },
+        {
+          "name": "tool_registry_hash",
+          "type": "sha256",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "工具注册表 Hash"
+        },
+        {
+          "name": "validator_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Validator 版本"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'queued'",
+          "sensitivity": "public",
+          "desc": "queued / running / succeeded / failed / cancelled"
+        },
+        {
+          "name": "result_summary",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "汇总指标"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_evaluation_runs_status", "expr": "status IN ('queued','running','succeeded','failed','cancelled')" }
+        {
+          "type": "check",
+          "name": "ck_quality_evaluation_runs_status",
+          "expr": "status IN ('queued','running','succeeded','failed','cancelled')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_evaluation_runs_evaluation", "columns": ["evaluation_id", "created_at"] }
+        {
+          "name": "ix_quality_evaluation_runs_evaluation",
+          "columns": [
+            "evaluation_id",
+            "created_at"
+          ]
+        }
       ],
       "policies": []
     },
@@ -418,16 +1800,75 @@
       "purpose": "单样本评估结果",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "evaluation_run_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_evaluation_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "评估运行" },
-        { "name": "dataset_item_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_dataset_items", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "样本" },
-        { "name": "outcome", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "passed / failed / inconclusive" },
-        { "name": "score", "type": "numeric", "precision": 8, "scale": 4, "nullable": true, "sensitivity": "public", "desc": "得分" },
-        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "细节" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "evaluation_run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_evaluation_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "评估运行"
+        },
+        {
+          "name": "dataset_item_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_dataset_items",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "样本"
+        },
+        {
+          "name": "outcome",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "passed / failed / inconclusive"
+        },
+        {
+          "name": "score",
+          "type": "numeric",
+          "precision": 8,
+          "scale": 4,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "得分"
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "细节"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_evaluation_results_item", "columns": ["evaluation_run_id", "dataset_item_id"] },
-        { "type": "check", "name": "ck_quality_evaluation_results_outcome", "expr": "outcome IN ('passed','failed','inconclusive')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_evaluation_results_item",
+          "columns": [
+            "evaluation_run_id",
+            "dataset_item_id"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_evaluation_results_outcome",
+          "expr": "outcome IN ('passed','failed','inconclusive')"
+        }
       ],
       "indexes": [],
       "policies": []
@@ -437,22 +1878,93 @@
       "purpose": "指标定义；含阻断标记",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 40, "nullable": false, "sensitivity": "public", "desc": "如 M1、M13" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "指标名" },
-        { "name": "unit", "type": "varchar", "length": 32, "nullable": true, "sensitivity": "public", "desc": "percent / count / seconds / ratio" },
-        { "name": "direction", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "higher_better / lower_better" },
-        { "name": "target_numeric", "type": "numeric", "precision": 12, "scale": 4, "nullable": true, "sensitivity": "public", "desc": "目标值" },
-        { "name": "is_blocking", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "public", "desc": "是否阻断发布" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 40,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "如 M1、M13"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "指标名"
+        },
+        {
+          "name": "unit",
+          "type": "varchar",
+          "length": 32,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "percent / count / seconds / ratio"
+        },
+        {
+          "name": "direction",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "higher_better / lower_better"
+        },
+        {
+          "name": "target_numeric",
+          "type": "numeric",
+          "precision": 12,
+          "scale": 4,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "目标值"
+        },
+        {
+          "name": "is_blocking",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "sensitivity": "public",
+          "desc": "是否阻断发布"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_metrics_key", "columns": ["key"] },
-        { "type": "check", "name": "ck_quality_metrics_direction", "expr": "direction IN ('higher_better','lower_better')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_metrics_key",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_metrics_direction",
+          "expr": "direction IN ('higher_better','lower_better')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_metrics_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_metrics_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -460,20 +1972,88 @@
       "purpose": "指标观测值",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "metric_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_metrics", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "指标" },
-        { "name": "scope_type", "type": "varchar", "length": 24, "nullable": false, "default": "'global'", "sensitivity": "public", "desc": "global / tenant / material" },
-        { "name": "scope_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "范围 ID" },
-        { "name": "value_numeric", "type": "numeric", "precision": 14, "scale": 4, "nullable": false, "sensitivity": "internal", "desc": "观测值" },
-        { "name": "sample_size", "type": "integer", "nullable": true, "sensitivity": "public", "desc": "样本量；不足时结果判 inconclusive" },
-        { "name": "source", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "采集来源" },
-        { "name": "observed_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "观测时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "metric_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_metrics",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "指标"
+        },
+        {
+          "name": "scope_type",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'global'",
+          "sensitivity": "public",
+          "desc": "global / tenant / material"
+        },
+        {
+          "name": "scope_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "范围 ID"
+        },
+        {
+          "name": "value_numeric",
+          "type": "numeric",
+          "precision": 14,
+          "scale": 4,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "观测值"
+        },
+        {
+          "name": "sample_size",
+          "type": "integer",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "样本量；不足时结果判 inconclusive"
+        },
+        {
+          "name": "source",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "采集来源"
+        },
+        {
+          "name": "observed_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "观测时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_metric_observations_scope", "expr": "scope_type IN ('global','tenant','material')" }
+        {
+          "type": "check",
+          "name": "ck_quality_metric_observations_scope",
+          "expr": "scope_type IN ('global','tenant','material')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_metric_observations_metric", "columns": ["metric_id", "observed_at"] }
+        {
+          "name": "ix_quality_metric_observations_metric",
+          "columns": [
+            "metric_id",
+            "observed_at"
+          ]
+        }
       ],
       "policies": []
     },
@@ -482,23 +2062,101 @@
       "purpose": "告警规则",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "稳定标识" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "告警名" },
-        { "name": "metric_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_metrics", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "关联指标" },
-        { "name": "condition", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "触发条件" },
-        { "name": "severity", "type": "varchar", "length": 16, "nullable": false, "default": "'warning'", "sensitivity": "public", "desc": "info / warning / critical" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / muted / resolved" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "稳定标识"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "告警名"
+        },
+        {
+          "name": "metric_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_metrics",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "关联指标"
+        },
+        {
+          "name": "condition",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "触发条件"
+        },
+        {
+          "name": "severity",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'warning'",
+          "sensitivity": "public",
+          "desc": "info / warning / critical"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'active'",
+          "sensitivity": "public",
+          "desc": "active / muted / resolved"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_alerts_key", "columns": ["key"] },
-        { "type": "check", "name": "ck_quality_alerts_severity", "expr": "severity IN ('info','warning','critical')" },
-        { "type": "check", "name": "ck_quality_alerts_status", "expr": "status IN ('active','muted','resolved')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_alerts_key",
+          "columns": [
+            "key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_alerts_severity",
+          "expr": "severity IN ('info','warning','critical')"
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_alerts_status",
+          "expr": "status IN ('active','muted','resolved')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_alerts_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_alerts_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -506,18 +2164,71 @@
       "purpose": "告警事件流",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "alert_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_alerts", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "告警" },
-        { "name": "event_type", "type": "varchar", "length": 24, "nullable": false, "sensitivity": "public", "desc": "triggered / acknowledged / resolved" },
-        { "name": "actor_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "处理人" },
-        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "详情" },
-        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "发生时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "alert_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_alerts",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "告警"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "triggered / acknowledged / resolved"
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "处理人"
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "详情"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "发生时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_alert_events_type", "expr": "event_type IN ('triggered','acknowledged','resolved')" }
+        {
+          "type": "check",
+          "name": "ck_quality_alert_events_type",
+          "expr": "event_type IN ('triggered','acknowledged','resolved')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_alert_events_alert", "columns": ["alert_id", "occurred_at"] }
+        {
+          "name": "ix_quality_alert_events_alert",
+          "columns": [
+            "alert_id",
+            "occurred_at"
+          ]
+        }
       ],
       "policies": []
     },
@@ -526,25 +2237,115 @@
       "purpose": "发布批次；固定模型、Prompt、Harness、插件、工具与 Validator 版本",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "version_label", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "发布标签" },
-        { "name": "application_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "应用版本" },
-        { "name": "model", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "模型" },
-        { "name": "prompt_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Prompt 版本" },
-        { "name": "harness_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Harness 版本" },
-        { "name": "plugin_manifest_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "插件清单 Hash" },
-        { "name": "tool_registry_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "工具注册表 Hash" },
-        { "name": "validator_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "Validator 版本" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "draft / canary / production / rolled_back" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "version_label",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "发布标签"
+        },
+        {
+          "name": "application_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "应用版本"
+        },
+        {
+          "name": "model",
+          "type": "varchar",
+          "length": 120,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "模型"
+        },
+        {
+          "name": "prompt_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Prompt 版本"
+        },
+        {
+          "name": "harness_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Harness 版本"
+        },
+        {
+          "name": "plugin_manifest_hash",
+          "type": "sha256",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "插件清单 Hash"
+        },
+        {
+          "name": "tool_registry_hash",
+          "type": "sha256",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "工具注册表 Hash"
+        },
+        {
+          "name": "validator_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Validator 版本"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "draft / canary / production / rolled_back"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_quality_releases_label", "columns": ["version_label"] },
-        { "type": "check", "name": "ck_quality_releases_status", "expr": "status IN ('draft','canary','production','rolled_back')" }
+        {
+          "type": "unique",
+          "name": "uq_quality_releases_label",
+          "columns": [
+            "version_label"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_quality_releases_status",
+          "expr": "status IN ('draft','canary','production','rolled_back')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_quality_releases_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_quality_releases_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -552,18 +2353,70 @@
       "purpose": "发布审批",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "release_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_releases", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "发布批次" },
-        { "name": "approver_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "审批人" },
-        { "name": "decision", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "approved / rejected" },
-        { "name": "reason", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "理由" },
-        { "name": "decided_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "决定时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "release_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_releases",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "发布批次"
+        },
+        {
+          "name": "approver_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "审批人"
+        },
+        {
+          "name": "decision",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "approved / rejected"
+        },
+        {
+          "name": "reason",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "理由"
+        },
+        {
+          "name": "decided_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "决定时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_release_approvals_decision", "expr": "decision IN ('approved','rejected')" }
+        {
+          "type": "check",
+          "name": "ck_quality_release_approvals_decision",
+          "expr": "decision IN ('approved','rejected')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_release_approvals_release", "columns": ["release_id"] }
+        {
+          "name": "ix_quality_release_approvals_release",
+          "columns": [
+            "release_id"
+          ]
+        }
       ],
       "policies": []
     },
@@ -572,18 +2425,71 @@
       "purpose": "发布过程事件；回滚不得删除教师已批准版本",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "release_id", "type": "uuid", "nullable": false, "fk": { "table": "quality_releases", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "发布批次" },
-        { "name": "event_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "canary_started / canary_passed / production_promoted / rolled_back" },
-        { "name": "actor_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "操作人" },
-        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "详情" },
-        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "发生时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "release_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "quality_releases",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "发布批次"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 32,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "canary_started / canary_passed / production_promoted / rolled_back"
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "操作人"
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "详情"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "发生时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_quality_release_events_type", "expr": "event_type IN ('canary_started','canary_passed','production_promoted','rolled_back')" }
+        {
+          "type": "check",
+          "name": "ck_quality_release_events_type",
+          "expr": "event_type IN ('canary_started','canary_passed','production_promoted','rolled_back')"
+        }
       ],
       "indexes": [
-        { "name": "ix_quality_release_events_release", "columns": ["release_id", "occurred_at"] }
+        {
+          "name": "ix_quality_release_events_release",
+          "columns": [
+            "release_id",
+            "occurred_at"
+          ]
+        }
       ],
       "policies": []
     }
