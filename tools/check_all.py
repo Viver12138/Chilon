@@ -29,6 +29,8 @@ CHECKS: list[tuple[str, list[str]]] = [
     ("目录与锚点", ["design/gen_toc.py"]),
     ("Registry 一致性", ["database/generator/validate_registry.py", "--selftest"]),
     ("DDL 与 Registry 同步", ["database/generator/generate_ddl.py", "--check"]),
+    ("迁移 SQL 切分正确", ["database/tests/check_migration_splitter.py"]),
+    ("迁移与 DDL 同步", ["database/tests/check_migration_sync.py"]),
 ]
 
 

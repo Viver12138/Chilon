@@ -83,6 +83,7 @@
   - [D.21 2026-11-04 K009 字段级设计（模块分册 K09）](#d21-2026-11-04-k009-字段级设计模块分册-k09)
   - [D.22 2026-11-04 验收与测试矩阵（分册 D6）](#d22-2026-11-04-验收与测试矩阵分册-d6)
   - [D.23 2026-11-04 Registry 与工程骨架](#d23-2026-11-04-registry-与工程骨架)
+  - [D.24 2026-11-04 Alembic 基线与迁移闭环](#d24-2026-11-04-alembic-基线与迁移闭环)
 
 [//]: # (toc:end)
 
@@ -3521,6 +3522,42 @@ G4 是数据结构问题（只有过与不过）、G5 已有 S1 人工例外通�
 本轮初始化了 Git 并在 master §0.2 的要求下完成首次提交（49 个文件）。CI 的价值依赖版本控制，在此之前 CI 配置只是一段不会执行的文本。
 
 **下一步**：Alembic 基线（从生成的 DDL 建迁移），以及其余模块的字段级设计——但后者依赖 K011 的 35 张表清单，那是 §28.1 仍未关闭的历史恢复项。
+
+## D.24 2026-11-04 Alembic 基线与迁移闭环
+
+**本轮交付：** 把已验证的 K009 DDL 变成可执行迁移，并跑通 upgrade/downgrade 闭环。
+
+| 产物 | 说明 |
+| --- | --- |
+| `backend/alembic.ini` | 迁移配置；URL 从 `CHILON_DATABASE_URL` 注入 |
+| `backend/migrations/env.py` | **同步**驱动：asyncpg 不支持多语句执行，而 DDL 不在请求路径上 |
+| `backend/migrations/versions/0001_k009_baseline.py` | 基线迁移，内嵌 DDL 快照与 registry/schema hash |
+| `database/generator/gen_migration.py` | 从当前 DDL 生成新 revision，拒绝覆盖已有文件 |
+| `database/tests/check_migration_sync.py` | 检测“改了 Registry、重新生成了 DDL，但忘了生成迁移” |
+| `database/tests/check_migration_splitter.py` | 验证 SQL 切分器不会在 `$$` 函数体内切断语句 |
+| `database/tests/run_migration_test.ps1` | 起容器 → upgrade → 验证 → downgrade → 验证回滚 |
+
+**三个设计决定：**
+
+1. **迁移是不可变快照。** 生成时把 SQL 与两个 hash 一起写进 revision 文件，后续 Registry 变化不会改写历史。要改结构就生成新 revision。
+2. **迁移用同步驱动。** psycopg 而非 asyncpg：后者明确不支持一条语句里跑多个命令，而 DDL 本来就是同步的运维动作。应用本身仍然 async。
+3. **切分器必须被测试。** 迁移里唯一的静默风险是把 `$$ ... $$` 函数体按 `;` 切断——切错了 DDL 只会在部分环境炸。`check_migration_splitter.py` 逐条校验 63 条语句的引号与美元引用配对。
+
+**闭环验证结果（真实 PostgreSQL 17 容器）：**
+
+```text
+alembic upgrade head            → 0001_k009_baseline
+结构验证                          → 12 表 / 4 策略 / 20 索引 / 17 外键
+两层约束行为                      → 坏数据被拒绝
+alembic_version                  → 0001_k009_baseline
+alembic downgrade base           → 剩余表 0、剩余函数 0
+```
+
+**过程中环境给的两个教训：** `pip install` 首次尝试 20 分钟无进展（网络索引慢），改成分步安装后 1 分钟内完成；PowerShell 5.1 的管道会破坏 UTF-8，所以 SQL 改用 `docker cp` 进容器执行，脚本也不再依赖 `cmd /c`。
+
+**下一步**：其余模块的字段级设计（K012 优先），以及把 K009 的 13 张表补进 `--with-optional` 变体的容器验证。
+
+----------------------------------------
 
 ----------------------------------------
 

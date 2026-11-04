@@ -43,6 +43,47 @@ pwsh -NoProfile -File database/tests/run_container_test.ps1
 
 `core` 变体跳过 `knowledge_question_embeddings`，并在文件头列出被跳过的表。
 
+## 迁移（Alembic）
+
+迁移是**不可变快照**：生成时把当前 DDL 嵌进 revision 文件，之后 Registry 再变也不会改写历史。
+
+```bash
+# 1. 改 Registry
+# 2. 重新生成 DDL
+python database/generator/generate_ddl.py
+# 3. 校验 DDL 与 Registry 一致
+python database/generator/generate_ddl.py --check
+# 4. 生成新 revision（--down 指向当前最新 revision）
+python database/generator/gen_migration.py --id 0002_xxx --slug "add something" --down 0001_k009_baseline
+# 5. 应用到数据库
+cd backend && alembic upgrade head
+```
+
+**漂移保护**：`database/tests/check_migration_sync.py` 比较最新 revision 记录的 `SCHEMA_HASH`
+与当前 manifest。若两者不一致，说明"改了 Registry、重新生成了 DDL，但忘了生成迁移"，CI 会失败。
+
+**切分正确性**：`database/tests/check_migration_splitter.py` 验证迁移里的 SQL 切分器不会在
+`$$ ... $$` 函数体内部切断语句。这是唯一可能静默损坏 DDL 的环节。
+
+迁移用**同步驱动**（psycopg）执行：asyncpg 不支持多语句执行，而 DDL 不在请求路径上。
+应用本身仍然 async。
+
+依赖（需自行安装）：
+
+```bash
+python -m venv .venv
+.venv/Scripts/pip install alembic "psycopg[binary]"
+```
+
+### 迁移端到端测试
+
+```powershell
+.\database\tests\run_migration_test.ps1
+```
+
+起容器 → `alembic upgrade head` → 结构验证 → 检查 `alembic_version` → `alembic downgrade base`
+→ 断言表与函数都被清干净。这条比直接应用 DDL 更接近真实发布路径。
+
 ## 当前覆盖
 
 只包含 K009。其余模块待字段级设计完成后加入。

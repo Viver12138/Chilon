@@ -1,0 +1,5 @@
+Alembic migrations.
+
+- 不要手改已提交的 revision：迁移是不可变快照。
+- 新增迁移用 `python database/generator/gen_migration.py --id <rev> --slug <text> --down <prev>`。
+- `python database/tests/check_migration_sync.py` 会校验最新 revision 与当前 Registry 是否一致。
