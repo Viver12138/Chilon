@@ -12,6 +12,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from app.api import agent as agent_api
 from app.api import executions as executions_api
 from app.api import plans as plans_api
 from app.api import tasks as tasks_api
@@ -35,6 +36,7 @@ install_error_handlers(app)
 app.include_router(tasks_api.router)
 app.include_router(plans_api.router)
 app.include_router(executions_api.router)
+app.include_router(agent_api.router)
 
 
 @app.get("/healthz")
