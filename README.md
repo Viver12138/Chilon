@@ -103,6 +103,9 @@ pwsh -NoProfile -File database/tests/run_executor_test.ps1
 
 # 材料：一份 AST、两个投影；学生版序列化后不含任何答案
 pwsh -NoProfile -File database/tests/run_material_test.ps1
+
+# 发布与导出：审批单次消费、版本不可变、学生版 DOCX 解压后搜不到答案
+pwsh -NoProfile -File database/tests/run_publish_export_test.ps1
 ```
 
 ## 配置与模型
