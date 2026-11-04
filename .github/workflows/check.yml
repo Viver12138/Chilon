@@ -54,3 +54,6 @@ jobs:
       # 8) Execution: spends the approval once, fencing refuses stale workers.
       - name: Verify execution lifecycle and fencing
         run: pwsh -NoProfile -File database/tests/run_exec_test.ps1
+      # 9) Step DAG: rejected at creation if unexecutable, scheduled by dependencies.
+      - name: Verify plan step DAG
+        run: pwsh -NoProfile -File database/tests/run_step_test.ps1

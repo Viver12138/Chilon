@@ -77,6 +77,9 @@ pwsh -NoProfile -File database/tests/run_plan_test.ps1
 
 # 执行：消费审批、契约迁移、围栏令牌拒绝过期 Worker
 pwsh -NoProfile -File database/tests/run_exec_test.ps1
+
+# 步骤 DAG：不可执行的计划在创建时被拒，按依赖调度
+pwsh -NoProfile -File database/tests/run_step_test.ps1
 ```
 
 ## 设计与契约的状态
