@@ -58,8 +58,16 @@ Write-Host "==> running outbox scenarios" -ForegroundColor Cyan
 $env:CHILON_TEST_DATABASE_URL = "postgresql+psycopg://postgres:$Password@localhost:$Port/chilon"
 Push-Location (Join-Path $root "backend")
 try {
-    & $python "tests/test_outbox.py" 2>&1 | ForEach-Object { Write-Host "  $_" }
-    if ($LASTEXITCODE -ne 0) { throw "outbox scenarios failed" }
+    Write-Host "    python: $python"
+    & $python --version 2>&1 | ForEach-Object { Write-Host "    $_" }
+    $out = & $python "tests/test_outbox.py" 2>&1
+    $code = $LASTEXITCODE
+    $out | ForEach-Object { Write-Host "  $_" }
+    if ($code -ne 0) {
+        # surface the tail as annotations: CI logs need admin rights to read
+        $out | Select-Object -Last 12 | ForEach-Object { Write-Host "::error::outbox: $_" }
+        throw "outbox scenarios failed (exit $code)"
+    }
 }
 finally {
     Pop-Location
