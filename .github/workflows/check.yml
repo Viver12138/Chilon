@@ -16,3 +16,15 @@ jobs:
       # All checks are stdlib-only; no pip install required.
       - name: Run design and registry checks
         run: python tools/check_all.py
+
+  database:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      # Applies the generated DDL to a real PostgreSQL 17 container and asserts
+      # the structure and the two-layer constraints. Docker is preinstalled.
+      - name: Apply generated DDL to PostgreSQL 17 and verify
+        run: pwsh -NoProfile -File database/tests/run_container_test.ps1

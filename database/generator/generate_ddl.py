@@ -100,7 +100,7 @@ def render_table(table: dict, schema: dict, known: set[str], external: set[str])
     return lines
 
 
-def generate(reg: dict) -> tuple[str, dict]:
+def generate(reg: dict, include_optional: bool = False) -> tuple[str, dict]:
     schema = reg["schema"]
     tables = all_tables(reg)
     known = set(tables)
@@ -112,28 +112,50 @@ def generate(reg: dict) -> tuple[str, dict]:
     order = order or sorted(tables)
 
     optional = {t["name"] for t in tables.values() if t.get("optional")}
+    included = [n for n in order if include_optional or n not in optional]
+    skipped = [n for n in order if n in optional] if not include_optional else []
+    needs_ext = sorted(
+        {tables[n].get("requires_extension") for n in included if tables[n].get("requires_extension")}
+    )
 
     header = [
         "-- GENERATED FILE — do not edit by hand.",
         f"-- generator: database/generator/generate_ddl.py v{GENERATOR_VERSION}",
         f"-- registry_version: {schema['registry_version']}",
         f"-- registry_hash: {registry_hash(reg)}",
-        "-- regenerate with: python database/generator/generate_ddl.py",
+        f"-- variant: {'with-optional' if include_optional else 'core (optional tables excluded)'}",
+        "-- regenerate with: python database/generator/generate_ddl.py" + (" --with-optional" if include_optional else ""),
         "",
     ]
+    if skipped:
+        header.append(f"-- skipped optional tables: {', '.join(skipped)}")
+        header.append("-- include them with: python database/generator/generate_ddl.py --with-optional")
 
     body: list[str] = []
-    if any(t.get("requires_extension") for t in tables.values()):
-        body.append("-- Optional extension required by some tables:")
-        for ext in schema.get("extensions", []):
+    for ext in schema.get("extensions", []):
+        if ext["name"] in needs_ext:
+            body.append(f"CREATE EXTENSION IF NOT EXISTS {ext['name']};")
+        else:
             state = "required" if ext.get("required") else "optional"
             body.append(f"-- CREATE EXTENSION IF NOT EXISTS {ext['name']};  -- {state}: {ext.get('notes','')}")
+    body.append("")
+
+    # functions must exist before RLS policies reference them (master §9.2 order)
+    funcs = schema.get("functions", [])
+    if funcs:
+        body.append("-- Session context functions (master §10.3)")
+        for fn in funcs:
+            body.append(f"-- {fn.get('description','')}")
+            body.append(
+                f"CREATE OR REPLACE FUNCTION public.{fn['name']}() RETURNS {fn['returns']}\n"
+                f"LANGUAGE sql {fn.get('volatility', 'STABLE')} AS $$\n"
+                f"    SELECT nullif(current_setting('{fn['setting']}', true), '')::{fn['returns']}\n"
+                f"$$;"
+            )
         body.append("")
 
-    for name in order:
+    for name in included:
         table = tables[name]
-        if table.get("optional"):
-            body.append(f"-- OPTIONAL TABLE (requires {table.get('requires_extension','an extension')}): skip if absent")
         body.extend(render_table(table, schema, known, external))
 
     body.append("-- Grants are intentionally not generated: they depend on deployment roles.")
@@ -141,16 +163,22 @@ def generate(reg: dict) -> tuple[str, dict]:
 
     sql = "\n".join(header + body).rstrip() + "\n"
 
+    def count(key: str) -> int:
+        return sum(len(tables[n].get(key, [])) for n in included)
+
     manifest = {
         "generator_version": GENERATOR_VERSION,
         "registry_version": schema["registry_version"],
         "registry_hash": registry_hash(reg),
         "schema_hash": hashlib.sha256(sql.encode("utf-8")).hexdigest(),
-        "tables": len(tables),
-        "fields": sum(len(t["fields"]) for t in tables.values()),
-        "indexes": sum(len(t.get("indexes", [])) for t in tables.values()),
-        "policies": sum(len(t.get("policies", [])) for t in tables.values()),
-        "optional_tables": sorted(optional),
+        "variant": "with-optional" if include_optional else "core",
+        "tables": len(included),
+        "fields": sum(len(tables[n]["fields"]) for n in included),
+        "indexes": count("indexes"),
+        "policies": count("policies"),
+        "included_tables": included,
+        "skipped_tables": skipped,
+        "extensions_enabled": needs_ext,
         "external_tables": sorted(external),
         "output": "database/generated/k009.sql",
     }
@@ -159,7 +187,8 @@ def generate(reg: dict) -> tuple[str, dict]:
 
 def main() -> int:
     reg = load_registry()
-    sql, manifest = generate(reg)
+    include_optional = "--with-optional" in sys.argv
+    sql, manifest = generate(reg, include_optional=include_optional)
 
     sql_path = OUT_DIR / "k009.sql"
     manifest_path = OUT_DIR / "manifest.json"

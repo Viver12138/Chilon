@@ -1,15 +1,31 @@
 {
   "generator_version": "0.1.0",
   "registry_version": "0.1.0",
-  "registry_hash": "363eaca8c17f53f7c724dac7ed23604b3ef12801a45df579f4d9ca1d4033ed2e",
-  "schema_hash": "104d51212e3750e83abaa3573d735dde3d02692af6eec4108de4e6f7697f6819",
-  "tables": 13,
-  "fields": 143,
+  "registry_hash": "a2f4cded965f6aab131ed67b64574234db225d9d36efde4ea41c7403bcfbef5b",
+  "schema_hash": "402bc511a55ab06055523b00d8afd090b3bdeb0e13a6d65a8a4faa6ef8c1af98",
+  "variant": "core",
+  "tables": 12,
+  "fields": 136,
   "indexes": 20,
   "policies": 4,
-  "optional_tables": [
+  "included_tables": [
+    "knowledge_categories",
+    "knowledge_sources",
+    "knowledge_document_versions",
+    "knowledge_chunks",
+    "knowledge_questions",
+    "knowledge_annotations",
+    "knowledge_ingestion_runs",
+    "knowledge_reviews",
+    "knowledge_indexing_jobs",
+    "knowledge_retrieval_runs",
+    "knowledge_retrieval_results",
+    "material_knowledge_citations"
+  ],
+  "skipped_tables": [
     "knowledge_question_embeddings"
   ],
+  "extensions_enabled": [],
   "external_tables": [
     "material_versions"
   ],
