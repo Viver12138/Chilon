@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: e477906d0ad7359bdf04e62d9560e6f9d61c32b51c7e5f9d0f802caa47a746ed
+-- registry_hash: 7819f4d88585a6a3ac2ba264628fe108e91002c22abc84e43f4abc5dc16d8cd6
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -49,7 +49,7 @@ CREATE TABLE users (
 
 ALTER TABLE users ENABLE ROW LEVEL SECURITY;
 ALTER TABLE users FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_users_self ON users FOR SELECT USING (id = public.app_current_user_id());
+CREATE POLICY pol_users_service ON users FOR ALL USING (true) WITH CHECK (true);
 
 -- 登录凭据；与身份主体分离，只存不可逆 Hash
 CREATE TABLE user_credentials (
@@ -70,6 +70,7 @@ CREATE TABLE user_credentials (
 
 ALTER TABLE user_credentials ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_credentials FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_user_credentials_service ON user_credentials FOR ALL USING (true) WITH CHECK (true);
 
 -- 用户名历史；改名后保留旧名，防冒用
 CREATE TABLE user_username_history (
@@ -125,6 +126,7 @@ CREATE TABLE user_sessions (
 
 ALTER TABLE user_sessions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_sessions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_user_sessions_service ON user_sessions FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_user_sessions_user ON user_sessions ("user_id", "expires_at");
 

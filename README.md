@@ -66,6 +66,9 @@ pwsh -NoProfile -File database/tests/run_rls_test.ps1
 
 # Outbox：原子写入、至少一次投递、死信、消费者幂等
 pwsh -NoProfile -File database/tests/run_outbox_test.ps1
+
+# 身份：密码不落明文、会话只存 hash、撤销与停用生效
+pwsh -NoProfile -File database/tests/run_identity_test.ps1
 ```
 
 ## 设计与契约的状态
