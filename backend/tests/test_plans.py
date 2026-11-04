@@ -24,6 +24,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.services import contract, plans, tasks  # noqa: E402
 
 FAILURES: list[str] = []
@@ -154,7 +155,7 @@ async def scenario_expiry(uid: uuid.UUID) -> None:
     print("4. an expired approval cannot authorise execution")
     approval_id, version_id, digest = await approved_approval(uid, {"steps": [{"key": "y"}]})
     past = datetime.now(timezone.utc) - timedelta(seconds=1)
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         await s.execute(
             text("UPDATE agent_plan_approvals SET expires_at = :t WHERE id = :id"),
             {"t": past, "id": approval_id},
@@ -226,7 +227,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
+    db.init(await provision_runtime_role(url))
     try:
         uid = await make_user()
         await scenario_plan_version(uid)

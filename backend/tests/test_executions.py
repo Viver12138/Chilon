@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.services import contract, executions, plans, tasks  # noqa: E402
 
 FAILURES: list[str] = []
@@ -249,7 +250,7 @@ async def scenario_fencing(uid: uuid.UUID) -> None:
             check(True, "a live lease cannot be taken")
 
     # simulate the lease expiring while worker-a is still running
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         await s.execute(
             text("UPDATE agent_executions SET lease_expires_at = now() - interval '1 second' WHERE id = :id"),
             {"id": execution_id},
@@ -288,7 +289,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
+    db.init(await provision_runtime_role(url))
     try:
         uid = await make_user()
         await scenario_start(uid)

@@ -22,6 +22,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.services import contract, executions, plans, tasks, tools  # noqa: E402
 
 FAILURES: list[str] = []
@@ -74,7 +75,7 @@ async def make_tool(
 
 
 async def grant(uid: uuid.UUID, tool_id: uuid.UUID) -> None:
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         await s.execute(
             text(
                 """
@@ -174,7 +175,7 @@ async def scenario_gates(uid: uuid.UUID) -> None:
     check(inv.status == tools.TOOL.initial, f"approval-gated tool starts in {inv.status!r}")
 
     # a revoked grant must stop working
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         await s.execute(
             text("UPDATE agent_tool_grants SET revoked_at = now() WHERE owner_id = :o AND tool_definition_id = :t"),
             {"o": uid, "t": free},
@@ -208,7 +209,7 @@ async def scenario_idempotency(uid: uuid.UUID) -> None:
     check(first.id == second.id, "replay returns the original invocation id")
     check(first.idempotency_key == second.idempotency_key, "the key is stable")
 
-    async with db.system_session() as s:
+    async with db.session_for(uid) as s:
         count = (
             await s.execute(
                 text("SELECT count(*) FROM agent_tool_executions WHERE idempotency_key = :k"),
@@ -295,7 +296,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
+    db.init(await provision_runtime_role(url))
     try:
         uid = await make_user()
         await scenario_gates(uid)
