@@ -96,6 +96,7 @@
   - [D.34 2026-11-04 身份服务与 RLS 的一个明确例外](#d34-2026-11-04-身份服务与-rls-的一个明确例外)
   - [D.35 2026-11-04 状态枚举漂移：8 个聚合的 `status` 与契约不符](#d35-2026-11-04-状态枚举漂移8-个聚合的-status-与契约不符)
   - [D.36 2026-11-04 契约驱动的 Task 服务，与契约里 5 条重复边](#d36-2026-11-04-契约驱动的-task-服务与契约里-5-条重复边)
+  - [D.37 2026-11-04 方案审批服务，与一条永远无法满足的约束](#d37-2026-11-04-方案审批服务与一条永远无法满足的约束)
 
 [//]: # (toc:end)
 
@@ -4122,6 +4123,79 @@ T07 与 T17 都声明了这条边。**这是契约缺陷，不是服务缺陷**�
 ```text
 check     : 15 项静态检查
 database  : DDL → 结构 → alembic → RLS → Outbox → 身份 → 任务生命周期
+```
+
+----------------------------------------
+
+------------------------------------------------------------------------
+
+
+## D.37 2026-11-04 方案审批服务，与一条永远无法满足的约束
+
+**先说那条约束——它比服务本身更严重。**
+
+`agent_plan_approvals` 上有：
+
+```sql
+CHECK ((status = 'consumed') = (consumed_at IS NOT NULL))
+```
+
+而契约里 `plan_approval` 的六个状态是 `pending / approved / rejected / revoked / invalidated / expired`——**没有 `consumed`**。
+
+于是 `status = 'consumed'` 恒为假，约束退化成 `consumed_at IS NULL`：**这张表永远无法记录“审批已被消费”**。而审批单次消费是整个产品最核心的不变量之一。
+
+它是从 `material_publication_approvals` 抄来的，那张表的契约里确实有 `consumed` 状态，所以那边成立。
+
+**修法**：消费是“使用”不是“决定”，审批状态保持 `approved`，只写时间戳：
+
+```sql
+CHECK (consumed_at IS NULL OR status = 'approved')
+```
+
+**新增一类检查**：约束里引用的状态字面量，必须是该列枚举允许的值。把旧表达式放回去验证过——检查确实报错：
+
+```text
+plan_approval: agent_plan_approvals.status constraint
+ck_agent_plan_approvals_consumed references state(s) the enum forbids: ['consumed']
+```
+
+这条检查和之前的重复边检查是同一类：**约束本身也要被约束**。
+
+**记录的债务**：同一个概念（审批被使用）在两个模块里建模不同——publication 用状态 `consumed`，plan 用时间戳。现在两边各自自洽，但这是不一致，等有人负责时统一。
+
+**服务：`backend/app/services/plans.py`**
+
+单次消费与 Hash 绑定用一条条件 UPDATE 完成：
+
+```sql
+UPDATE ... SET consumed_at = now()
+WHERE id = :id AND status = 'approved' AND consumed_at IS NULL
+  AND plan_content_hash = :hash AND plan_version_id = :version
+RETURNING id
+```
+
+先读后写的写法会让两个执行器同时读到“已批准、未消费”然后同时放行。**这里由数据库裁决一次。**
+
+**测试抓到的服务 bug：** `create_plan_version` 原本用 `ON CONFLICT (id) DO NOTHING` 做“取或建”，而 id 是现场生成的——冲突永不发生，于是每次调用都新建一个 plan，版本号永远从 1 开始。改为先查后建。
+
+**测试覆盖（6 组）：**
+
+| 场景 | 断言 |
+| --- | --- |
+| 版本 | 初始状态来自契约、版本号递增、同内容同 Hash、键序不影响 Hash |
+| 消费 | 成功一次并被记录；第二次被拒 |
+| Hash 绑定 | 方案改过后旧审批不能执行，且审批记录完好未受污染 |
+| 过期 | 过期审批被拒 |
+| 未批准 | pending 与 rejected 都不能消费；重复决策被拒 |
+| 数据库层 | 非 `approved` 行写入 `consumed_at` 被 CHECK 拒绝 |
+
+**顺带**：测试里我还写了一个 `'confirmed'` 的字面量——那是枚举修正前的旧值，被 CHECK 直接拒绝。已改为从契约取初始状态。**同一个错误我这轮犯了两次（服务里、测试里各一次），都靠数据库拒绝暴露。**
+
+**流水线（run #22 全绿）：**
+
+```text
+check     : 15 项静态检查
+database  : DDL → 结构 → alembic → RLS → Outbox → 身份 → 任务 → 方案审批
 ```
 
 ----------------------------------------
