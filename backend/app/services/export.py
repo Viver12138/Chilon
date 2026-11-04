@@ -23,7 +23,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.outbox import dispatcher
-from app.services import materials
+from app.services import materials, pdf
 
 EXPORT_ROOT = Path("var/exports")
 
@@ -142,10 +142,13 @@ async def create_export(
     material_version_id: uuid.UUID,
     *,
     profile: str,
+    fmt: str = "docx",
     base_dir: Path | None = None,
 ) -> dict[str, Any]:
     if profile not in ("teacher", "student"):
         raise ExportError(f"unknown profile {profile!r}")
+    if fmt not in ("docx", "pdf"):
+        raise ExportError(f"unknown format {fmt!r}")
 
     version = (
         await session.execute(
@@ -161,16 +164,19 @@ async def create_export(
     if version is None:
         raise ExportError("material version not found")
 
-    data = render_docx(version.document_content, profile)
+    docx_bytes = render_docx(version.document_content, profile)
+    # PDF is a conversion of the projected DOCX, so it inherits the projection:
+    # there is no second renderer that could disagree about what a student sees.
+    data = docx_bytes if fmt == "docx" else pdf.convert_docx_to_pdf(docx_bytes)
     file_hash = hashlib.sha256(data).hexdigest()
 
     root = Path(base_dir or EXPORT_ROOT)
     root.mkdir(parents=True, exist_ok=True)
     export_id = uuid.uuid4()
-    filename = f"{export_id}.docx"
+    filename = f"{export_id}.{fmt}"
     (root / filename).write_bytes(data)
 
-    options = {"profile": profile, "format": "docx", "renderer": "chilon-docx-1"}
+    options = {"profile": profile, "format": fmt, "renderer": f"chilon-{fmt}-1"}
     await session.execute(
         text(
             """
@@ -189,6 +195,8 @@ async def create_export(
             "owner": owner_id,
             "version": material_version_id,
             "profile": profile,
+            "fmt": fmt,
+            "renderer": f"chilon-{fmt}-1",
             "options_hash": hashlib.sha256(
                 str(sorted(options.items())).encode("utf-8")
             ).hexdigest(),
@@ -214,6 +222,7 @@ async def create_export(
     return {
         "export_id": str(export_id),
         "profile": profile,
+        "format": fmt,
         "status": "ready",
         "storage_key": f"exports/{filename}",
         "file_hash": file_hash,

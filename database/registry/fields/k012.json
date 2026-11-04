@@ -422,8 +422,9 @@
       "policies": [
         {
           "name": "pol_material_versions_owner",
-          "command": "SELECT",
-          "using": "owner_id = public.app_current_user_id()"
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
         }
       ]
     },
@@ -747,8 +748,9 @@
       "policies": [
         {
           "name": "pol_material_draft_revisions_owner",
-          "command": "SELECT",
-          "using": "owner_id = public.app_current_user_id()"
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
         }
       ]
     },

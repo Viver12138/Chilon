@@ -15,6 +15,7 @@ from fastapi import FastAPI
 from app.api import agent as agent_api
 from app.api import auth as auth_api
 from app.api import events as events_api
+from app.api import knowledge as knowledge_api
 from app.api import executions as executions_api
 from app.api import plans as plans_api
 from app.api import tasks as tasks_api
@@ -41,6 +42,7 @@ app.include_router(executions_api.router)
 app.include_router(agent_api.router)
 app.include_router(auth_api.router)
 app.include_router(events_api.router)
+app.include_router(knowledge_api.router)
 
 
 @app.get("/healthz")

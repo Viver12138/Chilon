@@ -139,6 +139,12 @@
           "name": "pol_knowledge_categories_select",
           "command": "SELECT",
           "using": "scope = 'platform' OR owner_id = public.app_current_user_id()"
+        },
+        {
+          "name": "pol_knowledge_categories_owner_all",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
         }
       ]
     },
@@ -548,6 +554,12 @@
           "name": "pol_knowledge_document_versions_read",
           "command": "SELECT",
           "using": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        },
+        {
+          "name": "pol_knowledge_document_versions_write",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
         }
       ]
     },
@@ -676,6 +688,12 @@
           "name": "pol_knowledge_chunks_read",
           "command": "SELECT",
           "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        },
+        {
+          "name": "pol_knowledge_chunks_write",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
         }
       ]
     },
@@ -851,6 +869,12 @@
           "name": "pol_knowledge_questions_read",
           "command": "SELECT",
           "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        },
+        {
+          "name": "pol_knowledge_questions_write",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
         }
       ]
     },
@@ -1154,7 +1178,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_ingestion_runs_write",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        }
+      ]
     },
     {
       "name": "knowledge_reviews",
@@ -1260,7 +1291,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_reviews_write",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        }
+      ]
     },
     {
       "name": "knowledge_indexing_jobs",
@@ -1363,7 +1401,14 @@
           "where": "status IN ('queued','running')"
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_indexing_jobs_write",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+        }
+      ]
     },
     {
       "name": "knowledge_retrieval_runs",

@@ -112,6 +112,9 @@ pwsh -NoProfile -File database/tests/run_auth_test.ps1
 
 # SSE：Last-Event-ID 回放、实时跟随、空闲心跳
 pwsh -NoProfile -File database/tests/run_sse_test.ps1
+
+# PDF 导出与教师上传（上传在 RLS 下运行，非超级用户）
+pwsh -NoProfile -File database/tests/run_pdf_upload_test.ps1
 ```
 
 ## 配置与模型
