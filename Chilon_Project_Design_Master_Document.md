@@ -94,6 +94,7 @@
   - [D.32 2026-11-04 CI 间歇性失败的真实原因：探活没探到正确的实例](#d32-2026-11-04-ci-间歇性失败的真实原因探活没探到正确的实例)
   - [D.33 2026-11-04 Outbox 派发器与投递契约](#d33-2026-11-04-outbox-派发器与投递契约)
   - [D.34 2026-11-04 身份服务与 RLS 的一个明确例外](#d34-2026-11-04-身份服务与-rls-的一个明确例外)
+  - [D.35 2026-11-04 状态枚举漂移：8 个聚合的 `status` 与契约不符](#d35-2026-11-04-状态枚举漂移8-个聚合的-status-与契约不符)
 
 [//]: # (toc:end)
 
@@ -4022,6 +4023,45 @@ database  : DDL → 结构断言 → alembic upgrade/downgrade → RLS 隔离 �
 ```text
 check     : 14 项静态检查
 database  : DDL → 结构断言 → alembic upgrade/downgrade → RLS 隔离 → Outbox 契约 → 身份服务
+```
+
+----------------------------------------
+
+------------------------------------------------------------------------
+
+
+## D.35 2026-11-04 状态枚举漂移：8 个聚合的 `status` 与契约不符
+
+**发现过程。** 开始写 Task 服务时，我打算让冻结的状态机契约驱动迁移校验。第一件事是把契约里的状态读出来，与 Registry 的 CHECK 约束比对——结果对不上。
+
+**13 个聚合里 8 个不一致，全部在 K011。**
+
+| 聚合 | 契约状态数 | Registry 状态数 | 典型偏差 |
+| --- | --- | --- | --- |
+| task | 9 | 11 | 漏 `planning`、`awaiting_plan_approval`、`running`、`needs_attention`、`cancelling` |
+| execution | 12 | 12 | 漏 `pause_requested`、`cancel_requested`、`cancelling`、`superseded`，多 `recovering`、`expired` |
+| tool_execution | 10 | 8 | 漏 `requested`、`authorizing`、`authorized`、`rejected`、`dispatching` |
+| 其余 5 个 | — | — | 不同程度的漏与多 |
+
+**原因不是手误，是输入错了。** 写 K011 时我以主文档 §15 的散文为输入，自己归纳出一组状态名；而 `schemas/state_machines.v1.json` 早就冻结了精确的枚举。K012/K014 的聚合全部正确——因为写它们时我读的是 §21.7–§21.10 的状态机表格。
+
+**最严重的后果不是名字不对，是两个默认值非法。**
+
+`agent_runs.status` 默认 `'queued'`、`agent_tool_executions.status` 默认 `'pending'`，这两个值都不在契约状态集里。**也就是说第一次插入就会违反 CHECK 约束**——一个建表就带着的、必然触发的错误，却因为没有任何测试插入这两张表而一直没暴露。
+
+**处理：**
+
+1. `tools/sync_state_enums.py`——以契约为输入重写 CHECK 表达式与默认值。10 处改动，全部机械可复核。
+2. `database/tests/check_state_contract.py`——加入 CI，逐聚合比对枚举与默认值。**这是本轮真正的交付物**：它把“契约是输入”这件事从纪律变成了检查。
+3. 五个数据库测试全部重跑，全绿。
+
+**教训的一句话版本：契约是输入，不是事后对照的参考资料。** 只要代码里出现一个手写的状态名，就说明该处没有消费契约。
+
+**流水线（run #18 全绿，15 项静态检查 + 5 个数据库套件）：**
+
+```text
+check     : 15 项（新增：状态枚举与契约一致）
+database  : DDL → 结构断言 → alembic → RLS → Outbox → 身份
 ```
 
 ----------------------------------------
