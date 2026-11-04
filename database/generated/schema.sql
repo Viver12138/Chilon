@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 2498a7b7307f650aa6ffed6bd4798cb1a6919c8a0d904f94fa4c741054e6e64b
+-- registry_hash: ab2c7dac6bd9251a18ae4d26dde6adad68851c3fd0680463b8ee6d2ddee983e7
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -26,6 +26,525 @@ CREATE OR REPLACE FUNCTION public.app_current_execution_id() RETURNS uuid
 LANGUAGE sql STABLE AS $$
     SELECT nullif(current_setting('app.current_execution_id', true), '')::uuid
 $$;
+
+-- 质量规则身份；版本在 quality_rule_versions
+CREATE TABLE quality_rules (
+    "id" UUID NOT NULL,
+    "key" VARCHAR(80) NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
+    "category" VARCHAR(40) NOT NULL,
+    "default_severity" VARCHAR(4) NOT NULL,
+    "description" TEXT,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'active',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_rules PRIMARY KEY ("id"),
+    CONSTRAINT uq_quality_rules_key UNIQUE ("key"),
+    CONSTRAINT ck_quality_rules_severity CHECK (default_severity IN ('S0','S1','S2','S3')),
+    CONSTRAINT ck_quality_rules_status CHECK (status IN ('active','deprecated'))
+);
+
+ALTER TABLE quality_rules ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_rules FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_rules_read ON quality_rules FOR SELECT USING (true);
+
+-- 规则版本；不可变
+CREATE TABLE quality_rule_versions (
+    "id" UUID NOT NULL,
+    "rule_id" UUID NOT NULL,
+    "version_no" INTEGER NOT NULL,
+    "severity" VARCHAR(4) NOT NULL,
+    "is_blocking" BOOLEAN NOT NULL DEFAULT false,
+    "definition" JSONB NOT NULL,
+    "definition_hash" CHAR(64) NOT NULL,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'draft',
+    "effective_from" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_rule_versions PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_rule_versions_rule_id FOREIGN KEY ("rule_id") REFERENCES quality_rules(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_quality_rule_versions_rule_no UNIQUE ("rule_id", "version_no"),
+    CONSTRAINT ck_quality_rule_versions_severity CHECK (severity IN ('S0','S1','S2','S3')),
+    CONSTRAINT ck_quality_rule_versions_status CHECK (status IN ('draft','active','retired'))
+);
+
+ALTER TABLE quality_rule_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_rule_versions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_rule_versions_read ON quality_rule_versions FOR SELECT USING (true);
+
+CREATE INDEX ix_quality_rule_versions_rule ON quality_rule_versions ("rule_id", "version_no");
+
+-- 对固定内容快照执行质量规则
+CREATE TABLE quality_check_runs (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "target_type" VARCHAR(24) NOT NULL,
+    "target_id" UUID NOT NULL,
+    "target_content_hash" CHAR(64) NOT NULL,
+    "document_schema_version" VARCHAR(20) NOT NULL,
+    "rule_policy_hash" CHAR(64) NOT NULL,
+    "engine_version" VARCHAR(64) NOT NULL,
+    "process_status" VARCHAR(24) NOT NULL DEFAULT 'queued',
+    "gate_result" VARCHAR(24) NOT NULL DEFAULT 'not_evaluated',
+    "issue_counts" JSONB,
+    "started_at" TIMESTAMPTZ,
+    "finished_at" TIMESTAMPTZ,
+    "error_code" VARCHAR(80),
+    "created_by" UUID NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_check_runs PRIMARY KEY ("id"),
+    CONSTRAINT ck_quality_check_runs_target_type CHECK (target_type IN ('draft_revision','material_version')),
+    CONSTRAINT ck_quality_check_runs_process CHECK (process_status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')),
+    CONSTRAINT ck_quality_check_runs_gate CHECK (gate_result IN ('not_evaluated','passed','passed_with_warnings','blocked','inconclusive'))
+);
+
+ALTER TABLE quality_check_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_check_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_check_runs_owner ON quality_check_runs FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_quality_check_runs_target ON quality_check_runs ("target_type", "target_id", "created_at");
+CREATE INDEX ix_quality_check_runs_owner ON quality_check_runs ("owner_id", "process_status");
+
+-- 本次 Run 固化的规则快照；保证事后可复现
+CREATE TABLE quality_check_rule_snapshots (
+    "id" UUID NOT NULL,
+    "run_id" UUID NOT NULL,
+    "rule_id" UUID NOT NULL,
+    "rule_version_id" UUID NOT NULL,
+    "rule_key" VARCHAR(80) NOT NULL,
+    "severity" VARCHAR(4) NOT NULL,
+    "definition_hash" CHAR(64) NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_check_rule_snapshots PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_check_rule_snapshots_run_id FOREIGN KEY ("run_id") REFERENCES quality_check_runs(id) ON DELETE CASCADE,
+    CONSTRAINT fk_quality_check_rule_snapshots_rule_id FOREIGN KEY ("rule_id") REFERENCES quality_rules(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_quality_check_rule_snapshots_rule_version_id FOREIGN KEY ("rule_version_id") REFERENCES quality_rule_versions(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_quality_check_rule_snapshots_run_rule UNIQUE ("run_id", "rule_id")
+);
+
+ALTER TABLE quality_check_rule_snapshots ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_check_rule_snapshots FORCE ROW LEVEL SECURITY;
+
+-- 单条规则的检查结果
+CREATE TABLE quality_check_results (
+    "id" UUID NOT NULL,
+    "run_id" UUID NOT NULL,
+    "rule_id" UUID NOT NULL,
+    "rule_version_id" UUID NOT NULL,
+    "node_id" UUID,
+    "result" VARCHAR(24) NOT NULL,
+    "message" TEXT,
+    "detail" JSONB,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_check_results PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_check_results_run_id FOREIGN KEY ("run_id") REFERENCES quality_check_runs(id) ON DELETE CASCADE,
+    CONSTRAINT fk_quality_check_results_rule_id FOREIGN KEY ("rule_id") REFERENCES quality_rules(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_quality_check_results_rule_version_id FOREIGN KEY ("rule_version_id") REFERENCES quality_rule_versions(id) ON DELETE RESTRICT,
+    CONSTRAINT ck_quality_check_results_result CHECK (result IN ('passed','failed','warning','not_applicable','inconclusive'))
+);
+
+ALTER TABLE quality_check_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_check_results FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_check_results_run ON quality_check_results ("run_id", "result");
+CREATE INDEX ix_quality_check_results_node ON quality_check_results ("node_id") WHERE node_id IS NOT NULL;
+
+-- 需要教师处理的问题；由检查结果聚合而来
+CREATE TABLE quality_issues (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "run_id" UUID NOT NULL,
+    "rule_id" UUID NOT NULL,
+    "code" VARCHAR(80) NOT NULL,
+    "severity" VARCHAR(4) NOT NULL,
+    "title" VARCHAR(300) NOT NULL,
+    "description" TEXT,
+    "node_ids" TEXT[],
+    "resolution_status" VARCHAR(24) NOT NULL DEFAULT 'unresolved',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_issues PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_issues_run_id FOREIGN KEY ("run_id") REFERENCES quality_check_runs(id) ON DELETE CASCADE,
+    CONSTRAINT fk_quality_issues_rule_id FOREIGN KEY ("rule_id") REFERENCES quality_rules(id) ON DELETE RESTRICT,
+    CONSTRAINT ck_quality_issues_severity CHECK (severity IN ('S0','S1','S2','S3')),
+    CONSTRAINT ck_quality_issues_resolution CHECK (resolution_status IN ('unresolved','resolved','waived','invalidated','superseded'))
+);
+
+ALTER TABLE quality_issues ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_issues FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_issues_owner ON quality_issues FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_quality_issues_run ON quality_issues ("run_id", "severity");
+CREATE INDEX ix_quality_issues_owner_open ON quality_issues ("owner_id", "severity") WHERE resolution_status = 'unresolved';
+
+-- 问题或结果的可追溯证据；必须是真实执行产物
+CREATE TABLE quality_evidence (
+    "id" UUID NOT NULL,
+    "issue_id" UUID,
+    "run_id" UUID NOT NULL,
+    "evidence_type" VARCHAR(32) NOT NULL,
+    "payload" JSONB NOT NULL,
+    "payload_hash" CHAR(64) NOT NULL,
+    "tool_name" VARCHAR(120),
+    "tool_version" VARCHAR(64),
+    "produced_at" TIMESTAMPTZ NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_evidence PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_evidence_issue_id FOREIGN KEY ("issue_id") REFERENCES quality_issues(id) ON DELETE CASCADE,
+    CONSTRAINT fk_quality_evidence_run_id FOREIGN KEY ("run_id") REFERENCES quality_check_runs(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_evidence_type CHECK (evidence_type IN ('validator_output','rule_trace','test_run','locator_readback'))
+);
+
+ALTER TABLE quality_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_evidence FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_evidence_run ON quality_evidence ("run_id");
+CREATE INDEX ix_quality_evidence_issue ON quality_evidence ("issue_id") WHERE issue_id IS NOT NULL;
+
+-- 对固定内容快照执行数学验证
+CREATE TABLE math_validation_runs (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "target_type" VARCHAR(24) NOT NULL,
+    "target_id" UUID NOT NULL,
+    "target_content_hash" CHAR(64) NOT NULL,
+    "validator_version" VARCHAR(64) NOT NULL,
+    "sympy_version" VARCHAR(32),
+    "process_status" VARCHAR(24) NOT NULL DEFAULT 'queued',
+    "validation_result" VARCHAR(24) NOT NULL DEFAULT 'not_evaluated',
+    "coverage" JSONB,
+    "started_at" TIMESTAMPTZ,
+    "finished_at" TIMESTAMPTZ,
+    "error_code" VARCHAR(80),
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_math_validation_runs PRIMARY KEY ("id"),
+    CONSTRAINT ck_math_validation_runs_target_type CHECK (target_type IN ('draft_revision','material_version')),
+    CONSTRAINT ck_math_validation_runs_process CHECK (process_status IN ('queued','running','succeeded','failed','cancelled','outcome_unknown')),
+    CONSTRAINT ck_math_validation_runs_result CHECK (validation_result IN ('not_evaluated','validated','failed','inconclusive','unsupported'))
+);
+
+ALTER TABLE math_validation_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE math_validation_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_math_validation_runs_owner ON math_validation_runs FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_math_validation_runs_target ON math_validation_runs ("target_type", "target_id", "created_at");
+
+-- 按层记录数学验证证据
+CREATE TABLE math_validation_evidence (
+    "id" UUID NOT NULL,
+    "run_id" UUID NOT NULL,
+    "node_id" UUID,
+    "layer" VARCHAR(24) NOT NULL,
+    "claim" TEXT,
+    "result" VARCHAR(24) NOT NULL,
+    "method" VARCHAR(120),
+    "payload" JSONB,
+    "payload_hash" CHAR(64),
+    "produced_at" TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_math_validation_evidence PRIMARY KEY ("id"),
+    CONSTRAINT fk_math_validation_evidence_run_id FOREIGN KEY ("run_id") REFERENCES math_validation_runs(id) ON DELETE CASCADE,
+    CONSTRAINT ck_math_validation_evidence_layer CHECK (layer IN ('formula','symbolic','numerical','solution','cross_material')),
+    CONSTRAINT ck_math_validation_evidence_result CHECK (result IN ('validated','failed','inconclusive','unsupported'))
+);
+
+ALTER TABLE math_validation_evidence ENABLE ROW LEVEL SECURITY;
+ALTER TABLE math_validation_evidence FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_math_validation_evidence_run ON math_validation_evidence ("run_id", "layer");
+
+-- 教师对问题的反馈；用于规则改进
+CREATE TABLE quality_issue_feedback (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "issue_id" UUID NOT NULL,
+    "feedback_type" VARCHAR(24) NOT NULL,
+    "reason" TEXT,
+    "created_by" UUID NOT NULL,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_issue_feedback PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_issue_feedback_issue_id FOREIGN KEY ("issue_id") REFERENCES quality_issues(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_issue_feedback_type CHECK (feedback_type IN ('agree','false_positive','unclear','other'))
+);
+
+ALTER TABLE quality_issue_feedback ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_issue_feedback FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_issue_feedback_owner ON quality_issue_feedback FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_quality_issue_feedback_issue ON quality_issue_feedback ("issue_id");
+
+-- 问题处置记录；waive 必须留理由
+CREATE TABLE quality_issue_resolutions (
+    "id" UUID NOT NULL,
+    "owner_id" UUID NOT NULL,
+    "issue_id" UUID NOT NULL,
+    "resolution" VARCHAR(24) NOT NULL,
+    "reason" TEXT,
+    "decided_by" UUID NOT NULL,
+    "decided_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_issue_resolutions PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_issue_resolutions_issue_id FOREIGN KEY ("issue_id") REFERENCES quality_issues(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_issue_resolutions_value CHECK (resolution IN ('resolved','waived','invalidated','superseded')),
+    CONSTRAINT ck_quality_issue_resolutions_reason CHECK (resolution <> 'waived' OR (reason IS NOT NULL AND length(trim(reason)) > 0))
+);
+
+ALTER TABLE quality_issue_resolutions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_issue_resolutions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_issue_resolutions_owner ON quality_issue_resolutions FOR ALL USING (owner_id = public.app_current_user_id()) WITH CHECK (owner_id = public.app_current_user_id());
+
+CREATE INDEX ix_quality_issue_resolutions_issue ON quality_issue_resolutions ("issue_id");
+
+-- 评估数据集身份
+CREATE TABLE quality_datasets (
+    "id" UUID NOT NULL,
+    "key" VARCHAR(80) NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
+    "domain" VARCHAR(40) NOT NULL DEFAULT 'mathematics',
+    "description" TEXT,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'active',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_datasets PRIMARY KEY ("id"),
+    CONSTRAINT uq_quality_datasets_key UNIQUE ("key"),
+    CONSTRAINT ck_quality_datasets_status CHECK (status IN ('active','archived'))
+);
+
+ALTER TABLE quality_datasets ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_datasets FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_datasets_read ON quality_datasets FOR SELECT USING (true);
+
+-- 数据集版本；不可变
+CREATE TABLE quality_dataset_versions (
+    "id" UUID NOT NULL,
+    "dataset_id" UUID NOT NULL,
+    "version_no" INTEGER NOT NULL,
+    "item_count" INTEGER NOT NULL DEFAULT 0,
+    "content_hash" CHAR(64) NOT NULL,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'draft',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_dataset_versions PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_dataset_versions_dataset_id FOREIGN KEY ("dataset_id") REFERENCES quality_datasets(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_quality_dataset_versions_no UNIQUE ("dataset_id", "version_no"),
+    CONSTRAINT ck_quality_dataset_versions_status CHECK (status IN ('draft','frozen','retired'))
+);
+
+ALTER TABLE quality_dataset_versions ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_dataset_versions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_dataset_versions_read ON quality_dataset_versions FOR SELECT USING (true);
+
+-- 数据集样本；冻结后不可修改
+CREATE TABLE quality_dataset_items (
+    "id" UUID NOT NULL,
+    "dataset_version_id" UUID NOT NULL,
+    "item_key" VARCHAR(120) NOT NULL,
+    "split" VARCHAR(16) NOT NULL DEFAULT 'test',
+    "payload" JSONB NOT NULL,
+    "expected" JSONB,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_dataset_items PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_dataset_items_dataset_version_id FOREIGN KEY ("dataset_version_id") REFERENCES quality_dataset_versions(id) ON DELETE CASCADE,
+    CONSTRAINT uq_quality_dataset_items_key UNIQUE ("dataset_version_id", "item_key"),
+    CONSTRAINT ck_quality_dataset_items_split CHECK (split IN ('train','validation','test'))
+);
+
+ALTER TABLE quality_dataset_items ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_dataset_items FORCE ROW LEVEL SECURITY;
+
+-- 评估定义；绑定数据集与目的
+CREATE TABLE quality_evaluations (
+    "id" UUID NOT NULL,
+    "key" VARCHAR(80) NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
+    "dataset_id" UUID NOT NULL,
+    "purpose" VARCHAR(40) NOT NULL,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'active',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_evaluations PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_evaluations_dataset_id FOREIGN KEY ("dataset_id") REFERENCES quality_datasets(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_quality_evaluations_key UNIQUE ("key"),
+    CONSTRAINT ck_quality_evaluations_status CHECK (status IN ('active','archived'))
+);
+
+ALTER TABLE quality_evaluations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_evaluations FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_evaluations_read ON quality_evaluations FOR SELECT USING (true);
+
+-- 一次评估运行；固定数据集版本与全部影响结果的版本
+CREATE TABLE quality_evaluation_runs (
+    "id" UUID NOT NULL,
+    "evaluation_id" UUID NOT NULL,
+    "dataset_version_id" UUID NOT NULL,
+    "model" VARCHAR(120) NOT NULL,
+    "prompt_version" VARCHAR(64) NOT NULL,
+    "harness_version" VARCHAR(64) NOT NULL,
+    "plugin_manifest_hash" CHAR(64),
+    "tool_registry_hash" CHAR(64),
+    "validator_version" VARCHAR(64) NOT NULL,
+    "status" VARCHAR(16) NOT NULL DEFAULT 'queued',
+    "result_summary" JSONB,
+    "started_at" TIMESTAMPTZ,
+    "finished_at" TIMESTAMPTZ,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_evaluation_runs PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_evaluation_runs_evaluation_id FOREIGN KEY ("evaluation_id") REFERENCES quality_evaluations(id) ON DELETE RESTRICT,
+    CONSTRAINT fk_quality_evaluation_runs_dataset_version_id FOREIGN KEY ("dataset_version_id") REFERENCES quality_dataset_versions(id) ON DELETE RESTRICT,
+    CONSTRAINT ck_quality_evaluation_runs_status CHECK (status IN ('queued','running','succeeded','failed','cancelled'))
+);
+
+ALTER TABLE quality_evaluation_runs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_evaluation_runs FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_evaluation_runs_evaluation ON quality_evaluation_runs ("evaluation_id", "created_at");
+
+-- 单样本评估结果
+CREATE TABLE quality_evaluation_results (
+    "id" UUID NOT NULL,
+    "evaluation_run_id" UUID NOT NULL,
+    "dataset_item_id" UUID NOT NULL,
+    "outcome" VARCHAR(24) NOT NULL,
+    "score" NUMERIC(8,4),
+    "detail" JSONB,
+    CONSTRAINT pk_quality_evaluation_results PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_evaluation_results_evaluation_run_id FOREIGN KEY ("evaluation_run_id") REFERENCES quality_evaluation_runs(id) ON DELETE CASCADE,
+    CONSTRAINT fk_quality_evaluation_results_dataset_item_id FOREIGN KEY ("dataset_item_id") REFERENCES quality_dataset_items(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_quality_evaluation_results_item UNIQUE ("evaluation_run_id", "dataset_item_id"),
+    CONSTRAINT ck_quality_evaluation_results_outcome CHECK (outcome IN ('passed','failed','inconclusive'))
+);
+
+ALTER TABLE quality_evaluation_results ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_evaluation_results FORCE ROW LEVEL SECURITY;
+
+-- 指标定义；含阻断标记
+CREATE TABLE quality_metrics (
+    "id" UUID NOT NULL,
+    "key" VARCHAR(40) NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
+    "unit" VARCHAR(32),
+    "direction" VARCHAR(16) NOT NULL,
+    "target_numeric" NUMERIC(12,4),
+    "is_blocking" BOOLEAN NOT NULL DEFAULT false,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_metrics PRIMARY KEY ("id"),
+    CONSTRAINT uq_quality_metrics_key UNIQUE ("key"),
+    CONSTRAINT ck_quality_metrics_direction CHECK (direction IN ('higher_better','lower_better'))
+);
+
+ALTER TABLE quality_metrics ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_metrics FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_metrics_read ON quality_metrics FOR SELECT USING (true);
+
+-- 指标观测值
+CREATE TABLE quality_metric_observations (
+    "id" UUID NOT NULL,
+    "metric_id" UUID NOT NULL,
+    "scope_type" VARCHAR(24) NOT NULL DEFAULT 'global',
+    "scope_id" UUID,
+    "value_numeric" NUMERIC(14,4) NOT NULL,
+    "sample_size" INTEGER,
+    "source" VARCHAR(80),
+    "observed_at" TIMESTAMPTZ NOT NULL,
+    CONSTRAINT pk_quality_metric_observations PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_metric_observations_metric_id FOREIGN KEY ("metric_id") REFERENCES quality_metrics(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_metric_observations_scope CHECK (scope_type IN ('global','tenant','material'))
+);
+
+ALTER TABLE quality_metric_observations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_metric_observations FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_metric_observations_metric ON quality_metric_observations ("metric_id", "observed_at");
+
+-- 告警规则
+CREATE TABLE quality_alerts (
+    "id" UUID NOT NULL,
+    "key" VARCHAR(80) NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
+    "metric_id" UUID NOT NULL,
+    "condition" JSONB NOT NULL,
+    "severity" VARCHAR(16) NOT NULL DEFAULT 'warning',
+    "status" VARCHAR(16) NOT NULL DEFAULT 'active',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_alerts PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_alerts_metric_id FOREIGN KEY ("metric_id") REFERENCES quality_metrics(id) ON DELETE RESTRICT,
+    CONSTRAINT uq_quality_alerts_key UNIQUE ("key"),
+    CONSTRAINT ck_quality_alerts_severity CHECK (severity IN ('info','warning','critical')),
+    CONSTRAINT ck_quality_alerts_status CHECK (status IN ('active','muted','resolved'))
+);
+
+ALTER TABLE quality_alerts ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_alerts FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_alerts_read ON quality_alerts FOR SELECT USING (true);
+
+-- 告警事件流
+CREATE TABLE quality_alert_events (
+    "id" UUID NOT NULL,
+    "alert_id" UUID NOT NULL,
+    "event_type" VARCHAR(24) NOT NULL,
+    "actor_id" UUID,
+    "detail" JSONB,
+    "occurred_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_alert_events PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_alert_events_alert_id FOREIGN KEY ("alert_id") REFERENCES quality_alerts(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_alert_events_type CHECK (event_type IN ('triggered','acknowledged','resolved'))
+);
+
+ALTER TABLE quality_alert_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_alert_events FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_alert_events_alert ON quality_alert_events ("alert_id", "occurred_at");
+
+-- 发布批次；固定模型、Prompt、Harness、插件、工具与 Validator 版本
+CREATE TABLE quality_releases (
+    "id" UUID NOT NULL,
+    "version_label" VARCHAR(80) NOT NULL,
+    "application_version" VARCHAR(64) NOT NULL,
+    "model" VARCHAR(120) NOT NULL,
+    "prompt_version" VARCHAR(64) NOT NULL,
+    "harness_version" VARCHAR(64) NOT NULL,
+    "plugin_manifest_hash" CHAR(64),
+    "tool_registry_hash" CHAR(64),
+    "validator_version" VARCHAR(64) NOT NULL,
+    "status" VARCHAR(24) NOT NULL DEFAULT 'draft',
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_releases PRIMARY KEY ("id"),
+    CONSTRAINT uq_quality_releases_label UNIQUE ("version_label"),
+    CONSTRAINT ck_quality_releases_status CHECK (status IN ('draft','canary','production','rolled_back'))
+);
+
+ALTER TABLE quality_releases ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_releases FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_releases_read ON quality_releases FOR SELECT USING (true);
+
+-- 发布审批
+CREATE TABLE quality_release_approvals (
+    "id" UUID NOT NULL,
+    "release_id" UUID NOT NULL,
+    "approver_id" UUID NOT NULL,
+    "decision" VARCHAR(16) NOT NULL,
+    "reason" TEXT,
+    "decided_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_release_approvals PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_release_approvals_release_id FOREIGN KEY ("release_id") REFERENCES quality_releases(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_release_approvals_decision CHECK (decision IN ('approved','rejected'))
+);
+
+ALTER TABLE quality_release_approvals ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_release_approvals FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_release_approvals_release ON quality_release_approvals ("release_id");
+
+-- 发布过程事件；回滚不得删除教师已批准版本
+CREATE TABLE quality_release_events (
+    "id" UUID NOT NULL,
+    "release_id" UUID NOT NULL,
+    "event_type" VARCHAR(32) NOT NULL,
+    "actor_id" UUID,
+    "detail" JSONB,
+    "occurred_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_quality_release_events PRIMARY KEY ("id"),
+    CONSTRAINT fk_quality_release_events_release_id FOREIGN KEY ("release_id") REFERENCES quality_releases(id) ON DELETE CASCADE,
+    CONSTRAINT ck_quality_release_events_type CHECK (event_type IN ('canary_started','canary_passed','production_promoted','rolled_back'))
+);
+
+ALTER TABLE quality_release_events ENABLE ROW LEVEL SECURITY;
+ALTER TABLE quality_release_events FORCE ROW LEVEL SECURITY;
+
+CREATE INDEX ix_quality_release_events_release ON quality_release_events ("release_id", "occurred_at");
 
 -- 教学专题；一个 Project 对应一个教学专题
 CREATE TABLE projects (

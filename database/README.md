@@ -90,5 +90,6 @@ python -m venv .venv
 | --- | --- | --- |
 | K009 Knowledge Base | 13 | 已入库（含 1 张可选表） |
 | K012 Project & Material | 10 | 已入库 |
+| K014 Quality & Evaluation | 24 | 已入库 |
 
-core 变体生成了 22 张表（K009 的可选向量表默认跳过）。其余模块待字段级设计完成后加入。
+core 变体生成了 46 张表（K009 的可选向量表默认跳过）。其余模块待字段级设计完成后加入。

@@ -131,7 +131,7 @@
       "id": "K014",
       "name": "Quality & Evaluation",
       "status": "DESIGNED",
-      "registry_file": null
+      "registry_file": "fields/k014.json"
     },
     {
       "id": "K021",
@@ -289,6 +289,174 @@
       "layer": "detail",
       "owner_scoped": true,
       "soft_delete": false
+    },
+    {
+      "name": "quality_rules",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_rule_versions",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_check_runs",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_check_rule_snapshots",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_check_results",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_issues",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_evidence",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "math_validation_runs",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "math_validation_evidence",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_issue_feedback",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_issue_resolutions",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_datasets",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_dataset_versions",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_dataset_items",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_evaluations",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_evaluation_runs",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_evaluation_results",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_metrics",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_metric_observations",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_alerts",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_alert_events",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_releases",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_release_approvals",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "quality_release_events",
+      "module": "K014",
+      "layer": "ops",
+      "owner_scoped": false,
+      "soft_delete": false
     }
   ],
   "layers": {
@@ -298,6 +466,30 @@
     "projection": "从不可变快照派生的查询投影"
   },
   "table_order": [
+    "quality_rules",
+    "quality_rule_versions",
+    "quality_check_runs",
+    "quality_check_rule_snapshots",
+    "quality_check_results",
+    "quality_issues",
+    "quality_evidence",
+    "math_validation_runs",
+    "math_validation_evidence",
+    "quality_issue_feedback",
+    "quality_issue_resolutions",
+    "quality_datasets",
+    "quality_dataset_versions",
+    "quality_dataset_items",
+    "quality_evaluations",
+    "quality_evaluation_runs",
+    "quality_evaluation_results",
+    "quality_metrics",
+    "quality_metric_observations",
+    "quality_alerts",
+    "quality_alert_events",
+    "quality_releases",
+    "quality_release_approvals",
+    "quality_release_events",
     "projects",
     "materials",
     "material_versions",
