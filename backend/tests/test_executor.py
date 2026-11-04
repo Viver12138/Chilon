@@ -153,17 +153,17 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)
+    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
     try:
         async with db.system_session() as s:
             user_id, chunk_id = await seed(s)
 
         mark("start")
         print("1. the agent plans, the teacher approves, the executor produces content")
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             task = await tasks.create_task(s, user_id, "三角函数一轮复习")
 
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             proposal = await agent.propose_plan(
                 s,
                 user_id,
@@ -173,15 +173,15 @@ async def main() -> int:
             )
         check(len(proposal["steps"]) >= 3, f"plan has {len(proposal['steps'])} steps")
 
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             approved = await agent.approve_plan(
                 s, user_id, task.id, uuid.UUID(proposal["approval_id"])
             )
         check(approved["task_status"] == "ready", f"task ready after approval (got {approved['task_status']})")
 
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             current = await tasks.get_task(s, task.id)
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             execution_id = await executions.start_execution(
                 s,
                 user_id,
@@ -191,7 +191,7 @@ async def main() -> int:
                 expected_task_state_version=current.state_version,
             )
 
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             result = await executor.run_once(s, user_id, execution_id)
 
         check(result["failed_steps"] == [], f"no step failed (got {result['failed_steps']})")
@@ -200,7 +200,7 @@ async def main() -> int:
 
         mark("1 planned and executed")
         print("2. the step outputs actually contain teaching content")
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             outputs = (
                 await s.execute(
                     text(
@@ -239,7 +239,7 @@ async def main() -> int:
 
         mark("2 outputs inspected")
         print("3. tool calls were recorded with results and hashes")
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             tool_rows = (
                 await s.execute(
                     text(
@@ -259,7 +259,7 @@ async def main() -> int:
 
         mark("3 tool calls inspected")
         print("4. re-running the executor does not redo work")
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             again = await executor.run_once(s, user_id, execution_id)
         check(
             again["processed"] == [] and again["outcome"] == "succeeded",
@@ -268,7 +268,7 @@ async def main() -> int:
 
         mark("4 rerun checked")
         print("6. a draft exists, and its student projection has no answers")
-        async with db.session_for(user_id) as s:
+        async with db.system_session() as s:
             draft_rows = (
                 await s.execute(
                     text(
@@ -317,7 +317,7 @@ async def main() -> int:
                 requirement={"topic": "三角函数", "question_count": 2},
                 deps={"search": search_out},
             )
-            async with db.session_for(user_id) as s:
+            async with db.system_session() as s:
                 live = await tool_impl.content_generate(s, ctx)
             check(live["generator"] == "deepseek", "live generator used the model")
             check(len(live["questions"]) == 2, f"model produced {len(live['questions'])} questions")

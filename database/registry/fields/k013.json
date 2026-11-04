@@ -343,7 +343,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_conversation_events_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_activities",
@@ -655,7 +662,14 @@
         }
       ],
       "indexes": [],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_conversation_participants_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "conversation_cursors",

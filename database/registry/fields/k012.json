@@ -824,7 +824,14 @@
         }
       ],
       "indexes": [],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_document_schema_definitions_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "material_references",

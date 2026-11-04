@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 84e86f0826372d0142b65d3c24bfe4785bdac00e472576bdb846c7d1e5e4dc40
+-- registry_hash: 5ef6eefacd099ba23cb7121525d20488776286a58b69a0a1812ab87a7b96a432
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -86,6 +86,7 @@ CREATE TABLE user_username_history (
 
 ALTER TABLE user_username_history ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_username_history FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_user_username_history_owner ON user_username_history FOR ALL USING (user_id = public.app_current_user_id()) WITH CHECK (user_id = public.app_current_user_id());
 
 CREATE INDEX ix_user_username_history_user ON user_username_history ("user_id");
 
@@ -105,6 +106,7 @@ CREATE TABLE user_email_addresses (
 
 ALTER TABLE user_email_addresses ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_email_addresses FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_user_email_addresses_owner ON user_email_addresses FOR ALL USING (user_id = public.app_current_user_id()) WITH CHECK (user_id = public.app_current_user_id());
 
 CREATE INDEX ix_user_email_addresses_user ON user_email_addresses ("user_id");
 
@@ -149,6 +151,7 @@ CREATE TABLE user_verification_tokens (
 
 ALTER TABLE user_verification_tokens ENABLE ROW LEVEL SECURITY;
 ALTER TABLE user_verification_tokens FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_user_verification_tokens_owner ON user_verification_tokens FOR ALL USING (user_id = public.app_current_user_id()) WITH CHECK (user_id = public.app_current_user_id());
 
 CREATE INDEX ix_user_verification_tokens_user ON user_verification_tokens ("user_id", "purpose");
 
@@ -167,6 +170,7 @@ CREATE TABLE admin_audit_logs (
 
 ALTER TABLE admin_audit_logs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_audit_logs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_admin_audit_logs_service ON admin_audit_logs FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_admin_audit_logs_occurred ON admin_audit_logs ("occurred_at");
 CREATE INDEX ix_admin_audit_logs_actor ON admin_audit_logs ("actor_id", "occurred_at");
@@ -396,6 +400,7 @@ CREATE TABLE agent_plan_steps (
 
 ALTER TABLE agent_plan_steps ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_plan_steps FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_plan_steps_owner ON agent_plan_steps FOR ALL USING (EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_plan_steps_version ON agent_plan_steps ("plan_version_id", "ordinal");
 
@@ -416,6 +421,7 @@ CREATE TABLE agent_step_dependencies (
 
 ALTER TABLE agent_step_dependencies ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_step_dependencies FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_step_dependencies_owner ON agent_step_dependencies FOR ALL USING (EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_step_dependencies_dep ON agent_step_dependencies ("depends_on_step_id");
 
@@ -436,7 +442,7 @@ CREATE TABLE agent_runtime_plugins (
 
 ALTER TABLE agent_runtime_plugins ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_runtime_plugins FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_agent_runtime_plugins_read ON agent_runtime_plugins FOR SELECT USING (true);
+CREATE POLICY pol_agent_runtime_plugins_service ON agent_runtime_plugins FOR ALL USING (true) WITH CHECK (true);
 
 -- 工具定义；业务权威归 Chilon，不归插件
 CREATE TABLE agent_tool_definitions (
@@ -459,7 +465,7 @@ CREATE TABLE agent_tool_definitions (
 
 ALTER TABLE agent_tool_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tool_definitions FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_agent_tool_definitions_read ON agent_tool_definitions FOR SELECT USING (true);
+CREATE POLICY pol_agent_tool_definitions_service ON agent_tool_definitions FOR ALL USING (true) WITH CHECK (true);
 
 -- 教师可用的工具授权；Tool Call 前置校验
 CREATE TABLE agent_tool_grants (
@@ -537,6 +543,7 @@ CREATE TABLE agent_runs (
 
 ALTER TABLE agent_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_runs_owner ON agent_runs FOR ALL USING (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_runs_execution ON agent_runs ("execution_id", "ordinal");
 
@@ -561,6 +568,7 @@ CREATE TABLE agent_step_executions (
 
 ALTER TABLE agent_step_executions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_step_executions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_step_executions_owner ON agent_step_executions FOR ALL USING (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_step_executions_execution ON agent_step_executions ("execution_id", "status");
 
@@ -590,6 +598,7 @@ CREATE TABLE agent_tool_executions (
 
 ALTER TABLE agent_tool_executions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_tool_executions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_tool_executions_owner ON agent_tool_executions FOR ALL USING (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_tool_executions_execution ON agent_tool_executions ("execution_id", "status");
 CREATE INDEX ix_agent_tool_executions_step ON agent_tool_executions ("step_execution_id") WHERE step_execution_id IS NOT NULL;
@@ -610,6 +619,7 @@ CREATE TABLE agent_runtime_events (
 
 ALTER TABLE agent_runtime_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_runtime_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_runtime_events_owner ON agent_runtime_events FOR ALL USING (EXISTS (SELECT 1 FROM agent_runs  JOIN agent_executions ON agent_executions.id = agent_runs.execution_id WHERE agent_runs.id = agent_run_id AND agent_executions.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_runs  JOIN agent_executions ON agent_executions.id = agent_runs.execution_id WHERE agent_runs.id = agent_run_id AND agent_executions.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_runtime_events_run ON agent_runtime_events ("agent_run_id", "seq");
 
@@ -634,6 +644,7 @@ CREATE TABLE agent_execution_events (
 
 ALTER TABLE agent_execution_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE agent_execution_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_agent_execution_events_owner ON agent_execution_events FOR ALL USING (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_agent_execution_events_execution ON agent_execution_events ("execution_id", "seq");
 
@@ -730,6 +741,7 @@ CREATE TABLE conversation_events (
 
 ALTER TABLE conversation_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_conversation_events_owner ON conversation_events FOR ALL USING (EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_conversation_events_conv ON conversation_events ("conversation_id", "seq");
 
@@ -800,6 +812,7 @@ CREATE TABLE conversation_participants (
 
 ALTER TABLE conversation_participants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE conversation_participants FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_conversation_participants_owner ON conversation_participants FOR ALL USING (EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM conversations p WHERE p.id = conversation_id AND p.owner_id = public.app_current_user_id()));
 
 -- 每教师每对话的读取与投递水位；SSE 重连与对账用
 CREATE TABLE conversation_cursors (
@@ -897,6 +910,7 @@ CREATE TABLE document_schema_definitions (
 
 ALTER TABLE document_schema_definitions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE document_schema_definitions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_document_schema_definitions_service ON document_schema_definitions FOR ALL USING (true) WITH CHECK (true);
 
 -- 材料间引用；latest 跟随、pinned 固定版本
 CREATE TABLE material_references (
@@ -1041,7 +1055,7 @@ CREATE TABLE quality_rules (
 
 ALTER TABLE quality_rules ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_rules FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_rules_read ON quality_rules FOR SELECT USING (true);
+CREATE POLICY pol_quality_rules_service ON quality_rules FOR ALL USING (true) WITH CHECK (true);
 
 -- 规则版本；不可变
 CREATE TABLE quality_rule_versions (
@@ -1064,7 +1078,7 @@ CREATE TABLE quality_rule_versions (
 
 ALTER TABLE quality_rule_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_rule_versions FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_rule_versions_read ON quality_rule_versions FOR SELECT USING (true);
+CREATE POLICY pol_quality_rule_versions_service ON quality_rule_versions FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_quality_rule_versions_rule ON quality_rule_versions ("rule_id", "version_no");
 
@@ -1119,6 +1133,7 @@ CREATE TABLE quality_check_rule_snapshots (
 
 ALTER TABLE quality_check_rule_snapshots ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_check_rule_snapshots FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_check_rule_snapshots_owner ON quality_check_rule_snapshots FOR ALL USING (EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id()));
 
 -- 单条规则的检查结果
 CREATE TABLE quality_check_results (
@@ -1140,6 +1155,7 @@ CREATE TABLE quality_check_results (
 
 ALTER TABLE quality_check_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_check_results FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_check_results_owner ON quality_check_results FOR ALL USING (EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_quality_check_results_run ON quality_check_results ("run_id", "result");
 CREATE INDEX ix_quality_check_results_node ON quality_check_results ("node_id") WHERE node_id IS NOT NULL;
@@ -1193,6 +1209,7 @@ CREATE TABLE quality_evidence (
 
 ALTER TABLE quality_evidence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_evidence FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_evidence_owner ON quality_evidence FOR ALL USING (EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_quality_evidence_run ON quality_evidence ("run_id");
 CREATE INDEX ix_quality_evidence_issue ON quality_evidence ("issue_id") WHERE issue_id IS NOT NULL;
@@ -1246,6 +1263,7 @@ CREATE TABLE math_validation_evidence (
 
 ALTER TABLE math_validation_evidence ENABLE ROW LEVEL SECURITY;
 ALTER TABLE math_validation_evidence FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_math_validation_evidence_owner ON math_validation_evidence FOR ALL USING (EXISTS (SELECT 1 FROM math_validation_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM math_validation_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_math_validation_evidence_run ON math_validation_evidence ("run_id", "layer");
 
@@ -1308,7 +1326,7 @@ CREATE TABLE quality_datasets (
 
 ALTER TABLE quality_datasets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_datasets FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_datasets_read ON quality_datasets FOR SELECT USING (true);
+CREATE POLICY pol_quality_datasets_service ON quality_datasets FOR ALL USING (true) WITH CHECK (true);
 
 -- 数据集版本；不可变
 CREATE TABLE quality_dataset_versions (
@@ -1327,7 +1345,7 @@ CREATE TABLE quality_dataset_versions (
 
 ALTER TABLE quality_dataset_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_dataset_versions FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_dataset_versions_read ON quality_dataset_versions FOR SELECT USING (true);
+CREATE POLICY pol_quality_dataset_versions_service ON quality_dataset_versions FOR ALL USING (true) WITH CHECK (true);
 
 -- 数据集样本；冻结后不可修改
 CREATE TABLE quality_dataset_items (
@@ -1346,6 +1364,7 @@ CREATE TABLE quality_dataset_items (
 
 ALTER TABLE quality_dataset_items ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_dataset_items FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_dataset_items_service ON quality_dataset_items FOR ALL USING (true) WITH CHECK (true);
 
 -- 评估定义；绑定数据集与目的
 CREATE TABLE quality_evaluations (
@@ -1364,7 +1383,7 @@ CREATE TABLE quality_evaluations (
 
 ALTER TABLE quality_evaluations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_evaluations FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_evaluations_read ON quality_evaluations FOR SELECT USING (true);
+CREATE POLICY pol_quality_evaluations_service ON quality_evaluations FOR ALL USING (true) WITH CHECK (true);
 
 -- 一次评估运行；固定数据集版本与全部影响结果的版本
 CREATE TABLE quality_evaluation_runs (
@@ -1390,6 +1409,7 @@ CREATE TABLE quality_evaluation_runs (
 
 ALTER TABLE quality_evaluation_runs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_evaluation_runs FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_evaluation_runs_service ON quality_evaluation_runs FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_quality_evaluation_runs_evaluation ON quality_evaluation_runs ("evaluation_id", "created_at");
 
@@ -1410,6 +1430,7 @@ CREATE TABLE quality_evaluation_results (
 
 ALTER TABLE quality_evaluation_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_evaluation_results FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_evaluation_results_service ON quality_evaluation_results FOR ALL USING (true) WITH CHECK (true);
 
 -- 指标定义；含阻断标记
 CREATE TABLE quality_metrics (
@@ -1428,7 +1449,7 @@ CREATE TABLE quality_metrics (
 
 ALTER TABLE quality_metrics ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_metrics FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_metrics_read ON quality_metrics FOR SELECT USING (true);
+CREATE POLICY pol_quality_metrics_service ON quality_metrics FOR ALL USING (true) WITH CHECK (true);
 
 -- 指标观测值
 CREATE TABLE quality_metric_observations (
@@ -1447,6 +1468,7 @@ CREATE TABLE quality_metric_observations (
 
 ALTER TABLE quality_metric_observations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_metric_observations FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_metric_observations_service ON quality_metric_observations FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_quality_metric_observations_metric ON quality_metric_observations ("metric_id", "observed_at");
 
@@ -1469,7 +1491,7 @@ CREATE TABLE quality_alerts (
 
 ALTER TABLE quality_alerts ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_alerts FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_alerts_read ON quality_alerts FOR SELECT USING (true);
+CREATE POLICY pol_quality_alerts_service ON quality_alerts FOR ALL USING (true) WITH CHECK (true);
 
 -- 告警事件流
 CREATE TABLE quality_alert_events (
@@ -1486,6 +1508,7 @@ CREATE TABLE quality_alert_events (
 
 ALTER TABLE quality_alert_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_alert_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_alert_events_service ON quality_alert_events FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_quality_alert_events_alert ON quality_alert_events ("alert_id", "occurred_at");
 
@@ -1509,7 +1532,7 @@ CREATE TABLE quality_releases (
 
 ALTER TABLE quality_releases ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_releases FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_quality_releases_read ON quality_releases FOR SELECT USING (true);
+CREATE POLICY pol_quality_releases_service ON quality_releases FOR ALL USING (true) WITH CHECK (true);
 
 -- 发布审批
 CREATE TABLE quality_release_approvals (
@@ -1526,6 +1549,7 @@ CREATE TABLE quality_release_approvals (
 
 ALTER TABLE quality_release_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_release_approvals FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_release_approvals_service ON quality_release_approvals FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_quality_release_approvals_release ON quality_release_approvals ("release_id");
 
@@ -1544,6 +1568,7 @@ CREATE TABLE quality_release_events (
 
 ALTER TABLE quality_release_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE quality_release_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_quality_release_events_service ON quality_release_events FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_quality_release_events_release ON quality_release_events ("release_id", "occurred_at");
 
@@ -1569,7 +1594,7 @@ CREATE TABLE admin_operation_requests (
 
 ALTER TABLE admin_operation_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_operation_requests FORCE ROW LEVEL SECURITY;
-CREATE POLICY pol_admin_operation_requests_read ON admin_operation_requests FOR SELECT USING (true);
+CREATE POLICY pol_admin_operation_requests_service ON admin_operation_requests FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_admin_operation_requests_status ON admin_operation_requests ("status", "created_at");
 CREATE INDEX ix_admin_operation_requests_target ON admin_operation_requests ("target_type", "target_id");
@@ -1594,6 +1619,7 @@ CREATE TABLE admin_operation_approvals (
 
 ALTER TABLE admin_operation_approvals ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_operation_approvals FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_admin_operation_approvals_service ON admin_operation_approvals FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_admin_operation_approvals_request ON admin_operation_approvals ("request_id", "decision");
 
@@ -1621,6 +1647,7 @@ CREATE TABLE admin_operation_executions (
 
 ALTER TABLE admin_operation_executions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_operation_executions FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_admin_operation_executions_service ON admin_operation_executions FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_admin_operation_executions_request ON admin_operation_executions ("request_id", "status");
 
@@ -1642,6 +1669,7 @@ CREATE TABLE admin_security_events (
 
 ALTER TABLE admin_security_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE admin_security_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_admin_security_events_service ON admin_security_events FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_admin_security_events_occurred ON admin_security_events ("occurred_at");
 CREATE INDEX ix_admin_security_events_actor ON admin_security_events ("actor_id", "occurred_at");
@@ -1827,6 +1855,7 @@ CREATE TABLE knowledge_annotations (
 
 ALTER TABLE knowledge_annotations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_annotations FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_knowledge_annotations_owner ON knowledge_annotations FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_questions  JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_questions.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_questions.id = question_id AND knowledge_sources.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_questions  JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_questions.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_questions.id = question_id AND knowledge_sources.owner_id = public.app_current_user_id()));
 
 CREATE UNIQUE INDEX ix_knowledge_annotations_active ON knowledge_annotations ("question_id", "annotation_type") WHERE superseded_by IS NULL;
 
@@ -1938,6 +1967,7 @@ CREATE TABLE knowledge_retrieval_results (
 
 ALTER TABLE knowledge_retrieval_results ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_retrieval_results FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_knowledge_retrieval_results_owner ON knowledge_retrieval_results FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_retrieval_runs p WHERE p.id = retrieval_run_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_retrieval_runs p WHERE p.id = retrieval_run_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_knowledge_retrieval_results_run ON knowledge_retrieval_results ("retrieval_run_id", "rank");
 
@@ -1965,6 +1995,7 @@ CREATE TABLE material_knowledge_citations (
 
 ALTER TABLE material_knowledge_citations ENABLE ROW LEVEL SECURITY;
 ALTER TABLE material_knowledge_citations FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_material_knowledge_citations_owner ON material_knowledge_citations FOR ALL USING (EXISTS (SELECT 1 FROM material_versions p WHERE p.id = material_version_id AND p.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM material_versions p WHERE p.id = material_version_id AND p.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_material_knowledge_citations_version ON material_knowledge_citations ("material_version_id");
 CREATE INDEX ix_material_knowledge_citations_source ON material_knowledge_citations ("source_id");

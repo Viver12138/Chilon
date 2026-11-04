@@ -217,7 +217,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)
+    db.init(url)  # TODO: run as the app role once seeding is owner-scoped
     try:
         await scenario_extraction()
         await scenario_validation()

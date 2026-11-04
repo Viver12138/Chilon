@@ -28,6 +28,7 @@ from sqlalchemy import text  # noqa: E402
 from sqlalchemy.ext.asyncio import async_sessionmaker, create_async_engine  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.outbox import dispatcher  # noqa: E402
 
 FAILURES: list[str] = []
@@ -268,7 +269,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)
+    db.init(await provision_runtime_role(url))
     try:
         uid = await make_user(f"outbox_{uuid.uuid4().hex[:8]}")
         await scenario_atomicity(uid)

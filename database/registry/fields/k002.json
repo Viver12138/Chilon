@@ -309,7 +309,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_user_username_history_owner",
+          "command": "ALL",
+          "using": "user_id = public.app_current_user_id()",
+          "with_check": "user_id = public.app_current_user_id()"
+        }
+      ]
     },
     {
       "name": "user_email_addresses",
@@ -389,7 +396,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_user_email_addresses_owner",
+          "command": "ALL",
+          "using": "user_id = public.app_current_user_id()",
+          "with_check": "user_id = public.app_current_user_id()"
+        }
+      ]
     },
     {
       "name": "user_sessions",
@@ -596,7 +610,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_user_verification_tokens_owner",
+          "command": "ALL",
+          "using": "user_id = public.app_current_user_id()",
+          "with_check": "user_id = public.app_current_user_id()"
+        }
+      ]
     },
     {
       "name": "admin_audit_logs",
@@ -677,7 +698,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_admin_audit_logs_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     }
   ],
   "table_order": [

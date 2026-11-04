@@ -992,7 +992,14 @@
           "unique": true
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_annotations_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_questions  JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_questions.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_questions.id = question_id AND knowledge_sources.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_questions  JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_questions.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_questions.id = question_id AND knowledge_sources.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "knowledge_question_embeddings",
@@ -1069,7 +1076,14 @@
         }
       ],
       "indexes": [],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_question_embeddings_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_questions  JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_questions.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_questions.id = question_id AND knowledge_sources.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_questions  JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_questions.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_questions.id = question_id AND knowledge_sources.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "knowledge_ingestion_runs",
@@ -1580,7 +1594,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_knowledge_retrieval_results_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_retrieval_runs p WHERE p.id = retrieval_run_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_retrieval_runs p WHERE p.id = retrieval_run_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "material_knowledge_citations",
@@ -1723,7 +1744,14 @@
           "where": "question_id IS NOT NULL"
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_material_knowledge_citations_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM material_versions p WHERE p.id = material_version_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM material_versions p WHERE p.id = material_version_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     }
   ],
   "table_order": [

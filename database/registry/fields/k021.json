@@ -143,9 +143,10 @@
       ],
       "policies": [
         {
-          "name": "pol_admin_operation_requests_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_admin_operation_requests_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -253,7 +254,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_admin_operation_approvals_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "admin_operation_executions",
@@ -387,7 +395,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_admin_operation_executions_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "admin_security_events",
@@ -486,7 +501,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_admin_security_events_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     }
   ],
   "table_order": [
