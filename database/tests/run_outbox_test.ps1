@@ -36,8 +36,20 @@ trap {
 
 Write-Host "==> starting postgres:17" -ForegroundColor Cyan
 docker rm -f $Container 2>&1 | Out-Null
-docker run -d --name $Container -e "POSTGRES_PASSWORD=$Password" -e "POSTGRES_DB=chilon" -p "${Port}:5432" postgres:17 2>&1 | Out-Null
-if ($LASTEXITCODE -ne 0) { throw "docker run failed" }
+# Nine throwaway containers in one CI job is enough that a transient
+# daemon error looks like a broken commit. Retry: the operation is idempotent
+# (fixed name, removed before each attempt) and the error is printed if it
+# really is permanent.
+$runError = ""
+$started = $false
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+    docker rm -f $Container 2>&1 | Out-Null
+    $runError = docker run -d --name $Container -e "POSTGRES_PASSWORD=$Password" -e "POSTGRES_DB=chilon" -p "${Port}:5432" postgres:17 2>&1
+    if ($LASTEXITCODE -eq 0) { $started = $true; break }
+    Write-Host "    docker run attempt $attempt failed: $runError" -ForegroundColor Yellow
+    Start-Sleep -Seconds 2
+}
+if (-not $started) { throw "docker run failed after 3 attempts: $runError" }
 
 $ready = $false
 for ($i = 0; $i -lt 120; $i++) {
