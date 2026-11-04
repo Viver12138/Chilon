@@ -121,6 +121,17 @@ class TemplatePlanner:
                     "depends_on": join_needs,
                 }
             )
+            join_needs = ["check"]
+
+        if "material.create_draft" in keys:
+            plan_steps.append(
+                {
+                    "key": "package",
+                    "type": "material.create_draft",
+                    "title": "生成教师版与学生版",
+                    "depends_on": join_needs,
+                }
+            )
 
         return {"steps": plan_steps}
 
