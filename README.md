@@ -107,6 +107,9 @@ pwsh -NoProfile -File database/tests/run_material_test.ps1
 # 发布与导出：审批单次消费、版本不可变、学生版 DOCX 解压后搜不到答案
 pwsh -NoProfile -File database/tests/run_publish_export_test.ps1
 
+所有测试套件均以非超级用户角色运行（见 backend/tests/support.py）；
+平台知识的播种走管理员会话，租户数据走 owner 会话。
+
 # 认证：注册 → 登录拿 token → 用它建任务 → 登出立即失效
 pwsh -NoProfile -File database/tests/run_auth_test.ps1
 

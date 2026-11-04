@@ -25,6 +25,7 @@ from sqlalchemy import text  # noqa: E402
 
 from app import settings as config  # noqa: E402
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services import agent, identity, planner  # noqa: E402
 
@@ -51,6 +52,9 @@ async def make_user() -> str:
     async with db.system_session() as s:
         user_id = await identity.register(s, username, "pw12345678")
         session = await identity.login(s, username, "pw12345678")
+    # Grants are owner-scoped, so they need that owner's context — which does not
+    # exist until the user does. Hence two blocks rather than one merged block.
+    async with db.session_for(user_id) as s:
         for key, name, side in TOOLS:
             tool_id = uuid.uuid4()
             await s.execute(
@@ -217,7 +221,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: seeding needs an owner context; see D.50
+    db.init(await provision_runtime_role(url))
     try:
         await scenario_extraction()
         await scenario_validation()
