@@ -19,6 +19,7 @@ from sqlalchemy import text  # noqa: E402
 
 from app import settings as config  # noqa: E402
 from app.db import session as db  # noqa: E402
+from tests.support import admin_session, provision_runtime_role  # noqa: E402
 from app.services import agent, executor, executions, planner, plans, tasks  # noqa: E402
 
 FAILURES: list[str] = []
@@ -52,98 +53,108 @@ TOOLS = [
 ]
 
 
-async def seed(session) -> tuple[uuid.UUID, uuid.UUID]:
-    """A teacher, three tools, and a tiny platform knowledge base."""
+async def seed() -> tuple[uuid.UUID, uuid.UUID]:
+    """A teacher, three tools, and a tiny platform knowledge base.
+
+    Two sessions on purpose. The knowledge base is platform-scoped and has no write
+    policy for the application role — a teacher must not be able to mint licensed
+    content — so it is seeded the way a migration would, with the admin role. The
+    teacher's own rows go through that teacher's context.
+    """
     user_id = uuid.uuid4()
     username = f"exec_{user_id.hex[:10]}"
-    await session.execute(
-        text("INSERT INTO users (id, username, display_name) VALUES (:id, :u, :u)"),
-        {"id": user_id, "u": username},
-    )
-
-    for key, name, side in TOOLS:
-        await session.execute(
-            text(
-                """
-                INSERT INTO agent_tool_definitions (id, key, version, name, side_effect_level)
-                VALUES (:id, :key, '1.0.0', :name, :side)
-                ON CONFLICT (key, version) DO NOTHING
-                """
-            ),
-            {"id": uuid.uuid4(), "key": key, "name": name, "side": side},
-        )
-        await session.execute(
-            text(
-                """
-                INSERT INTO agent_tool_grants (id, owner_id, tool_definition_id, capability)
-                SELECT gen_random_uuid(), :o, d.id, 'invoke'
-                FROM agent_tool_definitions d WHERE d.key = :key AND d.version = '1.0.0'
-                ON CONFLICT (owner_id, tool_definition_id) DO NOTHING
-                """
-            ),
-            {"o": user_id, "key": key},
-        )
 
     category_id = uuid.uuid4()
-    await session.execute(
-        text(
-            """
-            INSERT INTO knowledge_categories (id, scope, owner_id, key, name, source_type, is_system)
-            VALUES (:id, 'platform', NULL, :key, '高考题', 'gaokao_paper', true)
-            """
-        ),
-        {"id": category_id, "key": f"gk_{uuid.uuid4().hex[:6]}"},
-    )
     source_id = uuid.uuid4()
-    await session.execute(
-        text(
-            """
-            INSERT INTO knowledge_sources
-                (id, scope, owner_id, category_id, source_type, title, rights_status,
-                 distribution_scope, created_by)
-            VALUES (:id, 'platform', NULL, :cat, 'gaokao_paper', '2023 全国甲卷 数学',
-                    'licensed', 'classroom', :owner)
-            """
-        ),
-        {"id": source_id, "cat": category_id, "owner": user_id},
-    )
     version_id = uuid.uuid4()
-    await session.execute(
-        text(
-            """
-            INSERT INTO knowledge_document_versions
-                (id, source_id, version_no, storage_key, checksum_sha256, mime_type,
-                 file_size_bytes, lifecycle_status, uploaded_by)
-            VALUES (:id, :src, 1, :key, :hash, 'application/pdf', 1024, 'approved', :owner)
-            """
-        ),
-        {
-            "id": version_id,
-            "src": source_id,
-            "key": f"kb/{uuid.uuid4().hex}.pdf",
-            "hash": "a" * 64,
-            "owner": user_id,
-        },
-    )
     chunk_id = uuid.uuid4()
-    await session.execute(
-        text(
-            """
-            INSERT INTO knowledge_chunks
-                (id, document_version_id, chunk_key, ordinal, text_content, text_hash,
-                 locator, content_kind, parser_version, parse_schema_version)
-            VALUES (:id, :dv, :key, 1, :body, :hash, CAST(:loc AS jsonb), 'text', 'p1', '1.0')
-            """
-        ),
-        {
-            "id": chunk_id,
-            "dv": version_id,
-            "key": f"c_{uuid.uuid4().hex[:6]}",
-            "body": "已知三角函数 f(x)=sin(2x+π/3)，求其最小正周期与单调递增区间。",
-            "hash": "b" * 64,
-            "loc": '{"page_number": 3, "char_start": 0, "char_end": 40}',
-        },
-    )
+
+    async with admin_session() as session:
+        await session.execute(
+            text(
+                """
+                INSERT INTO knowledge_categories (id, scope, owner_id, key, name, source_type, is_system)
+                VALUES (:id, 'platform', NULL, :key, '高考题', 'gaokao_paper', true)
+                """
+            ),
+            {"id": category_id, "key": f"gk_{uuid.uuid4().hex[:6]}"},
+        )
+        await session.execute(
+            text(
+                """
+                INSERT INTO knowledge_sources
+                    (id, scope, owner_id, category_id, source_type, title, rights_status,
+                     distribution_scope, created_by)
+                VALUES (:id, 'platform', NULL, :cat, 'gaokao_paper', '2023 全国甲卷 数学',
+                        'licensed', 'classroom', :owner)
+                """
+            ),
+            {"id": source_id, "cat": category_id, "owner": user_id},
+        )
+        await session.execute(
+            text(
+                """
+                INSERT INTO knowledge_document_versions
+                    (id, source_id, version_no, storage_key, checksum_sha256, mime_type,
+                     file_size_bytes, lifecycle_status, uploaded_by)
+                VALUES (:id, :src, 1, :key, :hash, 'application/pdf', 1024, 'approved', :owner)
+                """
+            ),
+            {
+                "id": version_id,
+                "src": source_id,
+                "key": f"kb/{uuid.uuid4().hex}.pdf",
+                "hash": "a" * 64,
+                "owner": user_id,
+            },
+        )
+        await session.execute(
+            text(
+                """
+                INSERT INTO knowledge_chunks
+                    (id, document_version_id, chunk_key, ordinal, text_content, text_hash,
+                     locator, content_kind, parser_version, parse_schema_version)
+                VALUES (:id, :dv, :key, 1, :body, :hash, CAST(:loc AS jsonb), 'text', 'p1', '1.0')
+                """
+            ),
+            {
+                "id": chunk_id,
+                "dv": version_id,
+                "key": f"c_{uuid.uuid4().hex[:6]}",
+                "body": "已知三角函数 f(x)=sin(2x+π/3)，求其最小正周期与单调递增区间。",
+                "hash": "b" * 64,
+                "loc": '{"page_number": 3, "char_start": 0, "char_end": 40}',
+            },
+        )
+
+    async with db.session_for(user_id) as session:
+        await session.execute(
+            text("INSERT INTO users (id, username, display_name) VALUES (:id, :u, :u)"),
+            {"id": user_id, "u": username},
+        )
+        for key, name, side in TOOLS:
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO agent_tool_definitions (id, key, version, name, side_effect_level)
+                    VALUES (:id, :key, '1.0.0', :name, :side)
+                    ON CONFLICT (key, version) DO NOTHING
+                    """
+                ),
+                {"id": uuid.uuid4(), "key": key, "name": name, "side": side},
+            )
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO agent_tool_grants (id, owner_id, tool_definition_id, capability)
+                    SELECT gen_random_uuid(), :o, d.id, 'invoke'
+                    FROM agent_tool_definitions d WHERE d.key = :key AND d.version = '1.0.0'
+                    ON CONFLICT (owner_id, tool_definition_id) DO NOTHING
+                    """
+                ),
+                {"o": user_id, "key": key},
+            )
+
     return user_id, chunk_id
 
 
@@ -153,17 +164,16 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: seeding needs an owner context; see D.50
+    db.init(await provision_runtime_role(url))
     try:
-        async with db.system_session() as s:
-            user_id, chunk_id = await seed(s)
+        user_id, chunk_id = await seed()
 
         mark("start")
         print("1. the agent plans, the teacher approves, the executor produces content")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             task = await tasks.create_task(s, user_id, "三角函数一轮复习")
 
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             proposal = await agent.propose_plan(
                 s,
                 user_id,
@@ -173,15 +183,15 @@ async def main() -> int:
             )
         check(len(proposal["steps"]) >= 3, f"plan has {len(proposal['steps'])} steps")
 
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             approved = await agent.approve_plan(
                 s, user_id, task.id, uuid.UUID(proposal["approval_id"])
             )
         check(approved["task_status"] == "ready", f"task ready after approval (got {approved['task_status']})")
 
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             current = await tasks.get_task(s, task.id)
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             execution_id = await executions.start_execution(
                 s,
                 user_id,
@@ -191,7 +201,7 @@ async def main() -> int:
                 expected_task_state_version=current.state_version,
             )
 
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             result = await executor.run_once(s, user_id, execution_id)
 
         check(result["failed_steps"] == [], f"no step failed (got {result['failed_steps']})")
@@ -200,7 +210,7 @@ async def main() -> int:
 
         mark("1 planned and executed")
         print("2. the step outputs actually contain teaching content")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             outputs = (
                 await s.execute(
                     text(
@@ -239,7 +249,7 @@ async def main() -> int:
 
         mark("2 outputs inspected")
         print("3. tool calls were recorded with results and hashes")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             tool_rows = (
                 await s.execute(
                     text(
@@ -259,7 +269,7 @@ async def main() -> int:
 
         mark("3 tool calls inspected")
         print("4. re-running the executor does not redo work")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             again = await executor.run_once(s, user_id, execution_id)
         check(
             again["processed"] == [] and again["outcome"] == "succeeded",
@@ -268,7 +278,7 @@ async def main() -> int:
 
         mark("4 rerun checked")
         print("6. a draft exists, and its student projection has no answers")
-        async with db.system_session() as s:
+        async with db.session_for(user_id) as s:
             draft_rows = (
                 await s.execute(
                     text(
@@ -317,7 +327,7 @@ async def main() -> int:
                 requirement={"topic": "三角函数", "question_count": 2},
                 deps={"search": search_out},
             )
-            async with db.system_session() as s:
+            async with db.session_for(user_id) as s:
                 live = await tool_impl.content_generate(s, ctx)
             check(live["generator"] == "deepseek", "live generator used the model")
             check(len(live["questions"]) == 2, f"model produced {len(live['questions'])} questions")

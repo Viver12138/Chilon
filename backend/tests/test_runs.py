@@ -18,6 +18,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.services import contract, executions, plans, runs, tasks, tools  # noqa: E402
 
 FAILURES: list[str] = []
@@ -107,8 +108,10 @@ async def granted_tool(uid: uuid.UUID) -> str:
     return key
 
 
-async def invocation_count(key: str) -> int:
-    async with db.system_session() as s:
+async def invocation_count(key: str, uid: uuid.UUID) -> int:
+    # agent_tool_executions is owner-scoped; counting from a context-free session
+    # returns zero and would make "no duplicate was created" pass vacuously
+    async with db.session_for(uid) as s:
         return (
             await s.execute(
                 text(
@@ -205,7 +208,7 @@ async def scenario_reconcile(uid: uuid.UUID) -> None:
             s, inv.id, observed_status="succeeded", observed_result={"bytes": 42}
         )
     check(status == "succeeded", f"observed success is recorded (got {status})")
-    check(await invocation_count(key_ok) == 1, "reconciliation did not create a second invocation")
+    check(await invocation_count(key_ok, uid) == 1, "reconciliation did not create a second invocation")
 
     async with db.session_for(uid) as s:
         row = (
@@ -249,7 +252,7 @@ async def scenario_reconcile(uid: uuid.UUID) -> None:
         status3 = await runs.reconcile_tool(s, inv3.id, observed_status="unknown")
     check(status3 == "outcome_unknown", f"still-unknown stays unknown (got {status3})")
     check(
-        await invocation_count(key_unknown) == 1,
+        await invocation_count(key_unknown, uid) == 1,
         "an unresolved unknown is not retried into a duplicate side effect",
     )
 
@@ -260,7 +263,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)  # TODO: seeding needs an owner context; see D.50
+    db.init(await provision_runtime_role(url))
     try:
         uid = await make_user()
         await scenario_run(uid)
