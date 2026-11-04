@@ -173,6 +173,10 @@ docker compose up -d --build
 
 任何一步失败，服务器都不会启动——不会留下一个半死不活的进程。
 
+> **数据库密码只在数据卷第一次初始化时生效。** 之后改 CHILON_DB_PASSWORD 不会
+> 修改已有库的密码，应用会一直报 password authentication failed。要么使用同一个
+> 值，要么 docker compose down -v 重建（**会删除数据**）。
+
 /healthz 只回报进程存活，**不查数据库**：依赖故障不应该让进程看起来也死了，否则编排器会去重启一个本身正常的服务。
 
 导出与上传文件存放在 chilon-data 卷的 /data 下（CHILON_EXPORT_DIR / CHILON_UPLOAD_DIR），**重新部署不会删掉教师已经下载过的文件**。

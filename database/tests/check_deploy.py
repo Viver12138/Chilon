@@ -64,6 +64,13 @@ def main() -> int:
             if f"  {volume}:" not in text:
                 problems.append(f"volume {volume} is used but not declared")
 
+    # contract.py opens schemas/*.json at import time; without them the server cannot
+    # even start, and the failure appears only inside a container
+    if dockerfile:
+        text = dockerfile.read_text(encoding='utf-8')
+        if (ROOT / "schemas").exists() and "COPY schemas" not in text:
+            problems.append("schemas/ is read at import time but the image does not copy it")
+
     if start:
         text = start.read_text(encoding="utf-8")
         if "alembic upgrade head" not in text:
