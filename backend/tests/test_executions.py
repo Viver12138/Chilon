@@ -93,7 +93,7 @@ async def ready_task(uid: uuid.UUID, content: dict) -> dict:
 
 async def scenario_start(uid: uuid.UUID) -> None:
     print("1. start spends the approval and moves the task to running")
-    ctx = await ready_task(uid, {"steps": ["s1"]})
+    ctx = await ready_task(uid, {"steps": [{"key": "s1"}]})
 
     async with db.session_for(uid) as s:
         execution_id = await executions.start_execution(
@@ -139,7 +139,7 @@ async def scenario_start(uid: uuid.UUID) -> None:
 
 async def scenario_failed_start(uid: uuid.UUID) -> None:
     print("2. a failed start leaves the approval unspent")
-    ctx = await ready_task(uid, {"steps": ["s2"]})
+    ctx = await ready_task(uid, {"steps": [{"key": "s2"}]})
 
     async with db.session_for(uid) as s:
         try:
@@ -170,7 +170,7 @@ async def scenario_failed_start(uid: uuid.UUID) -> None:
 
 async def scenario_transitions(uid: uuid.UUID) -> None:
     print(f"3. all {len(executions.EXECUTION.transitions)} execution transitions follow the contract")
-    ctx = await ready_task(uid, {"steps": ["s3"]})
+    ctx = await ready_task(uid, {"steps": [{"key": "s3"}]})
     async with db.session_for(uid) as s:
         execution_id = await executions.start_execution(
             s, uid, ctx["task"], ctx["version"], ctx["approval"],
@@ -193,7 +193,7 @@ async def scenario_transitions(uid: uuid.UUID) -> None:
 
 async def scenario_illegal(uid: uuid.UUID) -> None:
     print("4. undeclared (state, trigger) pairs are refused")
-    ctx = await ready_task(uid, {"steps": ["s4"]})
+    ctx = await ready_task(uid, {"steps": [{"key": "s4"}]})
     async with db.session_for(uid) as s:
         execution_id = await executions.start_execution(
             s, uid, ctx["task"], ctx["version"], ctx["approval"],
@@ -228,7 +228,7 @@ async def scenario_illegal(uid: uuid.UUID) -> None:
 
 async def scenario_fencing(uid: uuid.UUID) -> None:
     print("5. a stale fencing token cannot advance the execution")
-    ctx = await ready_task(uid, {"steps": ["s5"]})
+    ctx = await ready_task(uid, {"steps": [{"key": "s5"}]})
     async with db.session_for(uid) as s:
         execution_id = await executions.start_execution(
             s, uid, ctx["task"], ctx["version"], ctx["approval"],

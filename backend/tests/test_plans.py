@@ -87,17 +87,17 @@ async def scenario_plan_version(uid: uuid.UUID) -> None:
     print("1. plan version is created from the contract's initial state")
     task_id, requirement = await make_task(uid)
     async with db.session_for(uid) as s:
-        v1 = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": ["a"]})
+        v1 = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": [{"key": "a"}]})
     check(v1.status == plans.PLAN_VERSION.initial, f"status is {v1.status!r} (contract initial)")
     check(v1.version_no == 1, "first version is numbered 1")
 
     async with db.session_for(uid) as s:
-        v2 = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": ["a"]})
+        v2 = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": [{"key": "a"}]})
     check(v2.version_no == 2, "second version increments")
     check(v1.content_hash == v2.content_hash, "identical content hashes identically")
 
     async with db.session_for(uid) as s:
-        v3 = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": ["b"]})
+        v3 = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": [{"key": "b"}]})
     check(v3.content_hash != v1.content_hash, "different content hashes differently")
 
     # key order must not change identity
@@ -109,7 +109,7 @@ async def scenario_plan_version(uid: uuid.UUID) -> None:
 
 async def scenario_consumption(uid: uuid.UUID) -> None:
     print("2. consumption works once, and is recorded")
-    approval_id, version_id, digest = await approved_approval(uid, {"steps": ["x"]})
+    approval_id, version_id, digest = await approved_approval(uid, {"steps": [{"key": "x"}]})
 
     async with db.session_for(uid) as s:
         await plans.consume_for_execution(s, approval_id, version_id, digest)
@@ -133,10 +133,10 @@ async def scenario_consumption(uid: uuid.UUID) -> None:
 
 async def scenario_hash_binding(uid: uuid.UUID) -> None:
     print("3. an approval does not survive a change to the plan")
-    approval_id, version_id, _ = await approved_approval(uid, {"steps": ["original"]})
+    approval_id, version_id, _ = await approved_approval(uid, {"steps": [{"key": "original"}]})
     async with db.session_for(uid) as s:
         try:
-            await plans.consume_for_execution(s, approval_id, version_id, plans.content_hash({"steps": ["edited"]}))
+            await plans.consume_for_execution(s, approval_id, version_id, plans.content_hash({"steps": [{"key": "edited"}]}))
             check(False, "a changed plan was executed under the old approval")
         except plans.ApprovalNotConsumable as exc:
             check("content changed" in exc.reason, f"hash mismatch refused ({exc.reason})")
@@ -152,7 +152,7 @@ async def scenario_hash_binding(uid: uuid.UUID) -> None:
 
 async def scenario_expiry(uid: uuid.UUID) -> None:
     print("4. an expired approval cannot authorise execution")
-    approval_id, version_id, digest = await approved_approval(uid, {"steps": ["y"]})
+    approval_id, version_id, digest = await approved_approval(uid, {"steps": [{"key": "y"}]})
     past = datetime.now(timezone.utc) - timedelta(seconds=1)
     async with db.system_session() as s:
         await s.execute(
@@ -171,7 +171,7 @@ async def scenario_not_approved(uid: uuid.UUID) -> None:
     print("5. pending and rejected approvals cannot be consumed")
     task_id, requirement = await make_task(uid)
     async with db.session_for(uid) as s:
-        version = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": ["z"]})
+        version = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": [{"key": "z"}]})
     async with db.session_for(uid) as s:
         approval_id = await plans.request_approval(s, uid, task_id, version.id)
 
@@ -204,7 +204,7 @@ async def scenario_db_constraint(uid: uuid.UUID) -> None:
     print("6. the database refuses consumption on a non-approved row")
     task_id, requirement = await make_task(uid)
     async with db.session_for(uid) as s:
-        version = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": ["w"]})
+        version = await plans.create_plan_version(s, uid, task_id, requirement, {"steps": [{"key": "w"}]})
     async with db.session_for(uid) as s:
         approval_id = await plans.request_approval(s, uid, task_id, version.id)
 
