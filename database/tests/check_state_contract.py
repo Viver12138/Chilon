@@ -35,6 +35,23 @@ def main() -> int:
     errors: list[str] = []
     checked = 0
 
+    # A transition may declare several from-states or triggers; after expansion
+    # every (state, trigger) pair must be unique, otherwise "which transition
+    # fired" is ambiguous and an implementation has to guess.
+    for agg in machines["aggregates"]:
+        pairs: dict[tuple[str, str], list[str]] = {}
+        for tr in agg["transitions"]:
+            from_states = tr["from"] if isinstance(tr["from"], list) else [tr["from"]]
+            triggers = tr["trigger"] if isinstance(tr["trigger"], list) else [tr["trigger"]]
+            for state in from_states:
+                for trigger in triggers:
+                    pairs.setdefault((state, trigger), []).append(tr["id"])
+        duplicates = {k: v for k, v in pairs.items() if len(v) > 1}
+        for (state, trigger), ids in sorted(duplicates.items()):
+            errors.append(
+                f"{agg['id']}: duplicate edge ({state!r}, {trigger!r}) declared by {ids}"
+            )
+
     for agg in machines["aggregates"]:
         table_name = mapping.get(agg["id"])
         table = tables.get(table_name)

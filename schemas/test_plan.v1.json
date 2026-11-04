@@ -171,7 +171,6 @@
           "from": [
             "draft",
             "planning",
-            "awaiting_plan_approval",
             "ready"
           ],
           "to": "cancelled",

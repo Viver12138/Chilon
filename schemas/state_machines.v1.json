@@ -86,8 +86,13 @@
       "module": "K011",
       "entity": "tasks",
       "status_field": "tasks.status",
-      "initial_states": ["draft"],
-      "terminal_states": ["completed", "cancelled"],
+      "initial_states": [
+        "draft"
+      ],
+      "terminal_states": [
+        "completed",
+        "cancelled"
+      ],
       "states": [
         "draft",
         "planning",
@@ -101,32 +106,230 @@
       ],
       "source": "§21.5.1",
       "transitions": [
-        { "id": "T01", "from": "draft", "to": "planning", "trigger": "submit_requirement", "guard": "提交有效 Requirement Version", "effects": ["固定 Requirement Version"] },
-        { "id": "T02", "from": "planning", "to": "awaiting_plan_approval", "trigger": "plan_validated", "guard": "Plan 通过结构、DAG、Capability 与来源快照校验", "effects": ["创建 Plan Version 与审批请求"] },
-        { "id": "T03", "from": "planning", "to": "needs_attention", "trigger": "planning_failed", "guard": "重试耗尽、输入不足或不可恢复错误", "effects": ["记录错误码和可恢复动作"] },
-        { "id": "T04", "from": "awaiting_plan_approval", "to": "ready", "trigger": "approve_plan", "guard": "教师批准与当前 Plan Hash 匹配的 Approval", "effects": ["固化 Approval"] },
-        { "id": "T05", "from": "awaiting_plan_approval", "to": "planning", "trigger": "request_plan_revision", "guard": "教师要求修改 Plan", "effects": ["旧 Plan Version 标记 superseded"] },
-        { "id": "T06", "from": "awaiting_plan_approval", "to": "planning", "trigger": "plan_expired", "guard": "Plan/Approval 过期或失效", "effects": ["不创建 Execution"] },
-        { "id": "T07", "from": "awaiting_plan_approval", "to": "cancelled", "trigger": "cancel", "guard": "教师取消", "effects": ["不创建 Execution"] },
-        { "id": "T08", "from": "ready", "to": "running", "trigger": "start_execution", "guard": "创建 Execution 并成功入队", "effects": ["记录当前 Execution ID"] },
-        { "id": "T09", "from": "ready", "to": "needs_attention", "trigger": "enqueue_failed", "guard": "入队失败或 Execution 创建失败", "effects": ["记录可重试错误"] },
-        { "id": "T10", "from": "ready", "to": "planning", "trigger": "approval_invalidated", "guard": "Plan/Approval 在执行前失效", "effects": ["创建新的 Plan 版本"] },
-        { "id": "T11", "from": "running", "to": "completed", "trigger": "delivery_complete", "guard": "所有必需 Draft 已持久化并完成交付，无活跃 Execution", "effects": ["记录交付物 ID"] },
-        { "id": "T12", "from": "running", "to": "needs_attention", "trigger": "execution_failed", "guard": "Execution 失败、结果不确定或阻塞", "effects": ["记录原因和当前 Execution ID"] },
-        { "id": "T13", "from": "running", "to": "awaiting_plan_approval", "trigger": "plan_invalidated", "guard": "Plan 因输入、工具或策略变化失效，并已停止活跃执行", "effects": ["生成或选择新的 Plan Version"] },
-        { "id": "T14", "from": "needs_attention", "to": "planning", "trigger": "replan", "guard": "教师发起重新规划", "effects": ["创建新的 Requirement/Plan 版本"] },
-        { "id": "T15", "from": "needs_attention", "to": "ready", "trigger": "retry", "guard": "Plan 仍有效，教师重试", "effects": ["旧 Attempt 保留"] },
-        { "id": "T16", "from": "needs_attention", "to": "cancelled", "trigger": "cancel", "guard": "教师取消", "effects": ["所有子执行必须终止或超时协调"] },
-        { "id": "T17", "from": ["draft", "planning", "awaiting_plan_approval", "ready"], "to": "cancelled", "trigger": "cancel", "guard": "教师取消且无活跃副作用", "effects": [] },
-        { "id": "T18", "from": "running", "to": "cancelling", "trigger": "request_cancel", "guard": "教师请求取消", "effects": ["创建取消命令"] },
-        { "id": "T19", "from": "cancelling", "to": "cancelled", "trigger": "cancellation_confirmed", "guard": "所有 Execution 已终止或确认无副作用", "effects": ["写入终止事件"] },
-        { "id": "T20", "from": "cancelling", "to": "needs_attention", "trigger": "cancellation_unresolved", "guard": "超过取消协调期限且结果不确定", "effects": ["保留 cancel_pending 标记并告警"] }
+        {
+          "id": "T01",
+          "from": "draft",
+          "to": "planning",
+          "trigger": "submit_requirement",
+          "guard": "提交有效 Requirement Version",
+          "effects": [
+            "固定 Requirement Version"
+          ]
+        },
+        {
+          "id": "T02",
+          "from": "planning",
+          "to": "awaiting_plan_approval",
+          "trigger": "plan_validated",
+          "guard": "Plan 通过结构、DAG、Capability 与来源快照校验",
+          "effects": [
+            "创建 Plan Version 与审批请求"
+          ]
+        },
+        {
+          "id": "T03",
+          "from": "planning",
+          "to": "needs_attention",
+          "trigger": "planning_failed",
+          "guard": "重试耗尽、输入不足或不可恢复错误",
+          "effects": [
+            "记录错误码和可恢复动作"
+          ]
+        },
+        {
+          "id": "T04",
+          "from": "awaiting_plan_approval",
+          "to": "ready",
+          "trigger": "approve_plan",
+          "guard": "教师批准与当前 Plan Hash 匹配的 Approval",
+          "effects": [
+            "固化 Approval"
+          ]
+        },
+        {
+          "id": "T05",
+          "from": "awaiting_plan_approval",
+          "to": "planning",
+          "trigger": "request_plan_revision",
+          "guard": "教师要求修改 Plan",
+          "effects": [
+            "旧 Plan Version 标记 superseded"
+          ]
+        },
+        {
+          "id": "T06",
+          "from": "awaiting_plan_approval",
+          "to": "planning",
+          "trigger": "plan_expired",
+          "guard": "Plan/Approval 过期或失效",
+          "effects": [
+            "不创建 Execution"
+          ]
+        },
+        {
+          "id": "T07",
+          "from": "awaiting_plan_approval",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "教师取消",
+          "effects": [
+            "不创建 Execution"
+          ]
+        },
+        {
+          "id": "T08",
+          "from": "ready",
+          "to": "running",
+          "trigger": "start_execution",
+          "guard": "创建 Execution 并成功入队",
+          "effects": [
+            "记录当前 Execution ID"
+          ]
+        },
+        {
+          "id": "T09",
+          "from": "ready",
+          "to": "needs_attention",
+          "trigger": "enqueue_failed",
+          "guard": "入队失败或 Execution 创建失败",
+          "effects": [
+            "记录可重试错误"
+          ]
+        },
+        {
+          "id": "T10",
+          "from": "ready",
+          "to": "planning",
+          "trigger": "approval_invalidated",
+          "guard": "Plan/Approval 在执行前失效",
+          "effects": [
+            "创建新的 Plan 版本"
+          ]
+        },
+        {
+          "id": "T11",
+          "from": "running",
+          "to": "completed",
+          "trigger": "delivery_complete",
+          "guard": "所有必需 Draft 已持久化并完成交付，无活跃 Execution",
+          "effects": [
+            "记录交付物 ID"
+          ]
+        },
+        {
+          "id": "T12",
+          "from": "running",
+          "to": "needs_attention",
+          "trigger": "execution_failed",
+          "guard": "Execution 失败、结果不确定或阻塞",
+          "effects": [
+            "记录原因和当前 Execution ID"
+          ]
+        },
+        {
+          "id": "T13",
+          "from": "running",
+          "to": "awaiting_plan_approval",
+          "trigger": "plan_invalidated",
+          "guard": "Plan 因输入、工具或策略变化失效，并已停止活跃执行",
+          "effects": [
+            "生成或选择新的 Plan Version"
+          ]
+        },
+        {
+          "id": "T14",
+          "from": "needs_attention",
+          "to": "planning",
+          "trigger": "replan",
+          "guard": "教师发起重新规划",
+          "effects": [
+            "创建新的 Requirement/Plan 版本"
+          ]
+        },
+        {
+          "id": "T15",
+          "from": "needs_attention",
+          "to": "ready",
+          "trigger": "retry",
+          "guard": "Plan 仍有效，教师重试",
+          "effects": [
+            "旧 Attempt 保留"
+          ]
+        },
+        {
+          "id": "T16",
+          "from": "needs_attention",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "教师取消",
+          "effects": [
+            "所有子执行必须终止或超时协调"
+          ]
+        },
+        {
+          "id": "T17",
+          "from": [
+            "draft",
+            "planning",
+            "ready"
+          ],
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "教师取消且无活跃副作用",
+          "effects": []
+        },
+        {
+          "id": "T18",
+          "from": "running",
+          "to": "cancelling",
+          "trigger": "request_cancel",
+          "guard": "教师请求取消",
+          "effects": [
+            "创建取消命令"
+          ]
+        },
+        {
+          "id": "T19",
+          "from": "cancelling",
+          "to": "cancelled",
+          "trigger": "cancellation_confirmed",
+          "guard": "所有 Execution 已终止或确认无副作用",
+          "effects": [
+            "写入终止事件"
+          ]
+        },
+        {
+          "id": "T20",
+          "from": "cancelling",
+          "to": "needs_attention",
+          "trigger": "cancellation_unresolved",
+          "guard": "超过取消协调期限且结果不确定",
+          "effects": [
+            "保留 cancel_pending 标记并告警"
+          ]
+        }
       ],
       "invariants": [
-        { "id": "T-INV1", "text": "completed 表示 Agent 已完成交付，不表示 Draft 已发布；Draft 的审核与发布由 Draft 状态机独立管理。", "source": "§21.5.1" },
-        { "id": "T-INV2", "text": "进入 completed 前必须满足：所有必需 Draft 已持久化、初轮质量与数学检查已达终态并绑定具体 Draft Revision、无待写入输出副作用。该证据不构成发布门禁证据。", "source": "§21.5.1" },
-        { "id": "T-INV3", "text": "completed 是终止态；Draft 内的局部修改不重开 Task。需要重新检索或多步骤生成时创建新 Task，可用 parent_task_id 保留来源。", "source": "§21.5.1" },
-        { "id": "T-INV4", "text": "MVP 中同一 Task 最多存在一个非终止 Execution。", "source": "§21.5.1" }
+        {
+          "id": "T-INV1",
+          "text": "completed 表示 Agent 已完成交付，不表示 Draft 已发布；Draft 的审核与发布由 Draft 状态机独立管理。",
+          "source": "§21.5.1"
+        },
+        {
+          "id": "T-INV2",
+          "text": "进入 completed 前必须满足：所有必需 Draft 已持久化、初轮质量与数学检查已达终态并绑定具体 Draft Revision、无待写入输出副作用。该证据不构成发布门禁证据。",
+          "source": "§21.5.1"
+        },
+        {
+          "id": "T-INV3",
+          "text": "completed 是终止态；Draft 内的局部修改不重开 Task。需要重新检索或多步骤生成时创建新 Task，可用 parent_task_id 保留来源。",
+          "source": "§21.5.1"
+        },
+        {
+          "id": "T-INV4",
+          "text": "MVP 中同一 Task 最多存在一个非终止 Execution。",
+          "source": "§21.5.1"
+        }
       ]
     },
     {
@@ -135,18 +338,59 @@
       "module": "K011",
       "entity": "task_requirement_versions",
       "status_field": "task_requirement_versions.status",
-      "initial_states": ["draft"],
-      "terminal_states": ["superseded", "abandoned"],
-      "states": ["draft", "active", "superseded", "abandoned"],
+      "initial_states": [
+        "draft"
+      ],
+      "terminal_states": [
+        "superseded",
+        "abandoned"
+      ],
+      "states": [
+        "draft",
+        "active",
+        "superseded",
+        "abandoned"
+      ],
       "source": "§21.5.2",
       "transitions": [
-        { "id": "R01", "from": "draft", "to": "active", "trigger": "submit", "guard": "提交时完成 Schema 校验并计算 Hash", "effects": ["active 后不可修改"] },
-        { "id": "R02", "from": "draft", "to": "abandoned", "trigger": "abandon", "guard": "教师放弃未提交版本", "effects": [] },
-        { "id": "R03", "from": "active", "to": "superseded", "trigger": "supersede", "guard": "教师创建新版本；若已有批准 Plan 或活跃 Execution，必须先回到 planning 或完成取消协调", "effects": [] }
+        {
+          "id": "R01",
+          "from": "draft",
+          "to": "active",
+          "trigger": "submit",
+          "guard": "提交时完成 Schema 校验并计算 Hash",
+          "effects": [
+            "active 后不可修改"
+          ]
+        },
+        {
+          "id": "R02",
+          "from": "draft",
+          "to": "abandoned",
+          "trigger": "abandon",
+          "guard": "教师放弃未提交版本",
+          "effects": []
+        },
+        {
+          "id": "R03",
+          "from": "active",
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "教师创建新版本；若已有批准 Plan 或活跃 Execution，必须先回到 planning 或完成取消协调",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "R-INV1", "text": "同一 Task 最多一个 draft 和一个 active Requirement Version。", "source": "§21.5.2" },
-        { "id": "R-INV2", "text": "Plan、Execution 与 Draft 必须保存创建时使用的 requirement_version_id 与 Hash。", "source": "§21.5.2" }
+        {
+          "id": "R-INV1",
+          "text": "同一 Task 最多一个 draft 和一个 active Requirement Version。",
+          "source": "§21.5.2"
+        },
+        {
+          "id": "R-INV2",
+          "text": "Plan、Execution 与 Draft 必须保存创建时使用的 requirement_version_id 与 Hash。",
+          "source": "§21.5.2"
+        }
       ]
     },
     {
@@ -155,22 +399,97 @@
       "module": "K011",
       "entity": "agent_plan_versions",
       "status_field": "agent_plan_versions.status",
-      "initial_states": ["draft"],
-      "terminal_states": ["rejected", "expired", "invalidated", "superseded"],
-      "states": ["draft", "awaiting_approval", "approved", "rejected", "expired", "invalidated", "superseded"],
+      "initial_states": [
+        "draft"
+      ],
+      "terminal_states": [
+        "rejected",
+        "expired",
+        "invalidated",
+        "superseded"
+      ],
+      "states": [
+        "draft",
+        "awaiting_approval",
+        "approved",
+        "rejected",
+        "expired",
+        "invalidated",
+        "superseded"
+      ],
       "source": "§21.5.3",
       "transitions": [
-        { "id": "PV01", "from": "draft", "to": "awaiting_approval", "trigger": "validate_plan", "guard": "校验通过并计算 Plan Hash", "effects": [] },
-        { "id": "PV02", "from": "awaiting_approval", "to": "approved", "trigger": "approve", "guard": "Approval 为 approved 且 Hash 一致", "effects": [] },
-        { "id": "PV03", "from": "awaiting_approval", "to": "rejected", "trigger": "reject", "guard": "教师拒绝", "effects": [] },
-        { "id": "PV04", "from": "awaiting_approval", "to": "expired", "trigger": "expire", "guard": "超过 expires_at", "effects": [] },
-        { "id": "PV05", "from": "awaiting_approval", "to": "superseded", "trigger": "supersede", "guard": "生成新 Plan Version", "effects": [] },
-        { "id": "PV06", "from": "awaiting_approval", "to": "invalidated", "trigger": "invalidate", "guard": "输入或依赖 Hash 失效", "effects": [] },
-        { "id": "PV07", "from": "approved", "to": "superseded", "trigger": "supersede", "guard": "Execution 尚未启动且出现新批准 Plan", "effects": [] },
-        { "id": "PV08", "from": "approved", "to": "invalidated", "trigger": "invalidate", "guard": "审批被撤销、输入变化或关键版本不再匹配", "effects": [] }
+        {
+          "id": "PV01",
+          "from": "draft",
+          "to": "awaiting_approval",
+          "trigger": "validate_plan",
+          "guard": "校验通过并计算 Plan Hash",
+          "effects": []
+        },
+        {
+          "id": "PV02",
+          "from": "awaiting_approval",
+          "to": "approved",
+          "trigger": "approve",
+          "guard": "Approval 为 approved 且 Hash 一致",
+          "effects": []
+        },
+        {
+          "id": "PV03",
+          "from": "awaiting_approval",
+          "to": "rejected",
+          "trigger": "reject",
+          "guard": "教师拒绝",
+          "effects": []
+        },
+        {
+          "id": "PV04",
+          "from": "awaiting_approval",
+          "to": "expired",
+          "trigger": "expire",
+          "guard": "超过 expires_at",
+          "effects": []
+        },
+        {
+          "id": "PV05",
+          "from": "awaiting_approval",
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "生成新 Plan Version",
+          "effects": []
+        },
+        {
+          "id": "PV06",
+          "from": "awaiting_approval",
+          "to": "invalidated",
+          "trigger": "invalidate",
+          "guard": "输入或依赖 Hash 失效",
+          "effects": []
+        },
+        {
+          "id": "PV07",
+          "from": "approved",
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "Execution 尚未启动且出现新批准 Plan",
+          "effects": []
+        },
+        {
+          "id": "PV08",
+          "from": "approved",
+          "to": "invalidated",
+          "trigger": "invalidate",
+          "guard": "审批被撤销、输入变化或关键版本不再匹配",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "PV-INV1", "text": "draft 校验失败时不持久化为可执行 Plan。", "source": "§21.5.3" }
+        {
+          "id": "PV-INV1",
+          "text": "draft 校验失败时不持久化为可执行 Plan。",
+          "source": "§21.5.3"
+        }
       ]
     },
     {
@@ -179,20 +498,77 @@
       "module": "K011",
       "entity": "agent_plan_approvals",
       "status_field": "agent_plan_approvals.status",
-      "initial_states": ["pending"],
-      "terminal_states": ["rejected", "revoked", "invalidated", "expired"],
-      "states": ["pending", "approved", "rejected", "revoked", "invalidated", "expired"],
+      "initial_states": [
+        "pending"
+      ],
+      "terminal_states": [
+        "rejected",
+        "revoked",
+        "invalidated",
+        "expired"
+      ],
+      "states": [
+        "pending",
+        "approved",
+        "rejected",
+        "revoked",
+        "invalidated",
+        "expired"
+      ],
       "source": "§21.5.3",
       "transitions": [
-        { "id": "PA01", "from": "pending", "to": "approved", "trigger": "approve", "guard": "教师批准", "effects": [] },
-        { "id": "PA02", "from": "pending", "to": "rejected", "trigger": "reject", "guard": "教师拒绝", "effects": [] },
-        { "id": "PA03", "from": "pending", "to": "expired", "trigger": "expire", "guard": "超过审批期限", "effects": [] },
-        { "id": "PA04", "from": "approved", "to": "revoked", "trigger": "revoke", "guard": "仅在尚未启动 Execution 时允许", "effects": [] },
-        { "id": "PA05", "from": "approved", "to": "invalidated", "trigger": "invalidate", "guard": "Plan Hash、Requirement、来源快照或审批期限发生变化", "effects": [] }
+        {
+          "id": "PA01",
+          "from": "pending",
+          "to": "approved",
+          "trigger": "approve",
+          "guard": "教师批准",
+          "effects": []
+        },
+        {
+          "id": "PA02",
+          "from": "pending",
+          "to": "rejected",
+          "trigger": "reject",
+          "guard": "教师拒绝",
+          "effects": []
+        },
+        {
+          "id": "PA03",
+          "from": "pending",
+          "to": "expired",
+          "trigger": "expire",
+          "guard": "超过审批期限",
+          "effects": []
+        },
+        {
+          "id": "PA04",
+          "from": "approved",
+          "to": "revoked",
+          "trigger": "revoke",
+          "guard": "仅在尚未启动 Execution 时允许",
+          "effects": []
+        },
+        {
+          "id": "PA05",
+          "from": "approved",
+          "to": "invalidated",
+          "trigger": "invalidate",
+          "guard": "Plan Hash、Requirement、来源快照或审批期限发生变化",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "PA-INV1", "text": "Approval 必须绑定 plan_version_id、plan_hash、requirement_version_id、审批人、审批时间与可选期限。", "source": "§21.5.3" },
-        { "id": "PA-INV2", "text": "Execution 启动前必须重新检查 Plan 仍为 approved、Approval 仍有效、Hash 一致且 Requirement Version 未失效。", "source": "§21.5.3" }
+        {
+          "id": "PA-INV1",
+          "text": "Approval 必须绑定 plan_version_id、plan_hash、requirement_version_id、审批人、审批时间与可选期限。",
+          "source": "§21.5.3"
+        },
+        {
+          "id": "PA-INV2",
+          "text": "Execution 启动前必须重新检查 Plan 仍为 approved、Approval 仍有效、Hash 一致且 Requirement Version 未失效。",
+          "source": "§21.5.3"
+        }
       ]
     },
     {
@@ -201,8 +577,15 @@
       "module": "K011",
       "entity": "agent_executions",
       "status_field": "agent_executions.status",
-      "initial_states": ["queued"],
-      "terminal_states": ["succeeded", "failed", "cancelled", "superseded"],
+      "initial_states": [
+        "queued"
+      ],
+      "terminal_states": [
+        "succeeded",
+        "failed",
+        "cancelled",
+        "superseded"
+      ],
       "states": [
         "queued",
         "starting",
@@ -219,36 +602,228 @@
       ],
       "source": "§21.6.1",
       "transitions": [
-        { "id": "E01", "from": "queued", "to": "starting", "trigger": "acquire_lease", "guard": "取得 Lease + Fencing Token，Plan/Approval 复核通过", "effects": [] },
-        { "id": "E02", "from": "queued", "to": "cancelled", "trigger": "cancel", "guard": "启动前教师取消", "effects": [] },
-        { "id": "E03", "from": "queued", "to": "superseded", "trigger": "supersede", "guard": "Plan 失效且任务已被替换", "effects": [] },
-        { "id": "E04", "from": "starting", "to": "running", "trigger": "runtime_started", "guard": "Runtime Session 建立并写入首个 Checkpoint", "effects": [] },
-        { "id": "E05", "from": "starting", "to": "failed", "trigger": "start_failed", "guard": "建立明确失败", "effects": [] },
-        { "id": "E06", "from": "starting", "to": "outcome_unknown", "trigger": "start_timeout", "guard": "超时且无法确认是否已产生副作用", "effects": [] },
-        { "id": "E07", "from": "running", "to": "pause_requested", "trigger": "request_pause", "guard": "请求暂停", "effects": [] },
-        { "id": "E08", "from": "pause_requested", "to": "paused", "trigger": "checkpoint_saved", "guard": "安全 Checkpoint 已保存", "effects": [] },
-        { "id": "E09", "from": "pause_requested", "to": "running", "trigger": "pause_rejected", "guard": "当前无法安全暂停", "effects": [] },
-        { "id": "E10", "from": "paused", "to": "queued", "trigger": "resume", "guard": "教师恢复", "effects": [] },
-        { "id": "E11", "from": "paused", "to": "cancel_requested", "trigger": "request_cancel", "guard": "请求取消", "effects": [] },
-        { "id": "E12", "from": ["queued", "starting", "running", "paused"], "to": "cancel_requested", "trigger": "request_cancel", "guard": "请求取消", "effects": [] },
-        { "id": "E13", "from": "cancel_requested", "to": "cancelled", "trigger": "cancellation_confirmed", "guard": "没有活跃 Runtime/Tool，或全部已确认终止", "effects": [] },
-        { "id": "E14", "from": "cancel_requested", "to": "cancelling", "trigger": "runtime_acknowledged_cancel", "guard": "Runtime 已接收取消", "effects": [] },
-        { "id": "E15", "from": "cancel_requested", "to": "outcome_unknown", "trigger": "cancel_timeout", "guard": "取消确认超时", "effects": [] },
-        { "id": "E16", "from": "cancelling", "to": "cancelled", "trigger": "cleanup_complete", "guard": "所有 Tool/Run 进入终止态且清理完成", "effects": [] },
-        { "id": "E17", "from": "cancelling", "to": "outcome_unknown", "trigger": "cleanup_unresolved", "guard": "无法确认 Tool/Run 实际结果", "effects": [] },
-        { "id": "E18", "from": "running", "to": "succeeded", "trigger": "steps_succeeded", "guard": "全部必需 Step 成功，输出 Hash 与结果已持久化", "effects": [] },
-        { "id": "E19", "from": "running", "to": "failed", "trigger": "unrecoverable_failure", "guard": "达到重试上限或出现确定性异常", "effects": [] },
-        { "id": "E20", "from": "running", "to": "outcome_unknown", "trigger": "lease_lost", "guard": "Lease 丢失或长时间无有效 Heartbeat", "effects": [] },
-        { "id": "E21", "from": "outcome_unknown", "to": "succeeded", "trigger": "reconcile_succeeded", "guard": "对账确认执行完成并产出合法结果", "effects": [] },
-        { "id": "E22", "from": "outcome_unknown", "to": "failed", "trigger": "reconcile_failed", "guard": "对账确认执行失败", "effects": [] },
-        { "id": "E23", "from": "outcome_unknown", "to": "cancelled", "trigger": "reconcile_cancelled", "guard": "对账确认取消完成", "effects": [] },
-        { "id": "E24", "from": ["queued", "starting", "running", "paused"], "to": "superseded", "trigger": "supersede", "guard": "旧执行被替换并完成停止协调", "effects": [] }
+        {
+          "id": "E01",
+          "from": "queued",
+          "to": "starting",
+          "trigger": "acquire_lease",
+          "guard": "取得 Lease + Fencing Token，Plan/Approval 复核通过",
+          "effects": []
+        },
+        {
+          "id": "E02",
+          "from": "queued",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "启动前教师取消",
+          "effects": []
+        },
+        {
+          "id": "E03",
+          "from": "queued",
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "Plan 失效且任务已被替换",
+          "effects": []
+        },
+        {
+          "id": "E04",
+          "from": "starting",
+          "to": "running",
+          "trigger": "runtime_started",
+          "guard": "Runtime Session 建立并写入首个 Checkpoint",
+          "effects": []
+        },
+        {
+          "id": "E05",
+          "from": "starting",
+          "to": "failed",
+          "trigger": "start_failed",
+          "guard": "建立明确失败",
+          "effects": []
+        },
+        {
+          "id": "E06",
+          "from": "starting",
+          "to": "outcome_unknown",
+          "trigger": "start_timeout",
+          "guard": "超时且无法确认是否已产生副作用",
+          "effects": []
+        },
+        {
+          "id": "E07",
+          "from": "running",
+          "to": "pause_requested",
+          "trigger": "request_pause",
+          "guard": "请求暂停",
+          "effects": []
+        },
+        {
+          "id": "E08",
+          "from": "pause_requested",
+          "to": "paused",
+          "trigger": "checkpoint_saved",
+          "guard": "安全 Checkpoint 已保存",
+          "effects": []
+        },
+        {
+          "id": "E09",
+          "from": "pause_requested",
+          "to": "running",
+          "trigger": "pause_rejected",
+          "guard": "当前无法安全暂停",
+          "effects": []
+        },
+        {
+          "id": "E10",
+          "from": "paused",
+          "to": "queued",
+          "trigger": "resume",
+          "guard": "教师恢复",
+          "effects": []
+        },
+        {
+          "id": "E11",
+          "from": "paused",
+          "to": "cancel_requested",
+          "trigger": "request_cancel",
+          "guard": "请求取消",
+          "effects": []
+        },
+        {
+          "id": "E12",
+          "from": [
+            "queued",
+            "starting",
+            "running"
+          ],
+          "to": "cancel_requested",
+          "trigger": "request_cancel",
+          "guard": "请求取消",
+          "effects": []
+        },
+        {
+          "id": "E13",
+          "from": "cancel_requested",
+          "to": "cancelled",
+          "trigger": "cancellation_confirmed",
+          "guard": "没有活跃 Runtime/Tool，或全部已确认终止",
+          "effects": []
+        },
+        {
+          "id": "E14",
+          "from": "cancel_requested",
+          "to": "cancelling",
+          "trigger": "runtime_acknowledged_cancel",
+          "guard": "Runtime 已接收取消",
+          "effects": []
+        },
+        {
+          "id": "E15",
+          "from": "cancel_requested",
+          "to": "outcome_unknown",
+          "trigger": "cancel_timeout",
+          "guard": "取消确认超时",
+          "effects": []
+        },
+        {
+          "id": "E16",
+          "from": "cancelling",
+          "to": "cancelled",
+          "trigger": "cleanup_complete",
+          "guard": "所有 Tool/Run 进入终止态且清理完成",
+          "effects": []
+        },
+        {
+          "id": "E17",
+          "from": "cancelling",
+          "to": "outcome_unknown",
+          "trigger": "cleanup_unresolved",
+          "guard": "无法确认 Tool/Run 实际结果",
+          "effects": []
+        },
+        {
+          "id": "E18",
+          "from": "running",
+          "to": "succeeded",
+          "trigger": "steps_succeeded",
+          "guard": "全部必需 Step 成功，输出 Hash 与结果已持久化",
+          "effects": []
+        },
+        {
+          "id": "E19",
+          "from": "running",
+          "to": "failed",
+          "trigger": "unrecoverable_failure",
+          "guard": "达到重试上限或出现确定性异常",
+          "effects": []
+        },
+        {
+          "id": "E20",
+          "from": "running",
+          "to": "outcome_unknown",
+          "trigger": "lease_lost",
+          "guard": "Lease 丢失或长时间无有效 Heartbeat",
+          "effects": []
+        },
+        {
+          "id": "E21",
+          "from": "outcome_unknown",
+          "to": "succeeded",
+          "trigger": "reconcile_succeeded",
+          "guard": "对账确认执行完成并产出合法结果",
+          "effects": []
+        },
+        {
+          "id": "E22",
+          "from": "outcome_unknown",
+          "to": "failed",
+          "trigger": "reconcile_failed",
+          "guard": "对账确认执行失败",
+          "effects": []
+        },
+        {
+          "id": "E23",
+          "from": "outcome_unknown",
+          "to": "cancelled",
+          "trigger": "reconcile_cancelled",
+          "guard": "对账确认取消完成",
+          "effects": []
+        },
+        {
+          "id": "E24",
+          "from": [
+            "starting",
+            "running",
+            "paused"
+          ],
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "旧执行被替换并完成停止协调",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "E-INV1", "text": "outcome_unknown 不是终止态，但完成状态对账前禁止自动重试。", "source": "§21.6.1" },
-        { "id": "E-INV2", "text": "失败或取消后的重试创建新 Execution，通过 retry_of_execution_id 追溯。", "source": "§21.6.1" },
-        { "id": "E-INV3", "text": "恢复暂停的 Execution 使用同一 Execution ID，但创建新的 Agent Run。", "source": "§21.6.1" },
-        { "id": "E-INV4", "text": "Lease 更新必须携带 Fencing Token；旧 Token 的迟到写入只能作为审计证据。", "source": "§21.6.1" }
+        {
+          "id": "E-INV1",
+          "text": "outcome_unknown 不是终止态，但完成状态对账前禁止自动重试。",
+          "source": "§21.6.1"
+        },
+        {
+          "id": "E-INV2",
+          "text": "失败或取消后的重试创建新 Execution，通过 retry_of_execution_id 追溯。",
+          "source": "§21.6.1"
+        },
+        {
+          "id": "E-INV3",
+          "text": "恢复暂停的 Execution 使用同一 Execution ID，但创建新的 Agent Run。",
+          "source": "§21.6.1"
+        },
+        {
+          "id": "E-INV4",
+          "text": "Lease 更新必须携带 Fencing Token；旧 Token 的迟到写入只能作为审计证据。",
+          "source": "§21.6.1"
+        }
       ]
     },
     {
@@ -257,20 +832,90 @@
       "module": "K011",
       "entity": "agent_runs",
       "status_field": "agent_runs.status",
-      "initial_states": ["starting"],
-      "terminal_states": ["completed", "failed", "lost", "superseded"],
-      "states": ["starting", "running", "interrupted", "completed", "failed", "lost", "superseded"],
+      "initial_states": [
+        "starting"
+      ],
+      "terminal_states": [
+        "completed",
+        "failed",
+        "lost",
+        "superseded"
+      ],
+      "states": [
+        "starting",
+        "running",
+        "interrupted",
+        "completed",
+        "failed",
+        "lost",
+        "superseded"
+      ],
       "source": "§21.6.2",
       "transitions": [
-        { "id": "RUN01", "from": "starting", "to": "running", "trigger": "session_ready", "guard": "Harness 确认 Session 可执行", "effects": [] },
-        { "id": "RUN02", "from": "running", "to": "interrupted", "trigger": "interrupt", "guard": "安全暂停或进程受控中断", "effects": [] },
-        { "id": "RUN03", "from": "running", "to": "completed", "trigger": "run_completed", "guard": "本次 Run 明确结束", "effects": [] },
-        { "id": "RUN04", "from": "running", "to": "failed", "trigger": "run_failed", "guard": "本次 Run 明确失败", "effects": [] },
-        { "id": "RUN05", "from": ["starting", "running"], "to": "lost", "trigger": "lease_lost", "guard": "租约或心跳丢失，业务对账交给 Execution", "effects": [] },
-        { "id": "RUN06", "from": ["starting", "running", "interrupted"], "to": "superseded", "trigger": "supersede", "guard": "新 Run 已接管", "effects": ["迟到事件只能审计，不能推进 Step"] }
+        {
+          "id": "RUN01",
+          "from": "starting",
+          "to": "running",
+          "trigger": "session_ready",
+          "guard": "Harness 确认 Session 可执行",
+          "effects": []
+        },
+        {
+          "id": "RUN02",
+          "from": "running",
+          "to": "interrupted",
+          "trigger": "interrupt",
+          "guard": "安全暂停或进程受控中断",
+          "effects": []
+        },
+        {
+          "id": "RUN03",
+          "from": "running",
+          "to": "completed",
+          "trigger": "run_completed",
+          "guard": "本次 Run 明确结束",
+          "effects": []
+        },
+        {
+          "id": "RUN04",
+          "from": "running",
+          "to": "failed",
+          "trigger": "run_failed",
+          "guard": "本次 Run 明确失败",
+          "effects": []
+        },
+        {
+          "id": "RUN05",
+          "from": [
+            "starting",
+            "running"
+          ],
+          "to": "lost",
+          "trigger": "lease_lost",
+          "guard": "租约或心跳丢失，业务对账交给 Execution",
+          "effects": []
+        },
+        {
+          "id": "RUN06",
+          "from": [
+            "starting",
+            "running",
+            "interrupted"
+          ],
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "新 Run 已接管",
+          "effects": [
+            "迟到事件只能审计，不能推进 Step"
+          ]
+        }
       ],
       "invariants": [
-        { "id": "RUN-INV1", "text": "Execution 的每次启动或恢复创建一个 Run，记录 runtime_session_id、Harness 版本与 Plugin Manifest Hash。", "source": "§21.6.2" }
+        {
+          "id": "RUN-INV1",
+          "text": "Execution 的每次启动或恢复创建一个 Run，记录 runtime_session_id、Harness 版本与 Plugin Manifest Hash。",
+          "source": "§21.6.2"
+        }
       ]
     },
     {
@@ -279,8 +924,16 @@
       "module": "K011",
       "entity": "agent_step_executions",
       "status_field": "agent_step_executions.status",
-      "initial_states": ["pending"],
-      "terminal_states": ["succeeded", "failed", "skipped", "cancelled", "superseded"],
+      "initial_states": [
+        "pending"
+      ],
+      "terminal_states": [
+        "succeeded",
+        "failed",
+        "skipped",
+        "cancelled",
+        "superseded"
+      ],
       "states": [
         "pending",
         "ready",
@@ -295,19 +948,116 @@
       ],
       "source": "§21.6.3",
       "transitions": [
-        { "id": "ST01", "from": "pending", "to": "ready", "trigger": "dependencies_satisfied", "guard": "所有 DAG 依赖满足，且 Execution 处于可调度状态", "effects": [] },
-        { "id": "ST02", "from": "ready", "to": "running", "trigger": "step_started", "guard": "Step 获得执行权", "effects": [] },
-        { "id": "ST03", "from": "running", "to": "paused", "trigger": "checkpoint_saved", "guard": "安全 Checkpoint 已保存", "effects": ["恢复后回到 running"] },
-        { "id": "ST04", "from": "paused", "to": "running", "trigger": "resume", "guard": "Execution 恢复", "effects": [] },
-        { "id": "ST05", "from": "running", "to": "succeeded", "trigger": "step_succeeded", "guard": "Step 执行成功", "effects": [] },
-        { "id": "ST06", "from": "running", "to": "failed", "trigger": "step_failed", "guard": "Step 明确失败", "effects": [] },
-        { "id": "ST07", "from": ["pending", "ready"], "to": "blocked", "trigger": "upstream_failed", "guard": "上游失败导致无法继续", "effects": ["不得错误标记为 failed"] },
-        { "id": "ST08", "from": ["pending", "ready"], "to": "skipped", "trigger": "skip", "guard": "可选 Step 按规则跳过", "effects": ["必须记录原因和规则"] },
-        { "id": "ST09", "from": ["pending", "ready", "running", "paused"], "to": "cancelled", "trigger": "cancel", "guard": "Execution 取消", "effects": [] },
-        { "id": "ST10", "from": ["pending", "ready", "running", "paused", "blocked"], "to": "superseded", "trigger": "supersede", "guard": "Execution 被替换", "effects": [] }
+        {
+          "id": "ST01",
+          "from": "pending",
+          "to": "ready",
+          "trigger": "dependencies_satisfied",
+          "guard": "所有 DAG 依赖满足，且 Execution 处于可调度状态",
+          "effects": []
+        },
+        {
+          "id": "ST02",
+          "from": "ready",
+          "to": "running",
+          "trigger": "step_started",
+          "guard": "Step 获得执行权",
+          "effects": []
+        },
+        {
+          "id": "ST03",
+          "from": "running",
+          "to": "paused",
+          "trigger": "checkpoint_saved",
+          "guard": "安全 Checkpoint 已保存",
+          "effects": [
+            "恢复后回到 running"
+          ]
+        },
+        {
+          "id": "ST04",
+          "from": "paused",
+          "to": "running",
+          "trigger": "resume",
+          "guard": "Execution 恢复",
+          "effects": []
+        },
+        {
+          "id": "ST05",
+          "from": "running",
+          "to": "succeeded",
+          "trigger": "step_succeeded",
+          "guard": "Step 执行成功",
+          "effects": []
+        },
+        {
+          "id": "ST06",
+          "from": "running",
+          "to": "failed",
+          "trigger": "step_failed",
+          "guard": "Step 明确失败",
+          "effects": []
+        },
+        {
+          "id": "ST07",
+          "from": [
+            "pending",
+            "ready"
+          ],
+          "to": "blocked",
+          "trigger": "upstream_failed",
+          "guard": "上游失败导致无法继续",
+          "effects": [
+            "不得错误标记为 failed"
+          ]
+        },
+        {
+          "id": "ST08",
+          "from": [
+            "pending",
+            "ready"
+          ],
+          "to": "skipped",
+          "trigger": "skip",
+          "guard": "可选 Step 按规则跳过",
+          "effects": [
+            "必须记录原因和规则"
+          ]
+        },
+        {
+          "id": "ST09",
+          "from": [
+            "pending",
+            "ready",
+            "running",
+            "paused"
+          ],
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "Execution 取消",
+          "effects": []
+        },
+        {
+          "id": "ST10",
+          "from": [
+            "pending",
+            "ready",
+            "running",
+            "paused",
+            "blocked"
+          ],
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "Execution 被替换",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "ST-INV1", "text": "Step 与 Execution 的暂停状态必须同时更新：先收到暂停请求，安全 Checkpoint 后 Step 进入 paused，Execution 再进入 paused。", "source": "§21.6.3" }
+        {
+          "id": "ST-INV1",
+          "text": "Step 与 Execution 的暂停状态必须同时更新：先收到暂停请求，安全 Checkpoint 后 Step 进入 paused，Execution 再进入 paused。",
+          "source": "§21.6.3"
+        }
       ]
     },
     {
@@ -316,8 +1066,15 @@
       "module": "K011",
       "entity": "agent_tool_executions",
       "status_field": "agent_tool_executions.status",
-      "initial_states": ["requested"],
-      "terminal_states": ["succeeded", "failed", "rejected", "cancelled"],
+      "initial_states": [
+        "requested"
+      ],
+      "terminal_states": [
+        "succeeded",
+        "failed",
+        "rejected",
+        "cancelled"
+      ],
       "states": [
         "requested",
         "authorizing",
@@ -332,19 +1089,92 @@
       ],
       "source": "§21.6.3",
       "transitions": [
-        { "id": "TL01", "from": "requested", "to": "authorizing", "trigger": "begin_authorization", "guard": "进入身份、Owner、Scope、Capability 与业务审批 Gate", "effects": [] },
-        { "id": "TL02", "from": "authorizing", "to": "authorized", "trigger": "authorize", "guard": "全部门禁通过", "effects": [] },
-        { "id": "TL03", "from": "authorizing", "to": "rejected", "trigger": "reject", "guard": "任一门禁不通过", "effects": [] },
-        { "id": "TL04", "from": "authorized", "to": "dispatching", "trigger": "dispatch", "guard": "准备调用工具", "effects": [] },
-        { "id": "TL05", "from": "dispatching", "to": "running", "trigger": "tool_running", "guard": "工具开始执行", "effects": [] },
-        { "id": "TL06", "from": "running", "to": "succeeded", "trigger": "tool_succeeded", "guard": "工具返回并结果通过业务验证", "effects": [] },
-        { "id": "TL07", "from": "running", "to": "failed", "trigger": "tool_failed", "guard": "工具明确失败", "effects": [] },
-        { "id": "TL08", "from": "running", "to": "cancelled", "trigger": "cancel", "guard": "Execution 取消", "effects": [] },
-        { "id": "TL09", "from": "running", "to": "outcome_unknown", "trigger": "tool_timeout", "guard": "结果无法确认", "effects": ["必须先查询或对账，不能直接重调"] }
+        {
+          "id": "TL01",
+          "from": "requested",
+          "to": "authorizing",
+          "trigger": "begin_authorization",
+          "guard": "进入身份、Owner、Scope、Capability 与业务审批 Gate",
+          "effects": []
+        },
+        {
+          "id": "TL02",
+          "from": "authorizing",
+          "to": "authorized",
+          "trigger": "authorize",
+          "guard": "全部门禁通过",
+          "effects": []
+        },
+        {
+          "id": "TL03",
+          "from": "authorizing",
+          "to": "rejected",
+          "trigger": "reject",
+          "guard": "任一门禁不通过",
+          "effects": []
+        },
+        {
+          "id": "TL04",
+          "from": "authorized",
+          "to": "dispatching",
+          "trigger": "dispatch",
+          "guard": "准备调用工具",
+          "effects": []
+        },
+        {
+          "id": "TL05",
+          "from": "dispatching",
+          "to": "running",
+          "trigger": "tool_running",
+          "guard": "工具开始执行",
+          "effects": []
+        },
+        {
+          "id": "TL06",
+          "from": "running",
+          "to": "succeeded",
+          "trigger": "tool_succeeded",
+          "guard": "工具返回并结果通过业务验证",
+          "effects": []
+        },
+        {
+          "id": "TL07",
+          "from": "running",
+          "to": "failed",
+          "trigger": "tool_failed",
+          "guard": "工具明确失败",
+          "effects": []
+        },
+        {
+          "id": "TL08",
+          "from": "running",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "Execution 取消",
+          "effects": []
+        },
+        {
+          "id": "TL09",
+          "from": "running",
+          "to": "outcome_unknown",
+          "trigger": "tool_timeout",
+          "guard": "结果无法确认",
+          "effects": [
+            "必须先查询或对账，不能直接重调"
+          ]
+        }
       ],
       "invariants": [
-        { "id": "TL-INV1", "text": "任何 Tool 调用都必须先经过身份、Owner、Scope、Capability 与业务审批 Gate。", "source": "§21.6.3" },
-        { "id": "TL-INV2", "text": "有副作用的 Tool 必须携带稳定 idempotency_key，由参数 Hash、Execution ID、Step ID 与 Tool Version 共同计算。", "source": "§21.6.3" }
+        {
+          "id": "TL-INV1",
+          "text": "任何 Tool 调用都必须先经过身份、Owner、Scope、Capability 与业务审批 Gate。",
+          "source": "§21.6.3"
+        },
+        {
+          "id": "TL-INV2",
+          "text": "有副作用的 Tool 必须携带稳定 idempotency_key，由参数 Hash、Execution ID、Step ID 与 Tool Version 共同计算。",
+          "source": "§21.6.3"
+        }
       ]
     },
     {
@@ -353,8 +1183,14 @@
       "module": "K012",
       "entity": "material_drafts",
       "status_field": "material_drafts.status",
-      "initial_states": ["editing"],
-      "terminal_states": ["published", "abandoned", "superseded"],
+      "initial_states": [
+        "editing"
+      ],
+      "terminal_states": [
+        "published",
+        "abandoned",
+        "superseded"
+      ],
       "states": [
         "editing",
         "checking",
@@ -369,38 +1205,246 @@
       ],
       "source": "§21.7.1",
       "transitions": [
-        { "id": "D01", "from": "editing", "to": "checking", "trigger": "submit_check", "guard": "提交检查，固定当前 Revision 与 Content Hash", "effects": [] },
-        { "id": "D02", "from": "editing", "to": "needs_rebase", "trigger": "base_changed", "guard": "发现 Base Version 已变化", "effects": [] },
-        { "id": "D03", "from": "editing", "to": "abandoned", "trigger": "abandon", "guard": "教师放弃", "effects": [] },
-        { "id": "D04", "from": "checking", "to": "editing", "trigger": "revision_accepted", "guard": "新 Revision 被接受", "effects": [] },
-        { "id": "D05", "from": "checking", "to": "editing", "trigger": "cancel_check", "guard": "教师中止检查，关联 Run 已取消或从未启动", "effects": [] },
-        { "id": "D06", "from": "checking", "to": "changes_required", "trigger": "gate_blocked", "guard": "全部检查完成且 Gate 为 blocked/inconclusive", "effects": [] },
-        { "id": "D07", "from": "checking", "to": "awaiting_review", "trigger": "gate_passed", "guard": "全部检查完成且 Gate 为 passed/passed_with_warnings", "effects": [] },
-        { "id": "D08", "from": "checking", "to": "needs_attention", "trigger": "check_infra_failed", "guard": "检查基础设施失败或结果无法对账", "effects": [] },
-        { "id": "D09", "from": "checking", "to": "needs_rebase", "trigger": "base_changed", "guard": "发现 Base Version 已变化", "effects": [] },
-        { "id": "D10", "from": "changes_required", "to": "editing", "trigger": "revision_created", "guard": "教师修改并产生新 Revision", "effects": [] },
-        { "id": "D11", "from": "changes_required", "to": "checking", "trigger": "submit_check", "guard": "教师重新提交检查", "effects": [] },
-        { "id": "D12", "from": "awaiting_review", "to": "approved", "trigger": "approve", "guard": "教师批准当前 Revision + Gate Snapshot", "effects": [] },
-        { "id": "D13", "from": "awaiting_review", "to": "changes_required", "trigger": "request_changes", "guard": "教师拒绝或要求修改", "effects": [] },
-        { "id": "D14", "from": "awaiting_review", "to": "editing", "trigger": "revision_accepted", "guard": "新 Revision 被接受", "effects": [] },
-        { "id": "D15", "from": "approved", "to": "published", "trigger": "publish", "guard": "发布事务成功", "effects": [] },
-        { "id": "D16", "from": "approved", "to": "editing", "trigger": "approval_stale", "guard": "编辑或检查/审批快照失效", "effects": [] },
-        { "id": "D17", "from": "approved", "to": "awaiting_review", "trigger": "withdraw_approval", "guard": "教师撤回授权或审批过期，目标 Revision 仍新鲜", "effects": [] },
-        { "id": "D18", "from": "approved", "to": "needs_rebase", "trigger": "base_changed", "guard": "发现 Base Version 已变化", "effects": [] },
-        { "id": "D19", "from": "needs_attention", "to": "editing", "trigger": "resolve_issue", "guard": "问题已处理并恢复编辑", "effects": [] },
-        { "id": "D20", "from": "needs_attention", "to": "checking", "trigger": "retry_check", "guard": "目标 Revision 未变化，重试同一检查", "effects": [] },
-        { "id": "D21", "from": "needs_attention", "to": "abandoned", "trigger": "abandon", "guard": "教师放弃", "effects": [] },
-        { "id": "D22", "from": "needs_rebase", "to": "editing", "trigger": "rebase", "guard": "完成显式 Rebase 并产生新 Revision", "effects": [] },
-        { "id": "D23", "from": "needs_rebase", "to": "abandoned", "trigger": "abandon", "guard": "教师放弃", "effects": [] },
-        { "id": "D24", "from": ["editing", "checking", "changes_required", "awaiting_review", "approved"], "to": "abandoned", "trigger": "abandon", "guard": "教师放弃", "effects": [] },
-        { "id": "D25", "from": ["editing", "checking", "changes_required", "awaiting_review", "approved", "needs_attention", "needs_rebase"], "to": "superseded", "trigger": "supersede", "guard": "教师明确选择另一 Draft 替代", "effects": [] }
+        {
+          "id": "D01",
+          "from": "editing",
+          "to": "checking",
+          "trigger": "submit_check",
+          "guard": "提交检查，固定当前 Revision 与 Content Hash",
+          "effects": []
+        },
+        {
+          "id": "D02",
+          "from": "editing",
+          "to": "needs_rebase",
+          "trigger": "base_changed",
+          "guard": "发现 Base Version 已变化",
+          "effects": []
+        },
+        {
+          "id": "D03",
+          "from": "editing",
+          "to": "abandoned",
+          "trigger": "abandon",
+          "guard": "教师放弃",
+          "effects": []
+        },
+        {
+          "id": "D04",
+          "from": "checking",
+          "to": "editing",
+          "trigger": "revision_accepted",
+          "guard": "新 Revision 被接受",
+          "effects": []
+        },
+        {
+          "id": "D05",
+          "from": "checking",
+          "to": "editing",
+          "trigger": "cancel_check",
+          "guard": "教师中止检查，关联 Run 已取消或从未启动",
+          "effects": []
+        },
+        {
+          "id": "D06",
+          "from": "checking",
+          "to": "changes_required",
+          "trigger": "gate_blocked",
+          "guard": "全部检查完成且 Gate 为 blocked/inconclusive",
+          "effects": []
+        },
+        {
+          "id": "D07",
+          "from": "checking",
+          "to": "awaiting_review",
+          "trigger": "gate_passed",
+          "guard": "全部检查完成且 Gate 为 passed/passed_with_warnings",
+          "effects": []
+        },
+        {
+          "id": "D08",
+          "from": "checking",
+          "to": "needs_attention",
+          "trigger": "check_infra_failed",
+          "guard": "检查基础设施失败或结果无法对账",
+          "effects": []
+        },
+        {
+          "id": "D09",
+          "from": "checking",
+          "to": "needs_rebase",
+          "trigger": "base_changed",
+          "guard": "发现 Base Version 已变化",
+          "effects": []
+        },
+        {
+          "id": "D10",
+          "from": "changes_required",
+          "to": "editing",
+          "trigger": "revision_created",
+          "guard": "教师修改并产生新 Revision",
+          "effects": []
+        },
+        {
+          "id": "D11",
+          "from": "changes_required",
+          "to": "checking",
+          "trigger": "submit_check",
+          "guard": "教师重新提交检查",
+          "effects": []
+        },
+        {
+          "id": "D12",
+          "from": "awaiting_review",
+          "to": "approved",
+          "trigger": "approve",
+          "guard": "教师批准当前 Revision + Gate Snapshot",
+          "effects": []
+        },
+        {
+          "id": "D13",
+          "from": "awaiting_review",
+          "to": "changes_required",
+          "trigger": "request_changes",
+          "guard": "教师拒绝或要求修改",
+          "effects": []
+        },
+        {
+          "id": "D14",
+          "from": "awaiting_review",
+          "to": "editing",
+          "trigger": "revision_accepted",
+          "guard": "新 Revision 被接受",
+          "effects": []
+        },
+        {
+          "id": "D15",
+          "from": "approved",
+          "to": "published",
+          "trigger": "publish",
+          "guard": "发布事务成功",
+          "effects": []
+        },
+        {
+          "id": "D16",
+          "from": "approved",
+          "to": "editing",
+          "trigger": "approval_stale",
+          "guard": "编辑或检查/审批快照失效",
+          "effects": []
+        },
+        {
+          "id": "D17",
+          "from": "approved",
+          "to": "awaiting_review",
+          "trigger": "withdraw_approval",
+          "guard": "教师撤回授权或审批过期，目标 Revision 仍新鲜",
+          "effects": []
+        },
+        {
+          "id": "D18",
+          "from": "approved",
+          "to": "needs_rebase",
+          "trigger": "base_changed",
+          "guard": "发现 Base Version 已变化",
+          "effects": []
+        },
+        {
+          "id": "D19",
+          "from": "needs_attention",
+          "to": "editing",
+          "trigger": "resolve_issue",
+          "guard": "问题已处理并恢复编辑",
+          "effects": []
+        },
+        {
+          "id": "D20",
+          "from": "needs_attention",
+          "to": "checking",
+          "trigger": "retry_check",
+          "guard": "目标 Revision 未变化，重试同一检查",
+          "effects": []
+        },
+        {
+          "id": "D21",
+          "from": "needs_attention",
+          "to": "abandoned",
+          "trigger": "abandon",
+          "guard": "教师放弃",
+          "effects": []
+        },
+        {
+          "id": "D22",
+          "from": "needs_rebase",
+          "to": "editing",
+          "trigger": "rebase",
+          "guard": "完成显式 Rebase 并产生新 Revision",
+          "effects": []
+        },
+        {
+          "id": "D23",
+          "from": "needs_rebase",
+          "to": "abandoned",
+          "trigger": "abandon",
+          "guard": "教师放弃",
+          "effects": []
+        },
+        {
+          "id": "D24",
+          "from": [
+            "checking",
+            "changes_required",
+            "awaiting_review",
+            "approved"
+          ],
+          "to": "abandoned",
+          "trigger": "abandon",
+          "guard": "教师放弃",
+          "effects": []
+        },
+        {
+          "id": "D25",
+          "from": [
+            "editing",
+            "checking",
+            "changes_required",
+            "awaiting_review",
+            "approved",
+            "needs_attention",
+            "needs_rebase"
+          ],
+          "to": "superseded",
+          "trigger": "supersede",
+          "guard": "教师明确选择另一 Draft 替代",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "D-INV1", "text": "published、abandoned、superseded 为终止态。", "source": "§21.7.1" },
-        { "id": "D-INV2", "text": "发布不设置持久化的 publishing 状态；approved → published 在一个 PostgreSQL 事务中完成，失败回滚保持 approved。", "source": "§21.7.1" },
-        { "id": "D-INV3", "text": "任何新 Revision 都会使基于旧 Revision 的检查、教师审核和发布授权失效。", "source": "§21.7.1" },
-        { "id": "D-INV4", "text": "checking 期间允许编辑，但新 Revision 立即把 Draft 拉回 editing；旧检查结果标记 stale，不参与发布门禁。", "source": "§21.7.1" },
-        { "id": "D-INV5", "text": "发布成功不修改 Material Base Version；后续修改必须新建 Draft。", "source": "§21.7.1" }
+        {
+          "id": "D-INV1",
+          "text": "published、abandoned、superseded 为终止态。",
+          "source": "§21.7.1"
+        },
+        {
+          "id": "D-INV2",
+          "text": "发布不设置持久化的 publishing 状态；approved → published 在一个 PostgreSQL 事务中完成，失败回滚保持 approved。",
+          "source": "§21.7.1"
+        },
+        {
+          "id": "D-INV3",
+          "text": "任何新 Revision 都会使基于旧 Revision 的检查、教师审核和发布授权失效。",
+          "source": "§21.7.1"
+        },
+        {
+          "id": "D-INV4",
+          "text": "checking 期间允许编辑，但新 Revision 立即把 Draft 拉回 editing；旧检查结果标记 stale，不参与发布门禁。",
+          "source": "§21.7.1"
+        },
+        {
+          "id": "D-INV5",
+          "text": "发布成功不修改 Material Base Version；后续修改必须新建 Draft。",
+          "source": "§21.7.1"
+        }
       ]
     },
     {
@@ -409,20 +1453,76 @@
       "module": "K014",
       "entity": "quality_check_runs",
       "status_field": "quality_check_runs.process_status",
-      "initial_states": ["queued"],
-      "terminal_states": ["succeeded", "failed", "cancelled"],
-      "states": ["queued", "running", "succeeded", "failed", "cancelled", "outcome_unknown"],
+      "initial_states": [
+        "queued"
+      ],
+      "terminal_states": [
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "states": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "outcome_unknown"
+      ],
       "source": "§21.8.1",
       "transitions": [
-        { "id": "QC01", "from": "queued", "to": "running", "trigger": "worker_claimed", "guard": "Worker 取得任务并固定规则/Validator 版本", "effects": [] },
-        { "id": "QC02", "from": "running", "to": "succeeded", "trigger": "check_completed", "guard": "检查执行完成并已保存结果与证据", "effects": [] },
-        { "id": "QC03", "from": "running", "to": "failed", "trigger": "check_failed", "guard": "检查程序本身明确失败", "effects": [] },
-        { "id": "QC04", "from": "running", "to": "cancelled", "trigger": "cancel", "guard": "被取消或目标已被替换", "effects": [] },
-        { "id": "QC05", "from": "running", "to": "outcome_unknown", "trigger": "worker_lost", "guard": "Worker 或 Validator 失联", "effects": [] }
+        {
+          "id": "QC01",
+          "from": "queued",
+          "to": "running",
+          "trigger": "worker_claimed",
+          "guard": "Worker 取得任务并固定规则/Validator 版本",
+          "effects": []
+        },
+        {
+          "id": "QC02",
+          "from": "running",
+          "to": "succeeded",
+          "trigger": "check_completed",
+          "guard": "检查执行完成并已保存结果与证据",
+          "effects": []
+        },
+        {
+          "id": "QC03",
+          "from": "running",
+          "to": "failed",
+          "trigger": "check_failed",
+          "guard": "检查程序本身明确失败",
+          "effects": []
+        },
+        {
+          "id": "QC04",
+          "from": "running",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "被取消或目标已被替换",
+          "effects": []
+        },
+        {
+          "id": "QC05",
+          "from": "running",
+          "to": "outcome_unknown",
+          "trigger": "worker_lost",
+          "guard": "Worker 或 Validator 失联",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "QC-INV1", "text": "succeeded、failed、cancelled 为终止态；技术失败与内容质量失败必须分开表达。", "source": "§21.8.1" },
-        { "id": "QC-INV2", "text": "每个 Run 必须固定 target_type、target_id、target_content_hash、document_schema_version、规则快照、Validator 版本、Tool Version 与执行配置 Hash。", "source": "§21.8.1" }
+        {
+          "id": "QC-INV1",
+          "text": "succeeded、failed、cancelled 为终止态；技术失败与内容质量失败必须分开表达。",
+          "source": "§21.8.1"
+        },
+        {
+          "id": "QC-INV2",
+          "text": "每个 Run 必须固定 target_type、target_id、target_content_hash、document_schema_version、规则快照、Validator 版本、Tool Version 与执行配置 Hash。",
+          "source": "§21.8.1"
+        }
       ]
     },
     {
@@ -431,19 +1531,71 @@
       "module": "K014",
       "entity": "math_validation_runs",
       "status_field": "math_validation_runs.process_status",
-      "initial_states": ["queued"],
-      "terminal_states": ["succeeded", "failed", "cancelled"],
-      "states": ["queued", "running", "succeeded", "failed", "cancelled", "outcome_unknown"],
+      "initial_states": [
+        "queued"
+      ],
+      "terminal_states": [
+        "succeeded",
+        "failed",
+        "cancelled"
+      ],
+      "states": [
+        "queued",
+        "running",
+        "succeeded",
+        "failed",
+        "cancelled",
+        "outcome_unknown"
+      ],
       "source": "§21.8.1",
       "transitions": [
-        { "id": "MV01", "from": "queued", "to": "running", "trigger": "validator_claimed", "guard": "Validator 取得任务并固定版本", "effects": [] },
-        { "id": "MV02", "from": "running", "to": "succeeded", "trigger": "validation_completed", "guard": "验证完成并保存证据", "effects": [] },
-        { "id": "MV03", "from": "running", "to": "failed", "trigger": "validation_failed", "guard": "Validator 本身明确失败", "effects": [] },
-        { "id": "MV04", "from": "running", "to": "cancelled", "trigger": "cancel", "guard": "被取消或目标已被替换", "effects": [] },
-        { "id": "MV05", "from": "running", "to": "outcome_unknown", "trigger": "validator_lost", "guard": "Validator 失联", "effects": [] }
+        {
+          "id": "MV01",
+          "from": "queued",
+          "to": "running",
+          "trigger": "validator_claimed",
+          "guard": "Validator 取得任务并固定版本",
+          "effects": []
+        },
+        {
+          "id": "MV02",
+          "from": "running",
+          "to": "succeeded",
+          "trigger": "validation_completed",
+          "guard": "验证完成并保存证据",
+          "effects": []
+        },
+        {
+          "id": "MV03",
+          "from": "running",
+          "to": "failed",
+          "trigger": "validation_failed",
+          "guard": "Validator 本身明确失败",
+          "effects": []
+        },
+        {
+          "id": "MV04",
+          "from": "running",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "被取消或目标已被替换",
+          "effects": []
+        },
+        {
+          "id": "MV05",
+          "from": "running",
+          "to": "outcome_unknown",
+          "trigger": "validator_lost",
+          "guard": "Validator 失联",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "MV-INV1", "text": "succeeded、failed、cancelled 为终止态；validation_result 与 process_status 分离表达。", "source": "§21.8.1" }
+        {
+          "id": "MV-INV1",
+          "text": "succeeded、failed、cancelled 为终止态；validation_result 与 process_status 分离表达。",
+          "source": "§21.8.1"
+        }
       ]
     },
     {
@@ -452,20 +1604,79 @@
       "module": "K012",
       "entity": "material_publication_approvals",
       "status_field": "material_publication_approvals.status",
-      "initial_states": ["pending"],
-      "terminal_states": ["rejected", "invalidated", "expired", "consumed"],
-      "states": ["pending", "approved", "rejected", "invalidated", "expired", "consumed"],
+      "initial_states": [
+        "pending"
+      ],
+      "terminal_states": [
+        "rejected",
+        "invalidated",
+        "expired",
+        "consumed"
+      ],
+      "states": [
+        "pending",
+        "approved",
+        "rejected",
+        "invalidated",
+        "expired",
+        "consumed"
+      ],
       "source": "§21.9.1",
       "transitions": [
-        { "id": "PUB01", "from": "pending", "to": "approved", "trigger": "approve", "guard": "教师批准当前 Revision + Gate Snapshot", "effects": [] },
-        { "id": "PUB02", "from": "pending", "to": "rejected", "trigger": "reject", "guard": "教师拒绝", "effects": [] },
-        { "id": "PUB03", "from": "pending", "to": "expired", "trigger": "expire", "guard": "超过失效时间", "effects": [] },
-        { "id": "PUB04", "from": "approved", "to": "consumed", "trigger": "publish", "guard": "发布事务成功，且已绑定新建的 Material Version", "effects": ["审批只能消费一次"] },
-        { "id": "PUB05", "from": "approved", "to": "invalidated", "trigger": "invalidate", "guard": "Draft 产生新 Revision、Base Version 变化、质量结果过期、审批策略变化或教师撤回", "effects": [] }
+        {
+          "id": "PUB01",
+          "from": "pending",
+          "to": "approved",
+          "trigger": "approve",
+          "guard": "教师批准当前 Revision + Gate Snapshot",
+          "effects": []
+        },
+        {
+          "id": "PUB02",
+          "from": "pending",
+          "to": "rejected",
+          "trigger": "reject",
+          "guard": "教师拒绝",
+          "effects": []
+        },
+        {
+          "id": "PUB03",
+          "from": "pending",
+          "to": "expired",
+          "trigger": "expire",
+          "guard": "超过失效时间",
+          "effects": []
+        },
+        {
+          "id": "PUB04",
+          "from": "approved",
+          "to": "consumed",
+          "trigger": "publish",
+          "guard": "发布事务成功，且已绑定新建的 Material Version",
+          "effects": [
+            "审批只能消费一次"
+          ]
+        },
+        {
+          "id": "PUB05",
+          "from": "approved",
+          "to": "invalidated",
+          "trigger": "invalidate",
+          "guard": "Draft 产生新 Revision、Base Version 变化、质量结果过期、审批策略变化或教师撤回",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "PUB-INV1", "text": "只有 Draft 处于 awaiting_review 且目标 Revision、Gate Snapshot 均新鲜时才能创建 pending Approval；审批与 Draft 的 approved 状态必须在同一事务中写入。", "source": "§21.9.1" },
-        { "id": "PUB-INV2", "text": "consumed 后相同 Idempotency-Key 的重复请求返回已创建的 Material Version；不同发布意图必须重新审批。", "source": "§21.9.1" }
+        {
+          "id": "PUB-INV1",
+          "text": "只有 Draft 处于 awaiting_review 且目标 Revision、Gate Snapshot 均新鲜时才能创建 pending Approval；审批与 Draft 的 approved 状态必须在同一事务中写入。",
+          "source": "§21.9.1"
+        },
+        {
+          "id": "PUB-INV2",
+          "text": "consumed 后相同 Idempotency-Key 的重复请求返回已创建的 Material Version；不同发布意图必须重新审批。",
+          "source": "§21.9.1"
+        }
       ]
     },
     {
@@ -474,88 +1685,330 @@
       "module": "K012",
       "entity": "material_exports",
       "status_field": "material_exports.status",
-      "initial_states": ["queued"],
-      "terminal_states": ["failed", "cancelled", "expired"],
-      "states": ["queued", "rendering", "uploading", "ready", "failed", "cancelled", "outcome_unknown", "expired"],
+      "initial_states": [
+        "queued"
+      ],
+      "terminal_states": [
+        "failed",
+        "cancelled",
+        "expired"
+      ],
+      "states": [
+        "queued",
+        "rendering",
+        "uploading",
+        "ready",
+        "failed",
+        "cancelled",
+        "outcome_unknown",
+        "expired"
+      ],
       "source": "§21.10",
       "transitions": [
-        { "id": "X01", "from": "queued", "to": "rendering", "trigger": "worker_claimed", "guard": "导出 Worker 取得任务", "effects": [] },
-        { "id": "X02", "from": "queued", "to": "cancelled", "trigger": "cancel", "guard": "教师取消", "effects": [] },
-        { "id": "X03", "from": "rendering", "to": "uploading", "trigger": "render_completed", "guard": "文件渲染完成", "effects": [] },
-        { "id": "X04", "from": "rendering", "to": "failed", "trigger": "render_failed", "guard": "明确渲染失败", "effects": [] },
-        { "id": "X05", "from": "uploading", "to": "ready", "trigger": "upload_completed", "guard": "Object Storage 上传完成并校验 Hash", "effects": [] },
-        { "id": "X06", "from": "uploading", "to": "failed", "trigger": "upload_failed", "guard": "明确上传失败", "effects": [] },
-        { "id": "X07", "from": "uploading", "to": "outcome_unknown", "trigger": "upload_unknown", "guard": "上传结果不确定", "effects": [] },
-        { "id": "X08", "from": "outcome_unknown", "to": "ready", "trigger": "reconcile_succeeded", "guard": "对账确认成功", "effects": [] },
-        { "id": "X09", "from": "outcome_unknown", "to": "failed", "trigger": "reconcile_failed", "guard": "对账确认失败", "effects": [] },
-        { "id": "X10", "from": ["queued", "rendering", "uploading"], "to": "cancelled", "trigger": "cancel", "guard": "教师取消", "effects": [] },
-        { "id": "X11", "from": "ready", "to": "expired", "trigger": "retention_expired", "guard": "达到保留期限", "effects": [] }
+        {
+          "id": "X01",
+          "from": "queued",
+          "to": "rendering",
+          "trigger": "worker_claimed",
+          "guard": "导出 Worker 取得任务",
+          "effects": []
+        },
+        {
+          "id": "X02",
+          "from": "queued",
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "教师取消",
+          "effects": []
+        },
+        {
+          "id": "X03",
+          "from": "rendering",
+          "to": "uploading",
+          "trigger": "render_completed",
+          "guard": "文件渲染完成",
+          "effects": []
+        },
+        {
+          "id": "X04",
+          "from": "rendering",
+          "to": "failed",
+          "trigger": "render_failed",
+          "guard": "明确渲染失败",
+          "effects": []
+        },
+        {
+          "id": "X05",
+          "from": "uploading",
+          "to": "ready",
+          "trigger": "upload_completed",
+          "guard": "Object Storage 上传完成并校验 Hash",
+          "effects": []
+        },
+        {
+          "id": "X06",
+          "from": "uploading",
+          "to": "failed",
+          "trigger": "upload_failed",
+          "guard": "明确上传失败",
+          "effects": []
+        },
+        {
+          "id": "X07",
+          "from": "uploading",
+          "to": "outcome_unknown",
+          "trigger": "upload_unknown",
+          "guard": "上传结果不确定",
+          "effects": []
+        },
+        {
+          "id": "X08",
+          "from": "outcome_unknown",
+          "to": "ready",
+          "trigger": "reconcile_succeeded",
+          "guard": "对账确认成功",
+          "effects": []
+        },
+        {
+          "id": "X09",
+          "from": "outcome_unknown",
+          "to": "failed",
+          "trigger": "reconcile_failed",
+          "guard": "对账确认失败",
+          "effects": []
+        },
+        {
+          "id": "X10",
+          "from": [
+            "rendering",
+            "uploading"
+          ],
+          "to": "cancelled",
+          "trigger": "cancel",
+          "guard": "教师取消",
+          "effects": []
+        },
+        {
+          "id": "X11",
+          "from": "ready",
+          "to": "expired",
+          "trigger": "retention_expired",
+          "guard": "达到保留期限",
+          "effects": []
+        }
       ],
       "invariants": [
-        { "id": "X-INV1", "text": "Export 必须固定 material_version_id、Document Schema、Teacher/Student Profile、Renderer Version、Options Hash 与 Source Document Hash。", "source": "§21.10" },
-        { "id": "X-INV2", "text": "Student Profile 在 AST 层删除答案、解析和教师备注后才进入 Renderer。", "source": "§21.10" },
-        { "id": "X-INV3", "text": "ready 表示文件已持久化并校验，不等于永久公开可用；下载使用短时效受权 URL。ready 可因保留期限转为 expired，因此不是终止态。", "source": "§21.10" },
-        { "id": "X-INV4", "text": "重试创建新 Export 记录，不把旧记录改回运行中。", "source": "§21.10" }
+        {
+          "id": "X-INV1",
+          "text": "Export 必须固定 material_version_id、Document Schema、Teacher/Student Profile、Renderer Version、Options Hash 与 Source Document Hash。",
+          "source": "§21.10"
+        },
+        {
+          "id": "X-INV2",
+          "text": "Student Profile 在 AST 层删除答案、解析和教师备注后才进入 Renderer。",
+          "source": "§21.10"
+        },
+        {
+          "id": "X-INV3",
+          "text": "ready 表示文件已持久化并校验，不等于永久公开可用；下载使用短时效受权 URL。ready 可因保留期限转为 expired，因此不是终止态。",
+          "source": "§21.10"
+        },
+        {
+          "id": "X-INV4",
+          "text": "重试创建新 Export 记录，不把旧记录改回运行中。",
+          "source": "§21.10"
+        }
       ]
     }
   ],
   "value_sets": {
     "quality_check_runs.gate_result": {
-      "values": ["not_evaluated", "passed", "passed_with_warnings", "blocked", "inconclusive"],
+      "values": [
+        "not_evaluated",
+        "passed",
+        "passed_with_warnings",
+        "blocked",
+        "inconclusive"
+      ],
       "source": "§21.8.2"
     },
     "math_validation_runs.validation_result": {
-      "values": ["not_evaluated", "validated", "failed", "inconclusive", "unsupported"],
+      "values": [
+        "not_evaluated",
+        "validated",
+        "failed",
+        "inconclusive",
+        "unsupported"
+      ],
       "source": "§21.8.2"
     },
     "quality_issues.severity": {
-      "values": ["S0", "S1", "S2", "S3"],
+      "values": [
+        "S0",
+        "S1",
+        "S2",
+        "S3"
+      ],
       "source": "§18.2"
     },
     "quality_issues.resolution_status": {
-      "values": ["unresolved", "resolved", "waived", "invalidated", "superseded"],
+      "values": [
+        "unresolved",
+        "resolved",
+        "waived",
+        "invalidated",
+        "superseded"
+      ],
       "source": "§21.8.3"
     },
     "material_draft_revisions.change_origin": {
-      "values": ["teacher_edit", "chat_revision", "agent_generation", "rebase", "restore", "import"],
+      "values": [
+        "teacher_edit",
+        "chat_revision",
+        "agent_generation",
+        "rebase",
+        "restore",
+        "import"
+      ],
       "source": "§21.7.2"
     },
     "material_draft_revisions.revision_class": {
-      "values": ["checkpoint", "autosave"],
+      "values": [
+        "checkpoint",
+        "autosave"
+      ],
       "source": "D1 §4.1"
     },
     "export_profile": {
-      "values": ["teacher", "student"],
+      "values": [
+        "teacher",
+        "student"
+      ],
       "source": "§20.10、D1 §D1-07"
     },
     "change_impact": {
-      "values": ["E0", "E1", "E2"],
+      "values": [
+        "E0",
+        "E1",
+        "E2"
+      ],
       "source": "D1 §3"
     }
   },
   "gate_rules": [
-    { "id": "GR01", "text": "process_status 不是 succeeded 的 Run 不产生有效发布证据。", "source": "§21.8.2" },
-    { "id": "GR02", "text": "stale 是派生属性：目标不再是 Draft 当前 Revision、Content Hash 不匹配、规则政策 Hash 变化或 Validator 版本不再满足门禁时，检查失效。", "source": "§21.8.2" },
-    { "id": "GR03", "text": "S0 问题永久阻止发布，不能由教师覆盖。", "source": "§21.8.2" },
-    { "id": "GR04", "text": "S1 默认阻止发布；教师显式确认例外时必须保存原因、风险提示、确认人和确认时间，并绑定具体 Revision 与 Gate Snapshot。", "source": "§21.8.2" },
-    { "id": "GR05", "text": "S2 由教师决定；S3 不阻止发布但应保留记录。", "source": "§21.8.2" },
-    { "id": "GR06", "text": "inconclusive 与 unsupported 在 MVP 中默认阻止发布，除非对应规则明确声明该结果允许。", "source": "§21.8.2" },
-    { "id": "GR07", "text": "发布审批必须固定 required_quality_run_ids、required_math_run_ids、规则政策 Hash、Gate Result 与 Gate Snapshot Hash。", "source": "§21.8.2" },
-    { "id": "GR08", "text": "单个 LLM 输出“通过”不能作为数学证据；证据必须来自实际 Validator、规则执行或可复现测试。", "source": "§21.8.2" },
-    { "id": "GR09", "text": "Teaching Document Schema、AST 语义、Citation 完整性与来源权利是独立于数学质量检查的发布前置门禁。", "source": "§21.8.2" }
+    {
+      "id": "GR01",
+      "text": "process_status 不是 succeeded 的 Run 不产生有效发布证据。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR02",
+      "text": "stale 是派生属性：目标不再是 Draft 当前 Revision、Content Hash 不匹配、规则政策 Hash 变化或 Validator 版本不再满足门禁时，检查失效。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR03",
+      "text": "S0 问题永久阻止发布，不能由教师覆盖。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR04",
+      "text": "S1 默认阻止发布；教师显式确认例外时必须保存原因、风险提示、确认人和确认时间，并绑定具体 Revision 与 Gate Snapshot。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR05",
+      "text": "S2 由教师决定；S3 不阻止发布但应保留记录。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR06",
+      "text": "inconclusive 与 unsupported 在 MVP 中默认阻止发布，除非对应规则明确声明该结果允许。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR07",
+      "text": "发布审批必须固定 required_quality_run_ids、required_math_run_ids、规则政策 Hash、Gate Result 与 Gate Snapshot Hash。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR08",
+      "text": "单个 LLM 输出“通过”不能作为数学证据；证据必须来自实际 Validator、规则执行或可复现测试。",
+      "source": "§21.8.2"
+    },
+    {
+      "id": "GR09",
+      "text": "Teaching Document Schema、AST 语义、Citation 完整性与来源权利是独立于数学质量检查的发布前置门禁。",
+      "source": "§21.8.2"
+    }
   ],
   "events": [
-    { "name": "task.requirement_activated", "producer": "K011", "downstream": "生成或重新生成 Plan；旧 Plan 不能继续执行", "source": "§21.11" },
-    { "name": "plan.approved", "producer": "K011", "downstream": "Task 可进入 ready", "source": "§21.11" },
-    { "name": "plan.invalidated", "producer": "K011", "downstream": "停止当前 Execution；不得复用旧 Approval", "source": "§21.11" },
-    { "name": "execution.succeeded", "producer": "K011", "downstream": "持久化 Draft、Citation 和 Activity；满足条件时完成 Task", "source": "§21.11" },
-    { "name": "execution.failed", "producer": "K011", "downstream": "Task 进入 needs_attention；未完成产物不得伪装成正式 Draft", "source": "§21.11" },
-    { "name": "draft.revision_created", "producer": "K012", "downstream": "旧质量检查、审核和发布授权变为失效", "source": "§21.11" },
-    { "name": "quality.gate_completed", "producer": "K014", "downstream": "Draft 进入 changes_required 或 awaiting_review", "source": "§21.11" },
-    { "name": "draft.approved", "producer": "K012", "downstream": "允许发起一次发布事务", "source": "§21.11" },
-    { "name": "material.version_published", "producer": "K012", "downstream": "更新 Material 当前指针；其他同 Base Draft 标记 needs_rebase", "source": "§21.11" },
-    { "name": "material.export_requested", "producer": "K012", "downstream": "创建固定版本和 Profile 的 Export", "source": "§21.11" },
-    { "name": "material.export_ready", "producer": "K012", "downstream": "通知教师文件可下载", "source": "§21.11" }
+    {
+      "name": "task.requirement_activated",
+      "producer": "K011",
+      "downstream": "生成或重新生成 Plan；旧 Plan 不能继续执行",
+      "source": "§21.11"
+    },
+    {
+      "name": "plan.approved",
+      "producer": "K011",
+      "downstream": "Task 可进入 ready",
+      "source": "§21.11"
+    },
+    {
+      "name": "plan.invalidated",
+      "producer": "K011",
+      "downstream": "停止当前 Execution；不得复用旧 Approval",
+      "source": "§21.11"
+    },
+    {
+      "name": "execution.succeeded",
+      "producer": "K011",
+      "downstream": "持久化 Draft、Citation 和 Activity；满足条件时完成 Task",
+      "source": "§21.11"
+    },
+    {
+      "name": "execution.failed",
+      "producer": "K011",
+      "downstream": "Task 进入 needs_attention；未完成产物不得伪装成正式 Draft",
+      "source": "§21.11"
+    },
+    {
+      "name": "draft.revision_created",
+      "producer": "K012",
+      "downstream": "旧质量检查、审核和发布授权变为失效",
+      "source": "§21.11"
+    },
+    {
+      "name": "quality.gate_completed",
+      "producer": "K014",
+      "downstream": "Draft 进入 changes_required 或 awaiting_review",
+      "source": "§21.11"
+    },
+    {
+      "name": "draft.approved",
+      "producer": "K012",
+      "downstream": "允许发起一次发布事务",
+      "source": "§21.11"
+    },
+    {
+      "name": "material.version_published",
+      "producer": "K012",
+      "downstream": "更新 Material 当前指针；其他同 Base Draft 标记 needs_rebase",
+      "source": "§21.11"
+    },
+    {
+      "name": "material.export_requested",
+      "producer": "K012",
+      "downstream": "创建固定版本和 Profile 的 Export",
+      "source": "§21.11"
+    },
+    {
+      "name": "material.export_ready",
+      "producer": "K012",
+      "downstream": "通知教师文件可下载",
+      "source": "§21.11"
+    }
   ],
   "doc_corrections": [
     {

@@ -45,3 +45,6 @@ jobs:
       # 5) Identity: hashing, session token handling, revocation, closed accounts.
       - name: Verify identity service
         run: pwsh -NoProfile -File database/tests/run_identity_test.ps1
+      # 6) Task lifecycle: every contract transition, every illegal pair, CAS.
+      - name: Verify task lifecycle against the contract
+        run: pwsh -NoProfile -File database/tests/run_task_test.ps1
