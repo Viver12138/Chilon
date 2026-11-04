@@ -24,7 +24,14 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.12"
-      # Applies the generated DDL to a real PostgreSQL 17 container and asserts
-      # the structure and the two-layer constraints. Docker is preinstalled.
-      - name: Apply generated DDL to PostgreSQL 17 and verify
+      - name: Install migration dependencies
+        run: pip install alembic "psycopg[binary]"
+
+      # 1) Apply the generated DDL directly and assert structure + constraints.
+      - name: Apply generated DDL to PostgreSQL 17
         run: pwsh -NoProfile -File database/tests/run_container_test.ps1
+
+      # 2) Run the Alembic baseline against a fresh database, verify, then roll
+      #    back and assert nothing is left behind.
+      - name: Apply baseline via Alembic and verify rollback
+        run: pwsh -NoProfile -File database/tests/run_migration_test.ps1
