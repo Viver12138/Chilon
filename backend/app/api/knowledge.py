@@ -15,6 +15,7 @@ into shared material by passing a flag.
 from __future__ import annotations
 
 import hashlib
+import os
 import uuid
 from pathlib import Path
 from typing import Annotated
@@ -26,7 +27,7 @@ from app.api.deps import ApiError, SessionDep, UserDep
 
 router = APIRouter(tags=["knowledge"], prefix="/knowledge")
 
-UPLOAD_ROOT = Path("var/uploads")
+UPLOAD_ROOT = Path(os.environ.get("CHILON_UPLOAD_DIR", "var/uploads"))
 ALLOWED_MIME = {
     "application/pdf": ".pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",

@@ -31,6 +31,7 @@ CHECKS: list[tuple[str, list[str]]] = [
     ("DDL 与 Registry 同步", ["database/generator/generate_ddl.py", "--check"]),
     ("聚合到表覆盖", ["database/tests/check_aggregate_coverage.py"]),
     ("每张表都有 RLS 策略", ["database/tests/check_rls_coverage.py"]),
+    ("部署文件与应用一致", ["database/tests/check_deploy.py"]),
     ("状态枚举与契约一致", ["database/tests/check_state_contract.py"]),
     ("迁移 SQL 切分正确", ["database/tests/check_migration_splitter.py"]),
     ("迁移与 DDL 同步", ["database/tests/check_migration_sync.py"]),

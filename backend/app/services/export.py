@@ -12,6 +12,7 @@ that matters: **the answer is not in the file.**
 from __future__ import annotations
 
 import hashlib
+import os
 import uuid
 import zipfile
 from io import BytesIO
@@ -25,7 +26,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from app.outbox import dispatcher
 from app.services import materials, pdf
 
-EXPORT_ROOT = Path("var/exports")
+EXPORT_ROOT = Path(os.environ.get("CHILON_EXPORT_DIR", "var/exports"))
 
 
 class ExportError(Exception):

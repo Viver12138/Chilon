@@ -48,7 +48,6 @@ from app.services import (
 router = APIRouter(tags=["ui"], include_in_schema=False)
 
 COOKIE = "chilon_session"
-EXPORT_ROOT = Path("var/exports")
 
 
 # ── tiny templating ────────────────────────────────────────────────────────────
@@ -679,7 +678,7 @@ async def download_export(
     if row is None:
         return page("找不到文件", "<p class='err'>文件不存在或不属于你。</p>")
 
-    path = EXPORT_ROOT / Path(row.storage_key).name
+    path = export.EXPORT_ROOT / Path(row.storage_key).name
     if not path.exists():
         return page("文件缺失", "<p class='err'>存储中没有这个文件。</p>")
 
