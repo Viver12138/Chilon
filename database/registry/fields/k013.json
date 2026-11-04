@@ -15,26 +15,122 @@
       "purpose": "交流上下文；Task 可有多个对话",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "task_id", "type": "uuid", "nullable": true, "fk": { "table": "tasks", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "关联任务；个人对话可为空" },
-        { "name": "title", "type": "varchar", "length": 300, "nullable": true, "sensitivity": "internal", "desc": "标题" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / archived" },
-        { "name": "last_message_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "最近消息时间" },
-        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" },
-        { "name": "deleted_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "软删除" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "关联任务；个人对话可为空"
+        },
+        {
+          "name": "title",
+          "type": "varchar",
+          "length": 300,
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "标题"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'active'",
+          "sensitivity": "public",
+          "desc": "active / archived"
+        },
+        {
+          "name": "last_message_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "最近消息时间"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "创建者"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "软删除"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_conversations_status", "expr": "status IN ('active','archived')" }
+        {
+          "type": "check",
+          "name": "ck_conversations_status",
+          "expr": "status IN ('active','archived')"
+        }
       ],
       "indexes": [
-        { "name": "ix_conversations_owner", "columns": ["owner_id", "updated_at"], "where": "deleted_at IS NULL" },
-        { "name": "ix_conversations_task", "columns": ["task_id"], "where": "task_id IS NOT NULL" }
+        {
+          "name": "ix_conversations_owner",
+          "columns": [
+            "owner_id",
+            "updated_at"
+          ],
+          "where": "deleted_at IS NULL"
+        },
+        {
+          "name": "ix_conversations_task",
+          "columns": [
+            "task_id"
+          ],
+          "where": "task_id IS NOT NULL"
+        }
       ],
       "policies": [
-        { "name": "pol_conversations_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_conversations_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -42,28 +138,135 @@
       "purpose": "教师与 Agent 可见的消息；工具调用不是 Message Role",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "conversation_id", "type": "uuid", "nullable": false, "fk": { "table": "conversations", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属对话" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "seq", "type": "bigint", "nullable": false, "sensitivity": "public", "desc": "对话内单调序号" },
-        { "name": "role", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "user / assistant / system" },
-        { "name": "content_blocks", "type": "jsonb", "nullable": false, "sensitivity": "confidential", "desc": "版本化 JSON Blocks" },
-        { "name": "content_schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "内容块 Schema 版本" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'completed'", "sensitivity": "public", "desc": "streaming / completed / interrupted / failed" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "失败错误码" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
-        { "name": "completed_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "进入终态的时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "conversations",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属对话"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "seq",
+          "type": "bigint",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "对话内单调序号"
+        },
+        {
+          "name": "role",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "user / assistant / system"
+        },
+        {
+          "name": "content_blocks",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "confidential",
+          "desc": "版本化 JSON Blocks"
+        },
+        {
+          "name": "content_schema_version",
+          "type": "varchar",
+          "length": 20,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "内容块 Schema 版本"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'completed'",
+          "sensitivity": "public",
+          "desc": "streaming / completed / interrupted / failed"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "失败错误码"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "completed_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "进入终态的时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_conversation_messages_seq", "columns": ["conversation_id", "seq"] },
-        { "type": "check", "name": "ck_conversation_messages_role", "expr": "role IN ('user','assistant','system')" },
-        { "type": "check", "name": "ck_conversation_messages_status", "expr": "status IN ('streaming','completed','interrupted','failed')" }
+        {
+          "type": "unique",
+          "name": "uq_conversation_messages_seq",
+          "columns": [
+            "conversation_id",
+            "seq"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_conversation_messages_role",
+          "expr": "role IN ('user','assistant','system')"
+        },
+        {
+          "type": "check",
+          "name": "ck_conversation_messages_status",
+          "expr": "status IN ('streaming','completed','interrupted','failed')"
+        }
       ],
       "indexes": [
-        { "name": "ix_conversation_messages_conv", "columns": ["conversation_id", "seq"] }
+        {
+          "name": "ix_conversation_messages_conv",
+          "columns": [
+            "conversation_id",
+            "seq"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_conversation_messages_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_conversation_messages_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -71,18 +274,74 @@
       "purpose": "追加式事件流；SSE Last-Event-ID 的事实来源",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "conversation_id", "type": "uuid", "nullable": false, "fk": { "table": "conversations", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属对话" },
-        { "name": "seq", "type": "bigint", "nullable": false, "sensitivity": "public", "desc": "事务内原子递增的序号" },
-        { "name": "event_type", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "事件类型" },
-        { "name": "payload", "type": "jsonb", "nullable": false, "sensitivity": "internal", "desc": "事件内容" },
-        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "发生时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "conversations",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属对话"
+        },
+        {
+          "name": "seq",
+          "type": "bigint",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "事务内原子递增的序号"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "事件类型"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "事件内容"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "发生时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_conversation_events_seq", "columns": ["conversation_id", "seq"] }
+        {
+          "type": "unique",
+          "name": "uq_conversation_events_seq",
+          "columns": [
+            "conversation_id",
+            "seq"
+          ]
+        }
       ],
       "indexes": [
-        { "name": "ix_conversation_events_conv", "columns": ["conversation_id", "seq"] }
+        {
+          "name": "ix_conversation_events_conv",
+          "columns": [
+            "conversation_id",
+            "seq"
+          ]
+        }
       ],
       "policies": []
     },
@@ -91,27 +350,134 @@
       "purpose": "教师可理解的进度；可更新，不是 append-only 事件",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "conversation_id", "type": "uuid", "nullable": true, "fk": { "table": "conversations", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属对话" },
-        { "name": "task_id", "type": "uuid", "nullable": true, "fk": { "table": "tasks", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "关联任务" },
-        { "name": "execution_id", "type": "uuid", "nullable": true, "fk": { "table": "agent_executions", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "关联执行" },
-        { "name": "label", "type": "varchar", "length": 300, "nullable": false, "sensitivity": "internal", "desc": "面向教师的一句话" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'running'", "sensitivity": "public", "desc": "pending / running / done / failed / cancelled" },
-        { "name": "progress", "type": "smallint", "nullable": true, "sensitivity": "public", "desc": "0-100，可为空（不确定时不编造）" },
-        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "明细；不含 Token、不含模型内部推理" },
-        { "name": "started_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "开始时间" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "conversations",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属对话"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "关联任务"
+        },
+        {
+          "name": "execution_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "agent_executions",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "关联执行"
+        },
+        {
+          "name": "label",
+          "type": "varchar",
+          "length": 300,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "面向教师的一句话"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'running'",
+          "sensitivity": "public",
+          "desc": "pending / running / done / failed / cancelled"
+        },
+        {
+          "name": "progress",
+          "type": "smallint",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "0-100，可为空（不确定时不编造）"
+        },
+        {
+          "name": "detail",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "明细；不含 Token、不含模型内部推理"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_agent_activities_status", "expr": "status IN ('pending','running','done','failed','cancelled')" },
-        { "type": "check", "name": "ck_agent_activities_progress", "expr": "progress IS NULL OR (progress >= 0 AND progress <= 100)" }
+        {
+          "type": "check",
+          "name": "ck_agent_activities_status",
+          "expr": "status IN ('pending','running','done','failed','cancelled')"
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_activities_progress",
+          "expr": "progress IS NULL OR (progress >= 0 AND progress <= 100)"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_activities_conversation", "columns": ["conversation_id", "started_at"] }
+        {
+          "name": "ix_agent_activities_conversation",
+          "columns": [
+            "conversation_id",
+            "started_at"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_agent_activities_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_agent_activities_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -119,22 +485,102 @@
       "purpose": "对话附件；内容存对象存储，库内只存引用",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "conversation_id", "type": "uuid", "nullable": false, "fk": { "table": "conversations", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属对话" },
-        { "name": "message_id", "type": "uuid", "nullable": true, "fk": { "table": "conversation_messages", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "挂在哪条消息上" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "storage_key", "type": "varchar", "length": 500, "nullable": false, "sensitivity": "confidential", "desc": "对象存储 Key" },
-        { "name": "mime_type", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "MIME 类型" },
-        { "name": "file_size_bytes", "type": "bigint", "nullable": false, "sensitivity": "public", "desc": "字节数" },
-        { "name": "checksum_sha256", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "文件 SHA-256" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "conversations",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属对话"
+        },
+        {
+          "name": "message_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "conversation_messages",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "挂在哪条消息上"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "storage_key",
+          "type": "varchar",
+          "length": 500,
+          "nullable": false,
+          "sensitivity": "confidential",
+          "desc": "对象存储 Key"
+        },
+        {
+          "name": "mime_type",
+          "type": "varchar",
+          "length": 120,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "MIME 类型"
+        },
+        {
+          "name": "file_size_bytes",
+          "type": "bigint",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "字节数"
+        },
+        {
+          "name": "checksum_sha256",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "文件 SHA-256"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [],
       "indexes": [
-        { "name": "ix_conversation_attachments_conv", "columns": ["conversation_id"] }
+        {
+          "name": "ix_conversation_attachments_conv",
+          "columns": [
+            "conversation_id"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_conversation_attachments_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_conversation_attachments_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -142,16 +588,71 @@
       "purpose": "对话参与者；区分教师、Agent 与系统",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "conversation_id", "type": "uuid", "nullable": false, "fk": { "table": "conversations", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属对话" },
-        { "name": "participant_type", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "teacher / agent / system" },
-        { "name": "participant_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "教师 ID；Agent 与 System 为空" },
-        { "name": "role", "type": "varchar", "length": 32, "nullable": true, "sensitivity": "public", "desc": "对话内角色" },
-        { "name": "joined_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "加入时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "conversations",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属对话"
+        },
+        {
+          "name": "participant_type",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "teacher / agent / system"
+        },
+        {
+          "name": "participant_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "教师 ID；Agent 与 System 为空"
+        },
+        {
+          "name": "role",
+          "type": "varchar",
+          "length": 32,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "对话内角色"
+        },
+        {
+          "name": "joined_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "加入时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_conversation_participants", "columns": ["conversation_id", "participant_type"] },
-        { "type": "check", "name": "ck_conversation_participants_type", "expr": "participant_type IN ('teacher','agent','system')" }
+        {
+          "type": "unique",
+          "name": "uq_conversation_participants",
+          "columns": [
+            "conversation_id",
+            "participant_type"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_conversation_participants_type",
+          "expr": "participant_type IN ('teacher','agent','system')"
+        }
       ],
       "indexes": [],
       "policies": []
@@ -161,20 +662,84 @@
       "purpose": "每教师每对话的读取与投递水位；SSE 重连与对账用",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "conversation_id", "type": "uuid", "nullable": false, "fk": { "table": "conversations", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属对话" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "last_read_event_seq", "type": "bigint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "已读水位" },
-        { "name": "last_delivered_event_seq", "type": "bigint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "已投递水位" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "conversation_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "conversations",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属对话"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "last_read_event_seq",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "已读水位"
+        },
+        {
+          "name": "last_delivered_event_seq",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "已投递水位"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_conversation_cursors_owner", "columns": ["conversation_id", "owner_id"] },
-        { "type": "check", "name": "ck_conversation_cursors_monotonic", "expr": "last_read_event_seq >= 0 AND last_delivered_event_seq >= 0" }
+        {
+          "type": "unique",
+          "name": "uq_conversation_cursors_owner",
+          "columns": [
+            "conversation_id",
+            "owner_id"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_conversation_cursors_monotonic",
+          "expr": "last_read_event_seq >= 0 AND last_delivered_event_seq >= 0"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_conversation_cursors_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_conversation_cursors_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     }
   ],

@@ -1,0 +1,179 @@
+{
+  "module": "K002",
+  "title": "Identity & Account Management",
+  "registry_version": "0.1.0",
+  "status": "DESIGNED",
+  "source_docs": [
+    "Chilon_Project_Design_Master_Document.md §13",
+    "design/Chilon_Design_Volume_D5_Api_And_Sse_Contract.md §1"
+  ],
+  "derivation_note": "§13.2 列 9 个候选实体并要求去重。本轮合并 users + user_accounts（无规则要求分离，且 RLS 每次都要 join 会变慢），合并 user_verification_tokens + user_password_reset_requests（同为一次性令牌，仅 purpose 不同），最终 7 张。",
+  "tables": [
+    {
+      "name": "users",
+      "purpose": "稳定身份主体；username 可变，id 不变",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键；所有 owner_id 指向它" },
+        { "name": "username", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "internal", "desc": "当前用户名，全局唯一，小写" },
+        { "name": "display_name", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "internal", "desc": "显示名" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / suspended / closed" },
+        { "name": "is_admin", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "confidential", "desc": "是否管理员；K021 操作的 actor_id 指向本表" },
+        { "name": "locale", "type": "varchar", "length": 16, "nullable": false, "default": "'zh-CN'", "sensitivity": "public", "desc": "语言" },
+        { "name": "timezone", "type": "varchar", "length": 64, "nullable": false, "default": "'Asia/Shanghai'", "sensitivity": "public", "desc": "时区" },
+        { "name": "closed_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "账户关闭时间；关闭不级联删除教学资料" },
+        { "name": "last_login_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "最近登录时间" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_users_username", "columns": ["username"] },
+        { "type": "check", "name": "ck_users_status", "expr": "status IN ('active','suspended','closed')" },
+        { "type": "check", "name": "ck_users_closed_at", "expr": "(status = 'closed') = (closed_at IS NOT NULL)" },
+        { "type": "check", "name": "ck_users_username_lower", "expr": "username = lower(username)" }
+      ],
+      "indexes": [],
+      "policies": [
+        { "name": "pol_users_self", "command": "SELECT", "using": "id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "user_credentials",
+      "purpose": "登录凭据；与身份主体分离，只存不可逆 Hash",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "user_id", "type": "uuid", "nullable": false, "fk": { "table": "users", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属用户" },
+        { "name": "password_hash", "type": "varchar", "length": 255, "nullable": false, "sensitivity": "restricted", "desc": "Argon2id Hash；禁止明文与可逆加密" },
+        { "name": "algorithm", "type": "varchar", "length": 32, "nullable": false, "default": "'argon2id'", "sensitivity": "public", "desc": "Hash 算法" },
+        { "name": "password_changed_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "密码修改时间" },
+        { "name": "must_change_password", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "internal", "desc": "强制下次登录改密" },
+        { "name": "failed_attempts", "type": "smallint", "nullable": false, "default": "0", "sensitivity": "internal", "desc": "连续失败次数" },
+        { "name": "locked_until", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "锁定到期时间" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_user_credentials_user", "columns": ["user_id"] },
+        { "type": "check", "name": "ck_user_credentials_attempts", "expr": "failed_attempts >= 0" }
+      ],
+      "indexes": [],
+      "policies": []
+    },
+    {
+      "name": "user_username_history",
+      "purpose": "用户名历史；改名后保留旧名，防冒用",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "user_id", "type": "uuid", "nullable": false, "fk": { "table": "users", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属用户" },
+        { "name": "username", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "internal", "desc": "曾用用户名" },
+        { "name": "changed_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "变更时间" },
+        { "name": "reason", "type": "varchar", "length": 200, "nullable": true, "sensitivity": "internal", "desc": "变更原因" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_user_username_history_name", "columns": ["username"] }
+      ],
+      "indexes": [
+        { "name": "ix_user_username_history_user", "columns": ["user_id"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "user_email_addresses",
+      "purpose": "邮箱；多个，验证前不能用于身份确认或通知",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "user_id", "type": "uuid", "nullable": false, "fk": { "table": "users", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属用户" },
+        { "name": "email", "type": "varchar", "length": 320, "nullable": false, "sensitivity": "confidential", "desc": "邮箱地址，全局唯一，小写" },
+        { "name": "is_primary", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "internal", "desc": "是否主邮箱" },
+        { "name": "verified_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "验证通过时间；为空表示未验证" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_user_email_addresses_email", "columns": ["email"] },
+        { "type": "check", "name": "ck_user_email_addresses_lower", "expr": "email = lower(email)" }
+      ],
+      "indexes": [
+        { "name": "ix_user_email_addresses_user", "columns": ["user_id"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "user_sessions",
+      "purpose": "登录会话；只存 Token Hash",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "user_id", "type": "uuid", "nullable": false, "fk": { "table": "users", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属用户" },
+        { "name": "token_hash", "type": "sha256", "nullable": false, "sensitivity": "restricted", "desc": "会话 Token 的 SHA-256；明文不落库" },
+        { "name": "issued_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "签发时间" },
+        { "name": "expires_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "过期时间" },
+        { "name": "revoked_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "撤销时间" },
+        { "name": "last_seen_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "最近活跃时间" },
+        { "name": "user_agent", "type": "varchar", "length": 500, "nullable": true, "sensitivity": "internal", "desc": "客户端标识" },
+        { "name": "ip_address", "type": "varchar", "length": 45, "nullable": true, "sensitivity": "confidential", "desc": "来源 IP（IPv4/IPv6 文本）" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_user_sessions_token", "columns": ["token_hash"] }
+      ],
+      "indexes": [
+        { "name": "ix_user_sessions_user", "columns": ["user_id", "expires_at"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "user_verification_tokens",
+      "purpose": "一次性令牌；邮箱验证与密码重置共用，靠 purpose 区分",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "user_id", "type": "uuid", "nullable": false, "fk": { "table": "users", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属用户" },
+        { "name": "purpose", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "email_verify / password_reset" },
+        { "name": "token_hash", "type": "sha256", "nullable": false, "sensitivity": "restricted", "desc": "令牌 SHA-256" },
+        { "name": "target_email", "type": "varchar", "length": 320, "nullable": true, "sensitivity": "confidential", "desc": "邮箱验证时的目标地址" },
+        { "name": "requested_ip", "type": "varchar", "length": 45, "nullable": true, "sensitivity": "confidential", "desc": "发起请求的 IP" },
+        { "name": "expires_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "过期时间" },
+        { "name": "consumed_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "消费时间；一次性" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_user_verification_tokens_hash", "columns": ["token_hash"] },
+        { "type": "check", "name": "ck_user_verification_tokens_purpose", "expr": "purpose IN ('email_verify','password_reset')" }
+      ],
+      "indexes": [
+        { "name": "ix_user_verification_tokens_user", "columns": ["user_id", "purpose"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "admin_audit_logs",
+      "purpose": "通用管理员审计；与 K021 的 security events 分离",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "actor_id", "type": "uuid", "nullable": true, "fk": { "table": "users", "on_delete": "SET NULL" }, "sensitivity": "internal", "desc": "操作者" },
+        { "name": "action", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "审计动作" },
+        { "name": "target_type", "type": "varchar", "length": 64, "nullable": true, "sensitivity": "public", "desc": "目标类型" },
+        { "name": "target_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "目标 ID" },
+        { "name": "detail", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "明细" },
+        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "发生时间" }
+      ],
+      "constraints": [],
+      "indexes": [
+        { "name": "ix_admin_audit_logs_occurred", "columns": ["occurred_at"] },
+        { "name": "ix_admin_audit_logs_actor", "columns": ["actor_id", "occurred_at"] }
+      ],
+      "policies": []
+    }
+  ],
+  "table_order": [
+    "users",
+    "user_credentials",
+    "user_username_history",
+    "user_email_addresses",
+    "user_sessions",
+    "user_verification_tokens",
+    "admin_audit_logs"
+  ]
+}

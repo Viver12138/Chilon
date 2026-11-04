@@ -15,29 +15,150 @@
       "purpose": "教学任务；Requirement、Plan、Execution 都挂在它下面",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "project_id", "type": "uuid", "nullable": true, "fk": { "table": "projects", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "所属项目" },
-        { "name": "title", "type": "varchar", "length": 300, "nullable": false, "sensitivity": "internal", "desc": "任务标题" },
-        { "name": "objective", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "教师原始诉求" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "任务状态机" },
-        { "name": "state_version", "type": "integer", "nullable": false, "default": "0", "sensitivity": "public", "desc": "CAS 版本" },
-        { "name": "state_changed_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "状态变更时间" },
-        { "name": "current_requirement_version_id", "type": "uuid", "nullable": true, "deferred_fk": { "table": "task_requirement_versions", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "当前需求版本指针" },
-        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" },
-        { "name": "deleted_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "软删除" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "project_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "projects",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "所属项目"
+        },
+        {
+          "name": "title",
+          "type": "varchar",
+          "length": 300,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "任务标题"
+        },
+        {
+          "name": "objective",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "教师原始诉求"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "任务状态机"
+        },
+        {
+          "name": "state_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "CAS 版本"
+        },
+        {
+          "name": "state_changed_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "状态变更时间"
+        },
+        {
+          "name": "current_requirement_version_id",
+          "type": "uuid",
+          "nullable": true,
+          "deferred_fk": {
+            "table": "task_requirement_versions",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "当前需求版本指针"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "创建者"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "软删除"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_tasks_status", "expr": "status IN ('draft','clarifying','ready','planned','awaiting_approval','approved','executing','paused','completed','failed','cancelled')" }
+        {
+          "type": "check",
+          "name": "ck_tasks_status",
+          "expr": "status IN ('draft','clarifying','ready','planned','awaiting_approval','approved','executing','paused','completed','failed','cancelled')"
+        }
       ],
       "indexes": [
-        { "name": "ix_tasks_owner", "columns": ["owner_id", "status", "updated_at"], "where": "deleted_at IS NULL" },
-        { "name": "ix_tasks_project", "columns": ["project_id"], "where": "deleted_at IS NULL" }
+        {
+          "name": "ix_tasks_owner",
+          "columns": [
+            "owner_id",
+            "status",
+            "updated_at"
+          ],
+          "where": "deleted_at IS NULL"
+        },
+        {
+          "name": "ix_tasks_project",
+          "columns": [
+            "project_id"
+          ],
+          "where": "deleted_at IS NULL"
+        }
       ],
       "policies": [
-        { "name": "pol_tasks_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_tasks_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -45,23 +166,105 @@
       "purpose": "需求版本；不可变，Plan 绑定具体版本",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "task_id", "type": "uuid", "nullable": false, "fk": { "table": "tasks", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属任务" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "version_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "任务内递增" },
-        { "name": "requirements", "type": "jsonb", "nullable": false, "sensitivity": "internal", "desc": "结构化需求：来源、年级、题量、课时等" },
-        { "name": "content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "需求 Hash" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "draft / confirmed / superseded" },
-        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属任务"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "version_no",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "任务内递增"
+        },
+        {
+          "name": "requirements",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "结构化需求：来源、年级、题量、课时等"
+        },
+        {
+          "name": "content_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "需求 Hash"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "draft / confirmed / superseded"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "创建者"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_task_requirement_versions_task_no", "columns": ["task_id", "version_no"] },
-        { "type": "check", "name": "ck_task_requirement_versions_status", "expr": "status IN ('draft','confirmed','superseded')" }
+        {
+          "type": "unique",
+          "name": "uq_task_requirement_versions_task_no",
+          "columns": [
+            "task_id",
+            "version_no"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_task_requirement_versions_status",
+          "expr": "status IN ('draft','confirmed','superseded')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_task_requirement_versions_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_task_requirement_versions_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -69,22 +272,96 @@
       "purpose": "Plan 身份；版本在 agent_plan_versions",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "task_id", "type": "uuid", "nullable": false, "fk": { "table": "tasks", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属任务" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "latest_version_id", "type": "uuid", "nullable": true, "deferred_fk": { "table": "agent_plan_versions", "on_delete": "SET NULL" }, "sensitivity": "public", "desc": "最新版本指针" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "draft / awaiting_approval / approved / superseded / abandoned" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
-        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属任务"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "latest_version_id",
+          "type": "uuid",
+          "nullable": true,
+          "deferred_fk": {
+            "table": "agent_plan_versions",
+            "on_delete": "SET NULL"
+          },
+          "sensitivity": "public",
+          "desc": "最新版本指针"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "draft / awaiting_approval / approved / superseded / abandoned"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_agent_plans_status", "expr": "status IN ('draft','awaiting_approval','approved','superseded','abandoned')" }
+        {
+          "type": "check",
+          "name": "ck_agent_plans_status",
+          "expr": "status IN ('draft','awaiting_approval','approved','superseded','abandoned')"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_plans_task", "columns": ["task_id", "status"] }
+        {
+          "name": "ix_agent_plans_task",
+          "columns": [
+            "task_id",
+            "status"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_agent_plans_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_agent_plans_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -92,27 +369,135 @@
       "purpose": "Plan 版本；不可变，绑定需求版本",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "plan_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plans", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属 Plan" },
-        { "name": "task_id", "type": "uuid", "nullable": false, "fk": { "table": "tasks", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "冗余 task_id 便于查询" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "version_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "Plan 内递增" },
-        { "name": "requirement_version_id", "type": "uuid", "nullable": false, "fk": { "table": "task_requirement_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "绑定的需求版本" },
-        { "name": "content", "type": "jsonb", "nullable": false, "sensitivity": "confidential", "desc": "Plan 结构：步骤、依赖、预期产出" },
-        { "name": "content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "Plan 内容 Hash" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'draft'", "sensitivity": "public", "desc": "draft / awaiting_approval / approved / superseded / abandoned" },
-        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "plan_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plans",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属 Plan"
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "冗余 task_id 便于查询"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "version_no",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Plan 内递增"
+        },
+        {
+          "name": "requirement_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "task_requirement_versions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "绑定的需求版本"
+        },
+        {
+          "name": "content",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "confidential",
+          "desc": "Plan 结构：步骤、依赖、预期产出"
+        },
+        {
+          "name": "content_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "Plan 内容 Hash"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'draft'",
+          "sensitivity": "public",
+          "desc": "draft / awaiting_approval / approved / superseded / abandoned"
+        },
+        {
+          "name": "created_by",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "创建者"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_plan_versions_plan_no", "columns": ["plan_id", "version_no"] },
-        { "type": "check", "name": "ck_agent_plan_versions_status", "expr": "status IN ('draft','awaiting_approval','approved','superseded','abandoned')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_plan_versions_plan_no",
+          "columns": [
+            "plan_id",
+            "version_no"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_plan_versions_status",
+          "expr": "status IN ('draft','awaiting_approval','approved','superseded','abandoned')"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_plan_versions_plan", "columns": ["plan_id", "version_no"] }
+        {
+          "name": "ix_agent_plan_versions_plan",
+          "columns": [
+            "plan_id",
+            "version_no"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_agent_plan_versions_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_agent_plan_versions_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -120,28 +505,139 @@
       "purpose": "单次消费的 Plan 审批；绑定具体版本与 Hash",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "task_id", "type": "uuid", "nullable": false, "fk": { "table": "tasks", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "任务" },
-        { "name": "plan_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plans", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "Plan" },
-        { "name": "plan_version_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "被批准的版本" },
-        { "name": "plan_content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "被批准内容的 Hash" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'pending'", "sensitivity": "public", "desc": "pending / approved / rejected / invalidated / expired / consumed" },
-        { "name": "approver_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "审批人" },
-        { "name": "approved_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "批准时间" },
-        { "name": "expires_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "失效时间" },
-        { "name": "consumed_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "被执行消费的时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "任务"
+        },
+        {
+          "name": "plan_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plans",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "Plan"
+        },
+        {
+          "name": "plan_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_versions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "被批准的版本"
+        },
+        {
+          "name": "plan_content_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "被批准内容的 Hash"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'pending'",
+          "sensitivity": "public",
+          "desc": "pending / approved / rejected / invalidated / expired / consumed"
+        },
+        {
+          "name": "approver_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "审批人"
+        },
+        {
+          "name": "approved_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "批准时间"
+        },
+        {
+          "name": "expires_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "失效时间"
+        },
+        {
+          "name": "consumed_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "被执行消费的时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_agent_plan_approvals_status", "expr": "status IN ('pending','approved','rejected','invalidated','expired','consumed')" },
-        { "type": "check", "name": "ck_agent_plan_approvals_consumed", "expr": "(status = 'consumed') = (consumed_at IS NOT NULL)" }
+        {
+          "type": "check",
+          "name": "ck_agent_plan_approvals_status",
+          "expr": "status IN ('pending','approved','rejected','invalidated','expired','consumed')"
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_plan_approvals_consumed",
+          "expr": "(status = 'consumed') = (consumed_at IS NOT NULL)"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_plan_approvals_version", "columns": ["plan_version_id", "status"] }
+        {
+          "name": "ix_agent_plan_approvals_version",
+          "columns": [
+            "plan_version_id",
+            "status"
+          ]
+        }
       ],
       "policies": [
-        { "name": "pol_agent_plan_approvals_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_agent_plan_approvals_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -149,21 +645,97 @@
       "purpose": "Plan 内的步骤；DAG 的节点",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "plan_version_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属 Plan 版本" },
-        { "name": "step_key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "版本内稳定键" },
-        { "name": "ordinal", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "展示顺序" },
-        { "name": "step_type", "type": "varchar", "length": 40, "nullable": false, "sensitivity": "public", "desc": "retrieve / generate / validate / export 等" },
-        { "name": "title", "type": "varchar", "length": 300, "nullable": false, "sensitivity": "internal", "desc": "步骤标题" },
-        { "name": "input_spec", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "输入规格" },
-        { "name": "expected_outputs", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "预期产出" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "plan_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_versions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属 Plan 版本"
+        },
+        {
+          "name": "step_key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "版本内稳定键"
+        },
+        {
+          "name": "ordinal",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "展示顺序"
+        },
+        {
+          "name": "step_type",
+          "type": "varchar",
+          "length": 40,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "retrieve / generate / validate / export 等"
+        },
+        {
+          "name": "title",
+          "type": "varchar",
+          "length": 300,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "步骤标题"
+        },
+        {
+          "name": "input_spec",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "输入规格"
+        },
+        {
+          "name": "expected_outputs",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "预期产出"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_plan_steps_key", "columns": ["plan_version_id", "step_key"] }
+        {
+          "type": "unique",
+          "name": "uq_agent_plan_steps_key",
+          "columns": [
+            "plan_version_id",
+            "step_key"
+          ]
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_plan_steps_version", "columns": ["plan_version_id", "ordinal"] }
+        {
+          "name": "ix_agent_plan_steps_version",
+          "columns": [
+            "plan_version_id",
+            "ordinal"
+          ]
+        }
       ],
       "policies": []
     },
@@ -172,18 +744,78 @@
       "purpose": "步骤依赖边；环检测在应用层，库层保证唯一",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "plan_version_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属 Plan 版本" },
-        { "name": "step_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_steps", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "后继步骤" },
-        { "name": "depends_on_step_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_steps", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "前置步骤" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "plan_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_versions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属 Plan 版本"
+        },
+        {
+          "name": "step_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_steps",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "后继步骤"
+        },
+        {
+          "name": "depends_on_step_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_steps",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "前置步骤"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_step_dependencies_edge", "columns": ["step_id", "depends_on_step_id"] },
-        { "type": "check", "name": "ck_agent_step_dependencies_self", "expr": "step_id <> depends_on_step_id" }
+        {
+          "type": "unique",
+          "name": "uq_agent_step_dependencies_edge",
+          "columns": [
+            "step_id",
+            "depends_on_step_id"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_step_dependencies_self",
+          "expr": "step_id <> depends_on_step_id"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_step_dependencies_dep", "columns": ["depends_on_step_id"] }
+        {
+          "name": "ix_agent_step_dependencies_dep",
+          "columns": [
+            "depends_on_step_id"
+          ]
+        }
       ],
       "policies": []
     },
@@ -192,22 +824,92 @@
       "purpose": "插件注册表；Plugin Manifest Hash 来自这里",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "插件标识" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "插件名" },
-        { "name": "version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "插件版本" },
-        { "name": "manifest", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "Manifest 内容" },
-        { "name": "manifest_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "Manifest Hash，被发布与评估引用" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'active'", "sensitivity": "public", "desc": "active / disabled" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "插件标识"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "插件名"
+        },
+        {
+          "name": "version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "插件版本"
+        },
+        {
+          "name": "manifest",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Manifest 内容"
+        },
+        {
+          "name": "manifest_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "Manifest Hash，被发布与评估引用"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'active'",
+          "sensitivity": "public",
+          "desc": "active / disabled"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_runtime_plugins_key_version", "columns": ["key", "version"] },
-        { "type": "check", "name": "ck_agent_runtime_plugins_status", "expr": "status IN ('active','disabled')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_runtime_plugins_key_version",
+          "columns": [
+            "key",
+            "version"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_runtime_plugins_status",
+          "expr": "status IN ('active','disabled')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_agent_runtime_plugins_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_agent_runtime_plugins_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -215,25 +917,119 @@
       "purpose": "工具定义；业务权威归 Chilon，不归插件",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "key", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "如 knowledge.search" },
-        { "name": "version", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "工具版本，参与幂等键计算" },
-        { "name": "name", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "工具名" },
-        { "name": "plugin_id", "type": "uuid", "nullable": true, "fk": { "table": "agent_runtime_plugins", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "提供该工具的插件" },
-        { "name": "input_schema", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "输入 JSON Schema" },
-        { "name": "output_schema", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "输出 JSON Schema" },
-        { "name": "side_effect_level", "type": "varchar", "length": 16, "nullable": false, "default": "'read'", "sensitivity": "public", "desc": "read / write / irreversible" },
-        { "name": "requires_approval", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "public", "desc": "调用前是否需要业务审批" },
-        { "name": "is_enabled", "type": "boolean", "nullable": false, "default": "true", "sensitivity": "public", "desc": "是否启用" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "key",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "如 knowledge.search"
+        },
+        {
+          "name": "version",
+          "type": "varchar",
+          "length": 32,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "工具版本，参与幂等键计算"
+        },
+        {
+          "name": "name",
+          "type": "varchar",
+          "length": 200,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "工具名"
+        },
+        {
+          "name": "plugin_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "agent_runtime_plugins",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "提供该工具的插件"
+        },
+        {
+          "name": "input_schema",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "输入 JSON Schema"
+        },
+        {
+          "name": "output_schema",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "输出 JSON Schema"
+        },
+        {
+          "name": "side_effect_level",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'read'",
+          "sensitivity": "public",
+          "desc": "read / write / irreversible"
+        },
+        {
+          "name": "requires_approval",
+          "type": "boolean",
+          "nullable": false,
+          "default": "false",
+          "sensitivity": "public",
+          "desc": "调用前是否需要业务审批"
+        },
+        {
+          "name": "is_enabled",
+          "type": "boolean",
+          "nullable": false,
+          "default": "true",
+          "sensitivity": "public",
+          "desc": "是否启用"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_tool_definitions_key_version", "columns": ["key", "version"] },
-        { "type": "check", "name": "ck_agent_tool_definitions_side_effect", "expr": "side_effect_level IN ('read','write','irreversible')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_tool_definitions_key_version",
+          "columns": [
+            "key",
+            "version"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_tool_definitions_side_effect",
+          "expr": "side_effect_level IN ('read','write','irreversible')"
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_agent_tool_definitions_read", "command": "SELECT", "using": "true" }
+        {
+          "name": "pol_agent_tool_definitions_read",
+          "command": "SELECT",
+          "using": "true"
+        }
       ]
     },
     {
@@ -241,20 +1037,84 @@
       "purpose": "教师可用的工具授权；Tool Call 前置校验",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "被授权教师" },
-        { "name": "tool_definition_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_tool_definitions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "工具" },
-        { "name": "capability", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "能力标识" },
-        { "name": "granted_by", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "授权人；平台授予时可为空" },
-        { "name": "granted_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "授权时间" },
-        { "name": "revoked_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "撤销时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "被授权教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "tool_definition_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_tool_definitions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "工具"
+        },
+        {
+          "name": "capability",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "能力标识"
+        },
+        {
+          "name": "granted_by",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "授权人；平台授予时可为空"
+        },
+        {
+          "name": "granted_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "授权时间"
+        },
+        {
+          "name": "revoked_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "撤销时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_tool_grants_owner_tool", "columns": ["owner_id", "tool_definition_id"] }
+        {
+          "type": "unique",
+          "name": "uq_agent_tool_grants_owner_tool",
+          "columns": [
+            "owner_id",
+            "tool_definition_id"
+          ]
+        }
       ],
       "indexes": [],
       "policies": [
-        { "name": "pol_agent_tool_grants_owner", "command": "SELECT", "using": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_agent_tool_grants_owner",
+          "command": "SELECT",
+          "using": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -262,35 +1122,197 @@
       "purpose": "执行；持有 Lease 与 Fencing Token",
       "owner_scoped": true,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "归属教师" },
-        { "name": "task_id", "type": "uuid", "nullable": false, "fk": { "table": "tasks", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "任务" },
-        { "name": "plan_version_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "执行的 Plan 版本" },
-        { "name": "plan_approval_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_approvals", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "消费的审批" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "执行状态机" },
-        { "name": "state_version", "type": "integer", "nullable": false, "default": "0", "sensitivity": "public", "desc": "CAS 版本" },
-        { "name": "state_changed_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "状态变更时间" },
-        { "name": "lease_owner_id", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "internal", "desc": "持有 Lease 的 Worker 标识" },
-        { "name": "lease_expires_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "Lease 到期时间" },
-        { "name": "heartbeat_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "最近心跳" },
-        { "name": "fencing_token", "type": "bigint", "nullable": false, "default": "0", "sensitivity": "internal", "desc": "围栏令牌；旧令牌写入只能作审计证据" },
-        { "name": "idempotency_key", "type": "varchar", "length": 255, "nullable": true, "sensitivity": "internal", "desc": "启动幂等键" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "错误码" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "owner_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "归属教师",
+          "fk": {
+            "table": "users",
+            "on_delete": "RESTRICT"
+          }
+        },
+        {
+          "name": "task_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "tasks",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "任务"
+        },
+        {
+          "name": "plan_version_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_versions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "执行的 Plan 版本"
+        },
+        {
+          "name": "plan_approval_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_approvals",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "消费的审批"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'queued'",
+          "sensitivity": "public",
+          "desc": "执行状态机"
+        },
+        {
+          "name": "state_version",
+          "type": "integer",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "CAS 版本"
+        },
+        {
+          "name": "state_changed_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "状态变更时间"
+        },
+        {
+          "name": "lease_owner_id",
+          "type": "varchar",
+          "length": 120,
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "持有 Lease 的 Worker 标识"
+        },
+        {
+          "name": "lease_expires_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "Lease 到期时间"
+        },
+        {
+          "name": "heartbeat_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "最近心跳"
+        },
+        {
+          "name": "fencing_token",
+          "type": "bigint",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "internal",
+          "desc": "围栏令牌；旧令牌写入只能作审计证据"
+        },
+        {
+          "name": "idempotency_key",
+          "type": "varchar",
+          "length": 255,
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "启动幂等键"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "错误码"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "check", "name": "ck_agent_executions_status", "expr": "status IN ('queued','starting','running','paused','waiting_approval','completing','succeeded','failed','cancelled','outcome_unknown','recovering','expired')" },
-        { "type": "check", "name": "ck_agent_executions_fencing", "expr": "fencing_token >= 0" }
+        {
+          "type": "check",
+          "name": "ck_agent_executions_status",
+          "expr": "status IN ('queued','starting','running','paused','waiting_approval','completing','succeeded','failed','cancelled','outcome_unknown','recovering','expired')"
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_executions_fencing",
+          "expr": "fencing_token >= 0"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_executions_task", "columns": ["task_id", "status"] },
-        { "name": "ix_agent_executions_lease", "columns": ["status", "lease_expires_at"], "where": "status IN ('starting','running','paused')" },
-        { "name": "ix_agent_executions_idempotency", "columns": ["owner_id", "idempotency_key"], "where": "idempotency_key IS NOT NULL", "unique": true }
+        {
+          "name": "ix_agent_executions_task",
+          "columns": [
+            "task_id",
+            "status"
+          ]
+        },
+        {
+          "name": "ix_agent_executions_lease",
+          "columns": [
+            "status",
+            "lease_expires_at"
+          ],
+          "where": "status IN ('starting','running','paused')"
+        },
+        {
+          "name": "ix_agent_executions_idempotency",
+          "columns": [
+            "owner_id",
+            "idempotency_key"
+          ],
+          "where": "idempotency_key IS NOT NULL",
+          "unique": true
+        }
       ],
       "policies": [
-        { "name": "pol_agent_executions_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+        {
+          "name": "pol_agent_executions_owner",
+          "command": "ALL",
+          "using": "owner_id = public.app_current_user_id()",
+          "with_check": "owner_id = public.app_current_user_id()"
+        }
       ]
     },
     {
@@ -298,23 +1320,111 @@
       "purpose": "Execution 与 Runtime Session 的映射；一次执行可有多轮",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "execution_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_executions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属执行" },
-        { "name": "ordinal", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "执行内序号" },
-        { "name": "harness_session_id", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "internal", "desc": "Runtime Session 标识" },
-        { "name": "model", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "public", "desc": "模型" },
-        { "name": "prompt_version", "type": "varchar", "length": 64, "nullable": true, "sensitivity": "public", "desc": "Prompt 版本" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'queued'", "sensitivity": "public", "desc": "queued / running / succeeded / failed / cancelled / timeout" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "execution_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_executions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属执行"
+        },
+        {
+          "name": "ordinal",
+          "type": "integer",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "执行内序号"
+        },
+        {
+          "name": "harness_session_id",
+          "type": "varchar",
+          "length": 120,
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "Runtime Session 标识"
+        },
+        {
+          "name": "model",
+          "type": "varchar",
+          "length": 120,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "模型"
+        },
+        {
+          "name": "prompt_version",
+          "type": "varchar",
+          "length": 64,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "Prompt 版本"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'queued'",
+          "sensitivity": "public",
+          "desc": "queued / running / succeeded / failed / cancelled / timeout"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_runs_execution_ordinal", "columns": ["execution_id", "ordinal"] },
-        { "type": "check", "name": "ck_agent_runs_status", "expr": "status IN ('queued','running','succeeded','failed','cancelled','timeout')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_runs_execution_ordinal",
+          "columns": [
+            "execution_id",
+            "ordinal"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_runs_status",
+          "expr": "status IN ('queued','running','succeeded','failed','cancelled','timeout')"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_runs_execution", "columns": ["execution_id", "ordinal"] }
+        {
+          "name": "ix_agent_runs_execution",
+          "columns": [
+            "execution_id",
+            "ordinal"
+          ]
+        }
       ],
       "policies": []
     },
@@ -323,23 +1433,114 @@
       "purpose": "单个 Plan 步骤的执行",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "execution_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_executions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属执行" },
-        { "name": "plan_step_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_plan_steps", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "对应 Plan 步骤" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'pending'", "sensitivity": "public", "desc": "步骤状态机" },
-        { "name": "attempt", "type": "smallint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "重试次数" },
-        { "name": "output", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "步骤产出" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "错误码" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "execution_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_executions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属执行"
+        },
+        {
+          "name": "plan_step_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_plan_steps",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "对应 Plan 步骤"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'pending'",
+          "sensitivity": "public",
+          "desc": "步骤状态机"
+        },
+        {
+          "name": "attempt",
+          "type": "smallint",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "重试次数"
+        },
+        {
+          "name": "output",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "步骤产出"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "错误码"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_step_executions_step", "columns": ["execution_id", "plan_step_id"] },
-        { "type": "check", "name": "ck_agent_step_executions_status", "expr": "status IN ('pending','ready','running','succeeded','failed','skipped','cancelled','blocked','outcome_unknown','retrying')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_step_executions_step",
+          "columns": [
+            "execution_id",
+            "plan_step_id"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_step_executions_status",
+          "expr": "status IN ('pending','ready','running','succeeded','failed','skipped','cancelled','blocked','outcome_unknown','retrying')"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_step_executions_execution", "columns": ["execution_id", "status"] }
+        {
+          "name": "ix_agent_step_executions_execution",
+          "columns": [
+            "execution_id",
+            "status"
+          ]
+        }
       ],
       "policies": []
     },
@@ -348,28 +1549,153 @@
       "purpose": "工具调用；带幂等键与参数 Hash",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "execution_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_executions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属执行" },
-        { "name": "step_execution_id", "type": "uuid", "nullable": true, "fk": { "table": "agent_step_executions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属步骤执行" },
-        { "name": "tool_definition_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_tool_definitions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "调用的工具" },
-        { "name": "tool_version", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "调用时的工具版本" },
-        { "name": "idempotency_key", "type": "varchar", "length": 255, "nullable": false, "sensitivity": "internal", "desc": "幂等键：Execution+Step+Tool+参数 Hash" },
-        { "name": "args_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "参数 Hash" },
-        { "name": "status", "type": "varchar", "length": 24, "nullable": false, "default": "'pending'", "sensitivity": "public", "desc": "工具调用状态机" },
-        { "name": "result", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "工具返回" },
-        { "name": "result_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "返回 Hash" },
-        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "错误码" },
-        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
-        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "execution_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_executions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属执行"
+        },
+        {
+          "name": "step_execution_id",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "agent_step_executions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属步骤执行"
+        },
+        {
+          "name": "tool_definition_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_tool_definitions",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "调用的工具"
+        },
+        {
+          "name": "tool_version",
+          "type": "varchar",
+          "length": 32,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "调用时的工具版本"
+        },
+        {
+          "name": "idempotency_key",
+          "type": "varchar",
+          "length": 255,
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "幂等键：Execution+Step+Tool+参数 Hash"
+        },
+        {
+          "name": "args_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "参数 Hash"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": false,
+          "default": "'pending'",
+          "sensitivity": "public",
+          "desc": "工具调用状态机"
+        },
+        {
+          "name": "result",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "工具返回"
+        },
+        {
+          "name": "result_hash",
+          "type": "sha256",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "返回 Hash"
+        },
+        {
+          "name": "error_code",
+          "type": "varchar",
+          "length": 80,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "错误码"
+        },
+        {
+          "name": "started_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "开始时间"
+        },
+        {
+          "name": "finished_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "结束时间"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_tool_executions_idempotency", "columns": ["idempotency_key"] },
-        { "type": "check", "name": "ck_agent_tool_executions_status", "expr": "status IN ('pending','running','succeeded','failed','cancelled','timeout','outcome_unknown','blocked')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_tool_executions_idempotency",
+          "columns": [
+            "idempotency_key"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_tool_executions_status",
+          "expr": "status IN ('pending','running','succeeded','failed','cancelled','timeout','outcome_unknown','blocked')"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_tool_executions_execution", "columns": ["execution_id", "status"] },
-        { "name": "ix_agent_tool_executions_step", "columns": ["step_execution_id"], "where": "step_execution_id IS NOT NULL" }
+        {
+          "name": "ix_agent_tool_executions_execution",
+          "columns": [
+            "execution_id",
+            "status"
+          ]
+        },
+        {
+          "name": "ix_agent_tool_executions_step",
+          "columns": [
+            "step_execution_id"
+          ],
+          "where": "step_execution_id IS NOT NULL"
+        }
       ],
       "policies": []
     },
@@ -378,19 +1704,80 @@
       "purpose": "Harness Runtime 事件；与业务事件分离，原样保留",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "agent_run_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属运行" },
-        { "name": "seq", "type": "bigint", "nullable": false, "sensitivity": "public", "desc": "运行内单调序号" },
-        { "name": "event_type", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "Runtime 事件类型" },
-        { "name": "payload", "type": "jsonb", "nullable": false, "sensitivity": "internal", "desc": "原始事件体" },
-        { "name": "payload_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "事件 Hash" },
-        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "发生时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "agent_run_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_runs",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属运行"
+        },
+        {
+          "name": "seq",
+          "type": "bigint",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "运行内单调序号"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "Runtime 事件类型"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "原始事件体"
+        },
+        {
+          "name": "payload_hash",
+          "type": "sha256",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "事件 Hash"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "发生时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_runtime_events_run_seq", "columns": ["agent_run_id", "seq"] }
+        {
+          "type": "unique",
+          "name": "uq_agent_runtime_events_run_seq",
+          "columns": [
+            "agent_run_id",
+            "seq"
+          ]
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_runtime_events_run", "columns": ["agent_run_id", "seq"] }
+        {
+          "name": "ix_agent_runtime_events_run",
+          "columns": [
+            "agent_run_id",
+            "seq"
+          ]
+        }
       ],
       "policies": []
     },
@@ -399,24 +1786,117 @@
       "purpose": "Chilon 业务执行事件；append-only，同事务写 Outbox",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "execution_id", "type": "uuid", "nullable": false, "fk": { "table": "agent_executions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "所属执行" },
-        { "name": "seq", "type": "bigint", "nullable": false, "sensitivity": "public", "desc": "执行内单调序号" },
-        { "name": "event_type", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "业务事件类型" },
-        { "name": "from_status", "type": "varchar", "length": 24, "nullable": true, "sensitivity": "public", "desc": "迁移前状态" },
-        { "name": "to_status", "type": "varchar", "length": 24, "nullable": true, "sensitivity": "public", "desc": "迁移后状态" },
-        { "name": "actor_type", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "teacher / system / worker" },
-        { "name": "actor_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "操作者" },
-        { "name": "fencing_token", "type": "bigint", "nullable": true, "sensitivity": "internal", "desc": "写入时的围栏令牌" },
-        { "name": "payload", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "事件体" },
-        { "name": "occurred_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "发生时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "execution_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "agent_executions",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "所属执行"
+        },
+        {
+          "name": "seq",
+          "type": "bigint",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "执行内单调序号"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "业务事件类型"
+        },
+        {
+          "name": "from_status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "迁移前状态"
+        },
+        {
+          "name": "to_status",
+          "type": "varchar",
+          "length": 24,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "迁移后状态"
+        },
+        {
+          "name": "actor_type",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "teacher / system / worker"
+        },
+        {
+          "name": "actor_id",
+          "type": "uuid",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "操作者"
+        },
+        {
+          "name": "fencing_token",
+          "type": "bigint",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "写入时的围栏令牌"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "事件体"
+        },
+        {
+          "name": "occurred_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "发生时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_agent_execution_events_exec_seq", "columns": ["execution_id", "seq"] },
-        { "type": "check", "name": "ck_agent_execution_events_actor", "expr": "actor_type IN ('teacher','system','worker')" }
+        {
+          "type": "unique",
+          "name": "uq_agent_execution_events_exec_seq",
+          "columns": [
+            "execution_id",
+            "seq"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_agent_execution_events_actor",
+          "expr": "actor_type IN ('teacher','system','worker')"
+        }
       ],
       "indexes": [
-        { "name": "ix_agent_execution_events_execution", "columns": ["execution_id", "seq"] }
+        {
+          "name": "ix_agent_execution_events_execution",
+          "columns": [
+            "execution_id",
+            "seq"
+          ]
+        }
       ],
       "policies": []
     },
@@ -425,26 +1905,129 @@
       "purpose": "事务性发件箱；物理归 K011，逻辑上为跨模块共享设施",
       "owner_scoped": false,
       "fields": [
-        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
-        { "name": "event_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "事件全局 ID，消费者据此去重" },
-        { "name": "aggregate_type", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "聚合类型" },
-        { "name": "aggregate_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "聚合 ID" },
-        { "name": "event_type", "type": "varchar", "length": 80, "nullable": false, "sensitivity": "public", "desc": "事件类型" },
-        { "name": "payload", "type": "jsonb", "nullable": false, "sensitivity": "internal", "desc": "事件内容" },
-        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "default": "'pending'", "sensitivity": "public", "desc": "pending / delivered / failed / dead_letter" },
-        { "name": "attempts", "type": "smallint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "投递尝试次数" },
-        { "name": "available_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "可投递时间" },
-        { "name": "delivered_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "投递完成时间" },
-        { "name": "last_error", "type": "text", "nullable": true, "sensitivity": "internal", "desc": "最近一次错误" },
-        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "event_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "事件全局 ID，消费者据此去重"
+        },
+        {
+          "name": "aggregate_type",
+          "type": "varchar",
+          "length": 64,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "聚合类型"
+        },
+        {
+          "name": "aggregate_id",
+          "type": "uuid",
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "聚合 ID"
+        },
+        {
+          "name": "event_type",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "事件类型"
+        },
+        {
+          "name": "payload",
+          "type": "jsonb",
+          "nullable": false,
+          "sensitivity": "internal",
+          "desc": "事件内容"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "default": "'pending'",
+          "sensitivity": "public",
+          "desc": "pending / delivered / failed / dead_letter"
+        },
+        {
+          "name": "attempts",
+          "type": "smallint",
+          "nullable": false,
+          "default": "0",
+          "sensitivity": "public",
+          "desc": "投递尝试次数"
+        },
+        {
+          "name": "available_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "可投递时间"
+        },
+        {
+          "name": "delivered_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "投递完成时间"
+        },
+        {
+          "name": "last_error",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "最近一次错误"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        }
       ],
       "constraints": [
-        { "type": "unique", "name": "uq_outbox_events_event_id", "columns": ["event_id"] },
-        { "type": "check", "name": "ck_outbox_events_status", "expr": "status IN ('pending','delivered','failed','dead_letter')" }
+        {
+          "type": "unique",
+          "name": "uq_outbox_events_event_id",
+          "columns": [
+            "event_id"
+          ]
+        },
+        {
+          "type": "check",
+          "name": "ck_outbox_events_status",
+          "expr": "status IN ('pending','delivered','failed','dead_letter')"
+        }
       ],
       "indexes": [
-        { "name": "ix_outbox_events_dispatch", "columns": ["status", "available_at"], "where": "status IN ('pending','failed')" },
-        { "name": "ix_outbox_events_aggregate", "columns": ["aggregate_type", "aggregate_id"] }
+        {
+          "name": "ix_outbox_events_dispatch",
+          "columns": [
+            "status",
+            "available_at"
+          ],
+          "where": "status IN ('pending','failed')"
+        },
+        {
+          "name": "ix_outbox_events_aggregate",
+          "columns": [
+            "aggregate_type",
+            "aggregate_id"
+          ]
+        }
       ],
       "policies": []
     }

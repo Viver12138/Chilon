@@ -98,8 +98,8 @@
     {
       "id": "K002",
       "name": "Identity & Account",
-      "status": "PENDING",
-      "registry_file": null
+      "status": "DESIGNED",
+      "registry_file": "fields/k002.json"
     },
     {
       "id": "K009",
@@ -651,6 +651,55 @@
       "layer": "detail",
       "owner_scoped": false,
       "soft_delete": false
+    },
+    {
+      "name": "users",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "user_credentials",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "user_username_history",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "user_email_addresses",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "user_sessions",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "user_verification_tokens",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "admin_audit_logs",
+      "module": "K002",
+      "layer": "core",
+      "owner_scoped": false,
+      "soft_delete": false
     }
   ],
   "layers": {
@@ -660,6 +709,13 @@
     "projection": "从不可变快照派生的查询投影"
   },
   "table_order": [
+    "users",
+    "user_credentials",
+    "user_username_history",
+    "user_email_addresses",
+    "user_sessions",
+    "user_verification_tokens",
+    "admin_audit_logs",
     "projects",
     "materials",
     "material_versions",
