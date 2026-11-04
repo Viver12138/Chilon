@@ -6,3 +6,7 @@ venv/
 .env
 *.log
 database/generated/*.tmp
+
+# 导出产物与运行时数据
+var/
+.env.ci-sim
