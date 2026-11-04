@@ -38,3 +38,6 @@ jobs:
       # 3) Prove row-level security actually isolates tenants.
       - name: Verify row-level security isolation
         run: pwsh -NoProfile -File database/tests/run_rls_test.ps1
+      # 4) Outbox: atomicity, at-least-once retry, dead letter, idempotent consumer.
+      - name: Verify outbox delivery contract
+        run: pwsh -NoProfile -File database/tests/run_outbox_test.ps1

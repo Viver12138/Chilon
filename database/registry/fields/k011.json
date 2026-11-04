@@ -2029,7 +2029,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_outbox_events_rw",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     }
   ],
   "table_order": [

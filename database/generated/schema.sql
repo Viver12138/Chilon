@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 40638c321bfb3eefc0a74d3216235f601afe123154a6e9bbe19cb6f57b97ca93
+-- registry_hash: e477906d0ad7359bdf04e62d9560e6f9d61c32b51c7e5f9d0f802caa47a746ed
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -655,6 +655,7 @@ CREATE TABLE outbox_events (
 
 ALTER TABLE outbox_events ENABLE ROW LEVEL SECURITY;
 ALTER TABLE outbox_events FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_outbox_events_rw ON outbox_events FOR ALL USING (true) WITH CHECK (true);
 
 CREATE INDEX ix_outbox_events_dispatch ON outbox_events ("status", "available_at") WHERE status IN ('pending','failed');
 CREATE INDEX ix_outbox_events_aggregate ON outbox_events ("aggregate_type", "aggregate_id");

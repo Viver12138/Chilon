@@ -63,6 +63,9 @@ pwsh -NoProfile -File database/tests/run_migration_test.ps1
 
 # 行级安全：一个教师读不到、改不了、也伪造不了另一个教师的数据
 pwsh -NoProfile -File database/tests/run_rls_test.ps1
+
+# Outbox：原子写入、至少一次投递、死信、消费者幂等
+pwsh -NoProfile -File database/tests/run_outbox_test.ps1
 ```
 
 ## 设计与契约的状态
