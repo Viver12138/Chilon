@@ -69,6 +69,9 @@ pwsh -NoProfile -File database/tests/run_outbox_test.ps1
 
 # 身份：密码不落明文、会话只存 hash、撤销与停用生效
 pwsh -NoProfile -File database/tests/run_identity_test.ps1
+
+# 任务生命周期：契约里每条迁移都能走通，每个非法组合都被拒绝
+pwsh -NoProfile -File database/tests/run_task_test.ps1
 ```
 
 ## 设计与契约的状态
