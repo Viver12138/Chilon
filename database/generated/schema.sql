@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: d7ba0b70705b1b0ab153b1af992e4fd96ec8afe7b559b38aed45f6aeb42b655c
+-- registry_hash: ce042fa2dd41ad90ee5a4f244d7051fe72dad47919657c43cbd7bf1f1a79328b
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -369,7 +369,7 @@ CREATE TABLE agent_plan_approvals (
     CONSTRAINT fk_agent_plan_approvals_plan_id FOREIGN KEY ("plan_id") REFERENCES agent_plans(id) ON DELETE CASCADE,
     CONSTRAINT fk_agent_plan_approvals_plan_version_id FOREIGN KEY ("plan_version_id") REFERENCES agent_plan_versions(id) ON DELETE RESTRICT,
     CONSTRAINT ck_agent_plan_approvals_status CHECK (status IN ('pending','approved','rejected','revoked','invalidated','expired')),
-    CONSTRAINT ck_agent_plan_approvals_consumed CHECK ((status = 'consumed') = (consumed_at IS NOT NULL))
+    CONSTRAINT ck_agent_plan_approvals_consumed CHECK (consumed_at IS NULL OR status = 'approved')
 );
 
 ALTER TABLE agent_plan_approvals ENABLE ROW LEVEL SECURITY;

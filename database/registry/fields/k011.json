@@ -619,7 +619,7 @@
         {
           "type": "check",
           "name": "ck_agent_plan_approvals_consumed",
-          "expr": "(status = 'consumed') = (consumed_at IS NOT NULL)"
+          "expr": "consumed_at IS NULL OR status = 'approved'"
         }
       ],
       "indexes": [

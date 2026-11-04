@@ -17,17 +17,15 @@ crash cannot leave a state change with no event or an event with no state change
 
 from __future__ import annotations
 
-import json
-import os
 import uuid
 from dataclasses import dataclass
 from datetime import datetime
-from pathlib import Path
 
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.outbox import dispatcher
+from app.services import contract
 
 
 class TaskError(Exception):
@@ -54,15 +52,6 @@ class StateConflict(TaskError):
 
 
 @dataclass(frozen=True)
-class Transition:
-    id: str
-    from_state: str
-    to_state: str
-    trigger: str
-    guard: str
-
-
-@dataclass(frozen=True)
 class Task:
     id: uuid.UUID
     status: str
@@ -70,48 +59,14 @@ class Task:
     state_changed_at: datetime
 
 
-def _contract_path() -> Path:
-    override = os.environ.get("CHILON_SCHEMA_DIR")
-    if override:
-        return Path(override) / "state_machines.v1.json"
-    # backend/app/services/tasks.py -> repo root
-    return Path(__file__).resolve().parents[3] / "schemas" / "state_machines.v1.json"
-
-
-def load_transitions(aggregate: str = "task") -> tuple[dict[tuple[str, str], Transition], list[str]]:
-    """Return ({(from_state, trigger): transition}, ordered states).
-
-    A transition may declare several equivalent triggers (the contract uses a
-    list there), so one contract edge can produce several lookup keys.
-    """
-    raw = json.loads(_contract_path().read_text(encoding="utf-8"))
-    agg = next(a for a in raw["aggregates"] if a["id"] == aggregate)
-    table: dict[tuple[str, str], Transition] = {}
-    for tr in agg["transitions"]:
-        # the contract expresses "cancel from any of these states" as lists
-        from_states = tr["from"] if isinstance(tr["from"], list) else [tr["from"]]
-        triggers = tr["trigger"] if isinstance(tr["trigger"], list) else [tr["trigger"]]
-        for from_state in from_states:
-            for trigger in triggers:
-                key = (from_state, trigger)
-                if key in table:
-                    raise RuntimeError(f"contract has two transitions for {key}")
-                table[key] = Transition(
-                    id=tr["id"],
-                    from_state=from_state,
-                    to_state=tr["to"],
-                    trigger=trigger,
-                    guard=tr.get("guard", ""),
-                )
-    return table, list(agg["states"])
-
-
-TRANSITIONS, STATES = load_transitions()
-INITIAL_STATE = "draft"
+TASK = contract.load("task")
+TRANSITIONS = TASK.transitions
+STATES = TASK.states
+INITIAL_STATE = TASK.initial
 
 
 def allowed_triggers(state: str) -> list[str]:
-    return sorted(trigger for (from_state, trigger) in TRANSITIONS if from_state == state)
+    return TASK.triggers_from(state)
 
 
 async def create_task(
