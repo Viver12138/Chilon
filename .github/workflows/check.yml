@@ -83,5 +83,9 @@ jobs:
       - name: Verify agent turn
         run: pwsh -NoProfile -File database/tests/run_agent_test.ps1
       # 14) Executor: a plan actually runs, producing questions, citations and a report.
+      # Bounded: a hang should fail the build in minutes, not block it for hours.
+      # Progress markers are emitted as ::notice:: so the stopping point is visible
+      # through the annotations API, which works without repo admin rights.
       - name: Verify end-to-end execution
+        timeout-minutes: 6
         run: pwsh -NoProfile -File database/tests/run_executor_test.ps1

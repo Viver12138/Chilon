@@ -24,6 +24,18 @@ from app.services import agent, executor, executions, planner, plans, tasks  # n
 FAILURES: list[str] = []
 
 
+def mark(stage: str) -> None:
+    """Emit a GitHub annotation so a hang is locatable without job logs.
+
+    Public repository job logs need admin rights to read; annotations do not. This
+    prints a plain line locally and an annotation in CI.
+    """
+    if os.environ.get("CI"):
+        print(f"::notice::executor test: {stage}", flush=True)
+    else:
+        print(f"[stage] {stage}", flush=True)
+
+
 def check(condition: bool, message: str) -> None:
     if condition:
         print(f"    ok   {message}")
@@ -145,6 +157,7 @@ async def main() -> int:
         async with db.system_session() as s:
             user_id, chunk_id = await seed(s)
 
+        mark("start")
         print("1. the agent plans, the teacher approves, the executor produces content")
         async with db.session_for(user_id) as s:
             task = await tasks.create_task(s, user_id, "三角函数一轮复习")
@@ -184,6 +197,7 @@ async def main() -> int:
         check(result["outcome"] == "succeeded", f"execution succeeded (got {result['outcome']})")
         check(len(result["processed"]) >= 3, f"{len(result['processed'])} steps executed")
 
+        mark("1 planned and executed")
         print("2. the step outputs actually contain teaching content")
         async with db.session_for(user_id) as s:
             outputs = (
@@ -222,6 +236,7 @@ async def main() -> int:
             "the report states what it did NOT check",
         )
 
+        mark("2 outputs inspected")
         print("3. tool calls were recorded with results and hashes")
         async with db.session_for(user_id) as s:
             tool_rows = (
@@ -241,6 +256,7 @@ async def main() -> int:
         check(all(r.status == "succeeded" for r in tool_rows), "all tool invocations succeeded")
         check(all(r.result_hash for r in tool_rows), "every invocation stored a result hash")
 
+        mark("3 tool calls inspected")
         print("4. re-running the executor does not redo work")
         async with db.session_for(user_id) as s:
             again = await executor.run_once(s, user_id, execution_id)
@@ -249,6 +265,7 @@ async def main() -> int:
             "a second run finds nothing to do and keeps the settled outcome",
         )
 
+        mark("4 rerun checked")
         print("5. DeepSeek generation, when configured")
         if not config.load().llm_configured:
             print("    skip  CHILON_DEEPSEEK_API_KEY is not set")
@@ -272,6 +289,7 @@ async def main() -> int:
     finally:
         await db.dispose()
 
+    mark("all scenarios done")
     print()
     if FAILURES:
         print(f"FAILED: {len(FAILURES)} assertion(s)")
