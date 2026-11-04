@@ -737,7 +737,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_plan_steps_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_step_dependencies",
@@ -817,7 +824,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_step_dependencies_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_plan_versions p WHERE p.id = plan_version_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_runtime_plugins",
@@ -906,9 +920,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_agent_runtime_plugins_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_agent_runtime_plugins_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -1026,9 +1041,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_agent_tool_definitions_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_agent_tool_definitions_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -1432,7 +1448,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_runs_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_step_executions",
@@ -1548,7 +1571,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_step_executions_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_tool_executions",
@@ -1703,7 +1733,14 @@
           "where": "step_execution_id IS NOT NULL"
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_tool_executions_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_runtime_events",
@@ -1785,7 +1822,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_runtime_events_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_runs  JOIN agent_executions ON agent_executions.id = agent_runs.execution_id WHERE agent_runs.id = agent_run_id AND agent_executions.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_runs  JOIN agent_executions ON agent_executions.id = agent_runs.execution_id WHERE agent_runs.id = agent_run_id AND agent_executions.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "agent_execution_events",
@@ -1904,7 +1948,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_agent_execution_events_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM agent_executions p WHERE p.id = execution_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "outbox_events",

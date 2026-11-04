@@ -19,6 +19,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from tests.support import provision_runtime_role  # noqa: E402
 from app.services import materials  # noqa: E402
 
 FAILURES: list[str] = []
@@ -50,7 +51,7 @@ async def main() -> int:
         print("CHILON_TEST_DATABASE_URL is not set")
         return 2
 
-    db.init(url)
+    db.init(await provision_runtime_role(url))
 
     print("1. the document separates student and teacher content")
     doc = materials.build_document(
@@ -112,7 +113,7 @@ async def main() -> int:
 
     print("5. drafts persist and revisions are numbered")
     user_id = uuid.uuid4()
-    async with db.system_session() as s:
+    async with db.session_for(user_id) as s:
         await s.execute(
             text("INSERT INTO users (id, username, display_name) VALUES (:id, :u, :u)"),
             {"id": user_id, "u": f"mat_{user_id.hex[:10]}"},

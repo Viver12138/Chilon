@@ -101,9 +101,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_rules_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_rules_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -224,9 +225,10 @@
       ],
       "policies": [
         {
-          "name": "pol_quality_rule_versions_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_rule_versions_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -494,7 +496,14 @@
         }
       ],
       "indexes": [],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_check_rule_snapshots_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "quality_check_results",
@@ -603,7 +612,14 @@
           "where": "node_id IS NOT NULL"
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_check_results_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "quality_issues",
@@ -864,7 +880,14 @@
           "where": "issue_id IS NOT NULL"
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_evidence_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM quality_check_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "math_validation_runs",
@@ -1125,7 +1148,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_math_validation_evidence_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM math_validation_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM math_validation_runs p WHERE p.id = run_id AND p.owner_id = public.app_current_user_id())"
+        }
+      ]
     },
     {
       "name": "quality_issue_feedback",
@@ -1392,9 +1422,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_datasets_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_datasets_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -1480,9 +1511,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_dataset_versions_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_dataset_versions_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -1566,7 +1598,14 @@
         }
       ],
       "indexes": [],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_dataset_items_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "quality_evaluations",
@@ -1651,9 +1690,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_evaluations_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_evaluations_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -1793,7 +1833,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_evaluation_runs_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "quality_evaluation_results",
@@ -1871,7 +1918,14 @@
         }
       ],
       "indexes": [],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_evaluation_results_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "quality_metrics",
@@ -1961,9 +2015,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_metrics_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_metrics_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -2055,7 +2110,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_metric_observations_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "quality_alerts",
@@ -2153,9 +2215,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_alerts_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_alerts_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -2230,7 +2293,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_alert_events_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "quality_releases",
@@ -2342,9 +2412,10 @@
       "indexes": [],
       "policies": [
         {
-          "name": "pol_quality_releases_read",
-          "command": "SELECT",
-          "using": "true"
+          "name": "pol_quality_releases_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
         }
       ]
     },
@@ -2418,7 +2489,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_release_approvals_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     },
     {
       "name": "quality_release_events",
@@ -2491,7 +2569,14 @@
           ]
         }
       ],
-      "policies": []
+      "policies": [
+        {
+          "name": "pol_quality_release_events_service",
+          "command": "ALL",
+          "using": "true",
+          "with_check": "true"
+        }
+      ]
     }
   ],
   "table_order": [
