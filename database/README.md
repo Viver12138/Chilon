@@ -54,7 +54,7 @@ python database/generator/generate_ddl.py
 # 3. 校验 DDL 与 Registry 一致
 python database/generator/generate_ddl.py --check
 # 4. 生成新 revision（--down 指向当前最新 revision）
-python database/generator/gen_migration.py --id 0002_xxx --slug "add something" --down 0001_k009_baseline
+python database/generator/gen_migration.py --id 0002_xxx --slug "add something" --down 0001_baseline
 # 5. 应用到数据库
 cd backend && alembic upgrade head
 ```
@@ -86,4 +86,9 @@ python -m venv .venv
 
 ## 当前覆盖
 
-只包含 K009。其余模块待字段级设计完成后加入。
+| 模块 | 表数 | 状态 |
+| --- | --- | --- |
+| K009 Knowledge Base | 13 | 已入库（含 1 张可选表） |
+| K012 Project & Material | 10 | 已入库 |
+
+core 变体生成了 22 张表（K009 的可选向量表默认跳过）。其余模块待字段级设计完成后加入。

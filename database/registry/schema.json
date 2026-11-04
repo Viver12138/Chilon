@@ -38,9 +38,20 @@
     "text_array": "TEXT[]",
     "vector": "VECTOR"
   },
-  "forbidden_types": ["FLOAT", "REAL", "DOUBLE PRECISION"],
-  "external_tables": ["material_versions"],
-  "sensitivity_levels": ["public", "internal", "confidential", "restricted"],
+  "forbidden_types": [
+    "FLOAT",
+    "REAL",
+    "DOUBLE PRECISION"
+  ],
+  "external_tables": [
+    "tasks"
+  ],
+  "sensitivity_levels": [
+    "public",
+    "internal",
+    "confidential",
+    "restricted"
+  ],
   "roles": [
     "chilon_db_owner",
     "chilon_migration",
@@ -51,8 +62,16 @@
     "chilon_backup"
   ],
   "extensions": [
-    { "name": "pgcrypto", "required": false, "notes": "仅当需要数据库侧随机函数时启用；UUIDv7 由应用生成" },
-    { "name": "pgvector", "required": false, "notes": "可选；仅 knowledge_question_embeddings 使用" }
+    {
+      "name": "pgcrypto",
+      "required": false,
+      "notes": "仅当需要数据库侧随机函数时启用；UUIDv7 由应用生成"
+    },
+    {
+      "name": "pgvector",
+      "required": false,
+      "notes": "可选；仅 knowledge_question_embeddings 使用"
+    }
   ],
   "functions": [
     {
@@ -78,33 +97,229 @@
     }
   ],
   "modules": [
-    { "id": "K002", "name": "Identity & Account", "status": "PENDING", "registry_file": null },
-    { "id": "K009", "name": "Knowledge Base", "status": "DESIGNED", "registry_file": "fields/k009.json" },
-    { "id": "K011", "name": "Task & Agent Orchestration", "status": "PARTIALLY DESIGNED", "registry_file": null },
-    { "id": "K012", "name": "Project & Material", "status": "DESIGNED", "registry_file": null },
-    { "id": "K013", "name": "Conversation & Activity", "status": "DESIGNED", "registry_file": null },
-    { "id": "K014", "name": "Quality & Evaluation", "status": "DESIGNED", "registry_file": null },
-    { "id": "K021", "name": "Administrative Security", "status": "DESIGNED", "registry_file": null }
+    {
+      "id": "K002",
+      "name": "Identity & Account",
+      "status": "PENDING",
+      "registry_file": null
+    },
+    {
+      "id": "K009",
+      "name": "Knowledge Base",
+      "status": "DESIGNED",
+      "registry_file": "fields/k009.json"
+    },
+    {
+      "id": "K011",
+      "name": "Task & Agent Orchestration",
+      "status": "PARTIALLY DESIGNED",
+      "registry_file": null
+    },
+    {
+      "id": "K012",
+      "name": "Project & Material",
+      "status": "DESIGNED",
+      "registry_file": "fields/k012.json"
+    },
+    {
+      "id": "K013",
+      "name": "Conversation & Activity",
+      "status": "DESIGNED",
+      "registry_file": null
+    },
+    {
+      "id": "K014",
+      "name": "Quality & Evaluation",
+      "status": "DESIGNED",
+      "registry_file": null
+    },
+    {
+      "id": "K021",
+      "name": "Administrative Security",
+      "status": "DESIGNED",
+      "registry_file": null
+    }
   ],
   "tables": [
-    { "name": "knowledge_categories", "module": "K009", "layer": "core", "owner_scoped": true },
-    { "name": "knowledge_sources", "module": "K009", "layer": "core", "owner_scoped": true, "soft_delete": true },
-    { "name": "knowledge_document_versions", "module": "K009", "layer": "core", "owner_scoped": false },
-    { "name": "knowledge_chunks", "module": "K009", "layer": "detail", "owner_scoped": false },
-    { "name": "knowledge_questions", "module": "K009", "layer": "detail", "owner_scoped": false },
-    { "name": "knowledge_annotations", "module": "K009", "layer": "detail", "owner_scoped": false },
-    { "name": "knowledge_question_embeddings", "module": "K009", "layer": "optional", "owner_scoped": false },
-    { "name": "knowledge_ingestion_runs", "module": "K009", "layer": "ops", "owner_scoped": false },
-    { "name": "knowledge_reviews", "module": "K009", "layer": "ops", "owner_scoped": false },
-    { "name": "knowledge_indexing_jobs", "module": "K009", "layer": "ops", "owner_scoped": false },
-    { "name": "knowledge_retrieval_runs", "module": "K009", "layer": "ops", "owner_scoped": true },
-    { "name": "knowledge_retrieval_results", "module": "K009", "layer": "ops", "owner_scoped": false },
-    { "name": "material_knowledge_citations", "module": "K009", "layer": "projection", "owner_scoped": false }
+    {
+      "name": "knowledge_categories",
+      "module": "K009",
+      "layer": "core",
+      "owner_scoped": true
+    },
+    {
+      "name": "knowledge_sources",
+      "module": "K009",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": true
+    },
+    {
+      "name": "knowledge_document_versions",
+      "module": "K009",
+      "layer": "core",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_chunks",
+      "module": "K009",
+      "layer": "detail",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_questions",
+      "module": "K009",
+      "layer": "detail",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_annotations",
+      "module": "K009",
+      "layer": "detail",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_question_embeddings",
+      "module": "K009",
+      "layer": "optional",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_ingestion_runs",
+      "module": "K009",
+      "layer": "ops",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_reviews",
+      "module": "K009",
+      "layer": "ops",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_indexing_jobs",
+      "module": "K009",
+      "layer": "ops",
+      "owner_scoped": false
+    },
+    {
+      "name": "knowledge_retrieval_runs",
+      "module": "K009",
+      "layer": "ops",
+      "owner_scoped": true
+    },
+    {
+      "name": "knowledge_retrieval_results",
+      "module": "K009",
+      "layer": "ops",
+      "owner_scoped": false
+    },
+    {
+      "name": "material_knowledge_citations",
+      "module": "K009",
+      "layer": "projection",
+      "owner_scoped": false
+    },
+    {
+      "name": "projects",
+      "module": "K012",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": true
+    },
+    {
+      "name": "materials",
+      "module": "K012",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": true
+    },
+    {
+      "name": "material_versions",
+      "module": "K012",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "material_drafts",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "material_draft_revisions",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "document_schema_definitions",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "material_references",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "task_material_links",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "material_publication_approvals",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "material_exports",
+      "module": "K012",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    }
   ],
   "layers": {
     "core": "模块主实体，生命周期长",
     "detail": "从属明细，随主实体一起产生",
     "ops": "执行记录与任务，可归档",
     "projection": "从不可变快照派生的查询投影"
-  }
+  },
+  "table_order": [
+    "projects",
+    "materials",
+    "material_versions",
+    "material_drafts",
+    "material_draft_revisions",
+    "document_schema_definitions",
+    "material_references",
+    "task_material_links",
+    "material_publication_approvals",
+    "material_exports",
+    "knowledge_categories",
+    "knowledge_sources",
+    "knowledge_document_versions",
+    "knowledge_chunks",
+    "knowledge_questions",
+    "knowledge_annotations",
+    "knowledge_question_embeddings",
+    "knowledge_ingestion_runs",
+    "knowledge_reviews",
+    "knowledge_indexing_jobs",
+    "knowledge_retrieval_runs",
+    "knowledge_retrieval_results",
+    "material_knowledge_citations"
+  ]
 }
