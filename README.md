@@ -74,6 +74,9 @@ pwsh -NoProfile -File database/tests/run_identity_test.ps1
 pwsh -NoProfile -File database/tests/run_task_test.ps1
 # 方案审批：单次消费、内容 Hash 绑定、过期失效
 pwsh -NoProfile -File database/tests/run_plan_test.ps1
+
+# 执行：消费审批、契约迁移、围栏令牌拒绝过期 Worker
+pwsh -NoProfile -File database/tests/run_exec_test.ps1
 ```
 
 ## 设计与契约的状态
