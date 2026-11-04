@@ -43,9 +43,7 @@
     "REAL",
     "DOUBLE PRECISION"
   ],
-  "external_tables": [
-    "tasks"
-  ],
+  "external_tables": [],
   "sensitivity_levels": [
     "public",
     "internal",
@@ -112,8 +110,8 @@
     {
       "id": "K011",
       "name": "Task & Agent Orchestration",
-      "status": "PARTIALLY DESIGNED",
-      "registry_file": null
+      "status": "DESIGNED",
+      "registry_file": "fields/k011.json"
     },
     {
       "id": "K012",
@@ -457,6 +455,125 @@
       "layer": "ops",
       "owner_scoped": false,
       "soft_delete": false
+    },
+    {
+      "name": "tasks",
+      "module": "K011",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": true
+    },
+    {
+      "name": "task_requirement_versions",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_plans",
+      "module": "K011",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_plan_versions",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_plan_approvals",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_plan_steps",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_step_dependencies",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_runtime_plugins",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_tool_definitions",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_tool_grants",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_executions",
+      "module": "K011",
+      "layer": "core",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_runs",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_step_executions",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_tool_executions",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_runtime_events",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_execution_events",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "outbox_events",
+      "module": "K011",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
     }
   ],
   "layers": {
@@ -466,6 +583,33 @@
     "projection": "从不可变快照派生的查询投影"
   },
   "table_order": [
+    "projects",
+    "materials",
+    "material_versions",
+    "tasks",
+    "task_requirement_versions",
+    "agent_plans",
+    "agent_plan_versions",
+    "agent_plan_approvals",
+    "agent_plan_steps",
+    "agent_step_dependencies",
+    "agent_runtime_plugins",
+    "agent_tool_definitions",
+    "agent_tool_grants",
+    "agent_executions",
+    "agent_runs",
+    "agent_step_executions",
+    "agent_tool_executions",
+    "agent_runtime_events",
+    "agent_execution_events",
+    "outbox_events",
+    "material_drafts",
+    "material_draft_revisions",
+    "document_schema_definitions",
+    "material_references",
+    "task_material_links",
+    "material_publication_approvals",
+    "material_exports",
     "quality_rules",
     "quality_rule_versions",
     "quality_check_runs",
@@ -490,16 +634,6 @@
     "quality_releases",
     "quality_release_approvals",
     "quality_release_events",
-    "projects",
-    "materials",
-    "material_versions",
-    "material_drafts",
-    "material_draft_revisions",
-    "document_schema_definitions",
-    "material_references",
-    "task_material_links",
-    "material_publication_approvals",
-    "material_exports",
     "knowledge_categories",
     "knowledge_sources",
     "knowledge_document_versions",
@@ -513,5 +647,20 @@
     "knowledge_retrieval_runs",
     "knowledge_retrieval_results",
     "material_knowledge_citations"
-  ]
+  ],
+  "aggregate_tables": {
+    "task": "tasks",
+    "requirement_version": "task_requirement_versions",
+    "plan_version": "agent_plan_versions",
+    "plan_approval": "agent_plan_approvals",
+    "execution": "agent_executions",
+    "agent_run": "agent_runs",
+    "step_execution": "agent_step_executions",
+    "tool_execution": "agent_tool_executions",
+    "draft": "material_drafts",
+    "quality_check_run": "quality_check_runs",
+    "math_validation_run": "math_validation_runs",
+    "publication_approval": "material_publication_approvals",
+    "export": "material_exports"
+  }
 }

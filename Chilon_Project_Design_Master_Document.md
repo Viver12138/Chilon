@@ -86,6 +86,7 @@
   - [D.24 2026-11-04 Alembic 基线与迁移闭环](#d24-2026-11-04-alembic-基线与迁移闭环)
   - [D.25 2026-11-04 K012 入库与流水线复用验证](#d25-2026-11-04-k012-入库与流水线复用验证)
   - [D.26 2026-11-04 K014 入库](#d26-2026-11-04-k014-入库)
+  - [D.27 2026-11-04 K011 入库：用契约推导替代表清单恢复](#d27-2026-11-04-k011-入库用契约推导替代表清单恢复)
 
 [//]: # (toc:end)
 
@@ -1075,13 +1076,15 @@ Upload（整张试卷 / 整本教材，文件级）
 
 不能在 Registry 完成去重前视为正式表。
 
+**2026-11-04 去重结论（见 D.27）：** `agent_tool_versions` 与 `agent_tool_plugin_bindings` 落为`agent_tool_definitions` 上的列；`agent_tool_grants` 与 `agent_runtime_plugins` 各自成为独立表；`agent_tool_execution_events` 不单独建表，由 `agent_execution_events` 按 `aggregate_type` 承载。
+
 ### 15.6 TODO
 
--   [ ] 恢复 K011 完整约 35 张表清单。
--   [ ] 补全所有表字段字典。
--   [ ] 确定 Tool Version / Grant / Plugin 表是否新增或复用现有实体。
--   [ ] 冻结 Execution Lease、Heartbeat、Fencing Token 的字段归属。
--   [ ] 恢复 `outbox_events` 完整字段字典。
+-   [x] 用 §15.2 的 15 张已知表 + 契约推导替代“恢复 35 张清单”（2026-11-04，见 D.27）。
+-   [x] 补全所有表字段字典：17 张表已入 Registry（2026-11-04）。
+-   [x] 确定 Tool Version / Grant / Plugin 的归属：Version 与 Plugin Binding 落为列，Grant 与 Plugin 各建一表（见 D.27）。
+-   [x] 冻结 Lease / Heartbeat / Fencing Token：字段落在 `agent_executions`（见 D.27）。
+-   [x] `outbox_events` 字段冻结；物理归 K011、逻辑为跨模块共享设施（见 D.27）。
 -   [ ] 明确 Plan Step DAG 的环检测和调度规则。
 -   [x] 设计暂停、取消、重试、恢复和超时状态机。详见 [21.6](#216-executionrunstep-与-tool-状态机)。
 -   [ ] 设计 Runtime Session 与业务 Execution 的恢复映射。
@@ -3624,6 +3627,73 @@ alembic upgrade/downgrade → 干净
 ```
 
 **顺带修掉一个验证器的老毛病**：CHECK 表达式扫描把 `trim`、`length` 这类 SQL 函数当成未知列。这已经是同类误判的第二次（第一次是字符串字面量），现在有了显式的关键字与函数白名单。**校验器的假阳性会训练人去忽略它，所以必须修。**
+
+------------------------------------------------------------------------
+
+
+## D.27 2026-11-04 K011 入库：用契约推导替代表清单恢复
+
+**背景：** §15.6 的第一条 TODO 是“恢复 K011 完整约 35 张表清单”，§28.1 把它列为历史恢复项。这一轮没有去追那张清单，而是换了一个做法。
+
+**判断依据：** 冻结的 `state_machines.v1.json` 里 13 个聚合，其中 8 个属于 K011（task、requirement_version、plan_version、plan_approval、execution、agent_run、step_execution、tool_execution）。§15.2 另有 15 张已知表。**清单可能是回忆，契约是跑过校验器的。** 因此以 15 张为起点，用聚合与规则补齐，表数由设计推出，不再对齐 35。
+
+**第一个决定：平台基础设施层不新建模块。**
+
+`outbox_events` 在 §15.2 里列为 K011 第 15 张表，但它服务所有模块。三条路里选了第三条：
+
+| 方案 | 结论 |
+| --- | --- |
+| 塞进 K001 | 否决——§12 把 K001 标为 `UNKNOWN/PENDING`，§2957 写明“无法验证的旧模块不得被凭空补造” |
+| 新建平台模块 | 否决——会引入一个新的跨模块依赖方向，而当前 K014 是完全独立的 |
+| **物理归 K011、逻辑为共享设施** | 采用——与 `material_knowledge_citations` 由 K009 物理拥有、服务 K012 的先例一致 |
+
+**第二个决定：§15.5 的五个候选逐条判定，不整体保留也不整体丢弃。**
+
+| 候选 | 判定 |
+| --- | --- |
+| `agent_tool_versions` | 吸收为 `agent_tool_definitions` 的 `version` 列（幂等键要用它） |
+| `agent_tool_plugin_bindings` | 吸收为 `agent_tool_definitions.plugin_id` |
+| `agent_tool_execution_events` | 不建表，由 `agent_execution_events` 按聚合类型承载 |
+| `agent_tool_grants` | 建表——Tool Call 前置校验需要“谁可以用哪个工具” |
+| `agent_runtime_plugins` | 建表——发布与评估要引用 Plugin Manifest Hash |
+
+**第三个决定：Lease / Heartbeat / Fencing Token 落在 `agent_executions` 上。**
+
+§15.6 有一条“冻结字段归属”的 TODO 一直未决。放执行表而非单独表：Lease 的生命周期与执行状态完全同步，拆表会让每次心跳产生一次额外写入与一次额外一致性风险。旧 Token 的迟到写入不进执行状态，进 `agent_execution_events` 作审计证据。
+
+**真正的交付物：聚合到表的覆盖校验。**
+
+`database/tests/check_aggregate_coverage.py` 读取 `schema.json` 里的 `aggregate_tables` 映射，断言：
+
+- 13 个契约聚合每一个都有映射；
+- 映射的表在 Registry 中真实存在；
+- 没有多余的映射条目。
+
+13 个聚合全部对上：8 个在 K011，`draft`/`publication_approval`/`export` 在 K012，`quality_check_run`/`math_validation_run` 在 K014。
+
+**这条校验才是本轮的重点。** 如果 K011 是按一张记错的清单设计的，某个聚合就会找不到表——而那意味着契约与实现脱节。现在这个风险被一条可执行的检查堵住了。
+
+**结果：**
+
+| 指标 | 数值 |
+| --- | --- |
+| Registry 表数 | 64（K011 新增 17） |
+| 生成表数 | 63（可选向量表跳过） |
+| 外键 | 92 |
+| 聚合覆盖 | 13 / 13 |
+
+```text
+直接应用 DDL → 63 表 / 35 策略 / 70 索引 / 92 外键 / 3 函数
+领域约束      → 通过
+alembic upgrade/downgrade → 干净
+```
+
+**仍未关闭的两项**（不是阻塞，是记录）：
+
+1. Plan Step DAG 的环检测放在应用层，库层只保证边唯一与无自环。数据库做传递闭包代价过高，且 Plan 规模小（通常 5–15 步）。
+2. Runtime Session 与业务 Execution 的恢复映射已有 `agent_runs.harness_session_id`，但“进程崩溃后如何续跑”仍属实现细节，不在表结构里。
+
+----------------------------------------
 
 ------------------------------------------------------------------------
 
