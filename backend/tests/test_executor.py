@@ -48,6 +48,7 @@ TOOLS = [
     ("knowledge.search", "知识库检索", "read"),
     ("content.generate", "内容生成", "write"),
     ("quality.check", "质量检查", "read"),
+    ("material.create_draft", "材料落库", "write"),
 ]
 
 
@@ -252,7 +253,7 @@ async def main() -> int:
                     {"x": execution_id},
                 )
             ).all()
-        check(len(tool_rows) == 3, f"3 tool invocations recorded (got {len(tool_rows)})")
+        check(len(tool_rows) == 4, f"4 tool invocations recorded (got {len(tool_rows)})")
         check(all(r.status == "succeeded" for r in tool_rows), "all tool invocations succeeded")
         check(all(r.result_hash for r in tool_rows), "every invocation stored a result hash")
 
@@ -266,6 +267,42 @@ async def main() -> int:
         )
 
         mark("4 rerun checked")
+        print("6. a draft exists, and its student projection has no answers")
+        async with db.session_for(user_id) as s:
+            draft_rows = (
+                await s.execute(
+                    text(
+                        """
+                        SELECT m.title, r.content, r.content_hash
+                        FROM material_draft_revisions r
+                        JOIN material_drafts d ON d.id = r.draft_id
+                        JOIN materials m ON m.id = d.material_id
+                        WHERE d.owner_id = :o
+                        """
+                    ),
+                    {"o": user_id},
+                )
+            ).all()
+        check(len(draft_rows) == 1, f"exactly one draft revision (got {len(draft_rows)})")
+        if draft_rows:
+            from app.services import materials
+
+            document = draft_rows[0].content
+            student = materials.project(document, "student")
+            teacher = materials.project(document, "teacher")
+            check(
+                materials.count_blocks(student, "answer") == 0,
+                "student projection of the stored document has no answers",
+            )
+            check(
+                materials.count_blocks(teacher, "answer") == 4,
+                f"teacher projection keeps 4 answers (got {materials.count_blocks(teacher, 'answer')})",
+            )
+            check(
+                materials.count_blocks(student, "exercise") == 4,
+                "student projection keeps all 4 exercises",
+            )
+
         print("5. DeepSeek generation, when configured")
         if not config.load().llm_configured:
             print("    skip  CHILON_DEEPSEEK_API_KEY is not set")

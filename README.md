@@ -100,6 +100,9 @@ pwsh -NoProfile -File database/tests/run_agent_test.ps1
 
 # 端到端：方案真的跑出题目、引用与检查报告
 pwsh -NoProfile -File database/tests/run_executor_test.ps1
+
+# 材料：一份 AST、两个投影；学生版序列化后不含任何答案
+pwsh -NoProfile -File database/tests/run_material_test.ps1
 ```
 
 ## 配置与模型

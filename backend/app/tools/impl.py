@@ -335,8 +335,58 @@ async def quality_check(session: AsyncSession, ctx: ToolContext) -> dict[str, An
     }
 
 
+# ── material.create_draft ───────────────────────────────────────────────────────
+
+
+async def material_create_draft(session: AsyncSession, ctx: ToolContext) -> dict[str, Any]:
+    """Persist the generated questions as a teaching document draft.
+
+    The draft is stored once, as a single AST. Teacher and student versions are
+    projections of that one document (see materials.project), so the student file
+    cannot contain an answer that the teacher file has — there is only one copy.
+    """
+    from app.services import materials
+
+    generated = next((v for v in ctx.deps.values() if v and "questions" in v), None)
+    if generated is None:
+        raise ToolFailed("material.create_draft has no questions to package")
+
+    search = next((v for v in ctx.deps.values() if v and "hits" in v), None)
+    hits = search["hits"] if search else []
+    citations = [
+        {
+            "citation_id": h["chunk_id"],
+            "source": {
+                "source_type": h["source_type"],
+                "title": h["source_title"],
+                "year": h.get("year"),
+            },
+        }
+        for h in hits
+    ]
+
+    topic = (ctx.requirement.get("topic") or "复习").strip()
+    title = f"{topic}练习"
+    document = materials.build_document(
+        title=title, topic=topic, questions=generated["questions"], citations=citations
+    )
+    saved = await materials.save_draft(session, ctx.owner_id, document, title=title)
+
+    teacher = materials.project(document, "teacher")
+    student = materials.project(document, "student")
+
+    return {
+        **saved,
+        "title": title,
+        "teacher_blocks": materials.count_blocks(teacher, "exercise"),
+        "student_answer_blocks": materials.count_blocks(student, "answer"),
+        "schema_version": document["schema_version"],
+    }
+
+
 TOOLS: dict[str, Callable[[AsyncSession, ToolContext], Awaitable[dict[str, Any]]]] = {
     "knowledge.search": knowledge_search,
     "content.generate": content_generate,
     "quality.check": quality_check,
+    "material.create_draft": material_create_draft,
 }
