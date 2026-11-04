@@ -92,7 +92,14 @@ function Invoke-Psql {
     if ($Quiet) { $psqlArgs += "-q" }
     $raw = & docker @psqlArgs 2>&1
     $code = $LASTEXITCODE
-    if ($raw) { $raw | ForEach-Object { Write-Host "    $_" } }
+    if ($raw) {
+        foreach ($line in $raw) {
+            $text = "$line"
+            Write-Host "    $text"
+            # surface SQL errors as annotations so CI failures are diagnosable
+            if ($code -ne 0) { Write-Host "::error::psql: $text" }
+        }
+    }
     return $code
 }
 
