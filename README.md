@@ -86,6 +86,9 @@ pwsh -NoProfile -File database/tests/run_tool_test.ps1
 
 # 运行映射与未知结果对账：超时不等于失败，对账从不重试
 pwsh -NoProfile -File database/tests/run_run_test.ps1
+
+# HTTP 层：冻结端点与错误码、真实 RLS（非超级用户角色）
+pwsh -NoProfile -File database/tests/run_api_test.ps1
 ```
 
 ## 设计与契约的状态
