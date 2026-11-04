@@ -1,0 +1,381 @@
+{
+  "module": "K009",
+  "title": "Knowledge Base",
+  "registry_version": "0.1.0",
+  "status": "DESIGNED",
+  "source_docs": [
+    "Chilon_Project_Design_Master_Document.md §14",
+    "design/Chilon_Design_Volume_K09_Knowledge_Field_Design.md",
+    "design/Chilon_Design_Volume_D5_Api_And_Sse_Contract.md §3.1"
+  ],
+  "tables": [
+    {
+      "name": "knowledge_categories",
+      "purpose": "分类树；平台提供四个默认分类，教师可新建私有分类",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "scope", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "internal", "desc": "platform / teacher" },
+        { "name": "owner_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "教师分类必填，平台分类为 NULL" },
+        { "name": "parent_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "上级分类，最多两级" },
+        { "name": "key", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "稳定标识，如 pep_math_textbook" },
+        { "name": "name", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "显示名" },
+        { "name": "source_type", "type": "varchar", "length": 32, "nullable": true, "sensitivity": "public", "desc": "映射的来源类型；自定义分类可为 NULL" },
+        { "name": "sort_order", "type": "smallint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "展示顺序" },
+        { "name": "is_system", "type": "boolean", "nullable": false, "default": "false", "sensitivity": "public", "desc": "平台内置分类，不可删改" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_knowledge_categories_scope_owner_key", "columns": ["scope", "owner_id", "key"] },
+        { "type": "check", "name": "ck_knowledge_categories_scope_owner", "expr": "(scope = 'platform' AND owner_id IS NULL) OR (scope = 'teacher' AND owner_id IS NOT NULL)" },
+        { "type": "check", "name": "ck_knowledge_categories_source_type", "expr": "source_type IS NULL OR source_type IN ('textbook','workbook','gaokao_paper','mock_exam','other')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_categories_owner", "columns": ["scope", "owner_id", "sort_order"] },
+        { "name": "ix_knowledge_categories_parent", "columns": ["parent_id"] }
+      ],
+      "policies": [
+        { "name": "pol_knowledge_categories_select", "command": "SELECT", "using": "scope = 'platform' OR owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "knowledge_sources",
+      "purpose": "来源身份与归属；一本书或一套卷子一条",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "scope", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "internal", "desc": "platform / teacher" },
+        { "name": "owner_id", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "教师来源必填" },
+        { "name": "category_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_categories", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "分类" },
+        { "name": "source_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "来源类型" },
+        { "name": "title", "type": "varchar", "length": 500, "nullable": false, "sensitivity": "internal", "desc": "书名或卷名" },
+        { "name": "publisher", "type": "varchar", "length": 300, "nullable": true, "sensitivity": "internal", "desc": "出版社" },
+        { "name": "edition", "type": "varchar", "length": 200, "nullable": true, "sensitivity": "internal", "desc": "版次" },
+        { "name": "year", "type": "smallint", "nullable": true, "sensitivity": "public", "desc": "年份" },
+        { "name": "region", "type": "varchar", "length": 100, "nullable": true, "sensitivity": "public", "desc": "地区" },
+        { "name": "paper_name", "type": "varchar", "length": 200, "nullable": true, "sensitivity": "public", "desc": "试卷名" },
+        { "name": "language", "type": "varchar", "length": 20, "nullable": false, "default": "'zh-CN'", "sensitivity": "public", "desc": "语言" },
+        { "name": "rights_status", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "confidential", "desc": "unverified / teacher_confirmed / licensed / restricted" },
+        { "name": "distribution_scope", "type": "varchar", "length": 32, "nullable": false, "default": "'private_teacher'", "sensitivity": "confidential", "desc": "private_teacher / classroom / public" },
+        { "name": "derived_from_source_id", "type": "uuid", "nullable": true, "fk": { "table": "knowledge_sources", "on_delete": "RESTRICT" }, "sensitivity": "internal", "desc": "教师复制平台来源时指向原来源" },
+        { "name": "metadata", "type": "jsonb", "nullable": false, "default": "'{}'::jsonb", "sensitivity": "internal", "desc": "非核心扩展，含 schema_version" },
+        { "name": "created_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "创建者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" },
+        { "name": "deleted_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "软删除时间" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_knowledge_sources_scope_owner", "expr": "(scope = 'platform' AND owner_id IS NULL) OR (scope = 'teacher' AND owner_id IS NOT NULL)" },
+        { "type": "check", "name": "ck_knowledge_sources_platform_rights", "expr": "scope <> 'platform' OR (rights_status = 'licensed' AND distribution_scope = 'classroom')" },
+        { "type": "check", "name": "ck_knowledge_sources_rights_status", "expr": "rights_status IN ('unverified','teacher_confirmed','licensed','restricted')" },
+        { "type": "check", "name": "ck_knowledge_sources_distribution_scope", "expr": "distribution_scope IN ('private_teacher','classroom','public')" },
+        { "type": "check", "name": "ck_knowledge_sources_source_type", "expr": "source_type IN ('textbook','workbook','gaokao_paper','mock_exam','other')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_sources_category", "columns": ["scope", "category_id", "source_type"], "where": "deleted_at IS NULL" },
+        { "name": "ix_knowledge_sources_owner", "columns": ["owner_id", "source_type"], "where": "deleted_at IS NULL" }
+      ],
+      "policies": [
+        { "name": "pol_knowledge_sources_select", "command": "SELECT", "using": "scope = 'platform' OR owner_id = public.app_current_user_id()" },
+        { "name": "pol_knowledge_sources_write", "command": "ALL", "using": "scope = 'teacher' AND owner_id = public.app_current_user_id()", "with_check": "scope = 'teacher' AND owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "knowledge_document_versions",
+      "purpose": "文件版本；解析、审核、索引挂在版本上",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "source_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_sources", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "来源" },
+        { "name": "version_no", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "同一来源内递增" },
+        { "name": "storage_key", "type": "varchar", "length": 500, "nullable": false, "sensitivity": "confidential", "desc": "对象存储 Key" },
+        { "name": "checksum_sha256", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "文件 SHA-256 lowercase hex" },
+        { "name": "mime_type", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "MIME 类型" },
+        { "name": "file_size_bytes", "type": "bigint", "nullable": false, "sensitivity": "public", "desc": "字节数" },
+        { "name": "page_count", "type": "integer", "nullable": true, "sensitivity": "public", "desc": "页数，解析后可得" },
+        { "name": "parser_version", "type": "varchar", "length": 64, "nullable": true, "sensitivity": "public", "desc": "解析器版本" },
+        { "name": "parse_schema_version", "type": "varchar", "length": 20, "nullable": true, "sensitivity": "public", "desc": "解析产物 Schema 版本" },
+        { "name": "lifecycle_status", "type": "varchar", "length": 32, "nullable": false, "default": "'processing'", "sensitivity": "public", "desc": "生命周期状态" },
+        { "name": "submitted_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "提交审核时间" },
+        { "name": "approved_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "审核通过时间" },
+        { "name": "indexed_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "索引完成时间" },
+        { "name": "withdrawn_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "撤回时间" },
+        { "name": "uploaded_by", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "上传者" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_knowledge_document_versions_source_version", "columns": ["source_id", "version_no"] },
+        { "type": "check", "name": "ck_knowledge_document_versions_status", "expr": "lifecycle_status IN ('processing','pending_review','approved','indexed','failed','quarantined','rejected','withdrawn','deleted')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_document_versions_source", "columns": ["source_id", "version_no"] },
+        { "name": "ix_knowledge_document_versions_status", "columns": ["lifecycle_status"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_chunks",
+      "purpose": "文本块；Citation 的定位单元",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "document_version_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_document_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "文件版本" },
+        { "name": "chunk_key", "type": "varchar", "length": 200, "nullable": false, "sensitivity": "public", "desc": "解析器产出的稳定键" },
+        { "name": "ordinal", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "文档内顺序" },
+        { "name": "text_content", "type": "text", "nullable": false, "sensitivity": "confidential", "desc": "规范化文本" },
+        { "name": "text_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "text_content 的 SHA-256" },
+        { "name": "locator", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "页码、字符区间、bbox" },
+        { "name": "content_kind", "type": "varchar", "length": 16, "nullable": false, "default": "'text'", "sensitivity": "public", "desc": "text / formula / table / figure" },
+        { "name": "parser_version", "type": "varchar", "length": 64, "nullable": false, "sensitivity": "public", "desc": "解析器版本" },
+        { "name": "parse_schema_version", "type": "varchar", "length": 20, "nullable": false, "sensitivity": "public", "desc": "解析产物 Schema 版本" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_knowledge_chunks_parse_identity", "columns": ["document_version_id", "parser_version", "parse_schema_version", "chunk_key"] },
+        { "type": "check", "name": "ck_knowledge_chunks_content_kind", "expr": "content_kind IN ('text','formula','table','figure')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_chunks_version_order", "columns": ["document_version_id", "ordinal"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_questions",
+      "purpose": "题目单元；检索与引用的最小单位",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "document_version_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_document_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "文件版本" },
+        { "name": "question_no", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "卷面题号" },
+        { "name": "section_label", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "public", "desc": "卷面分区" },
+        { "name": "ordinal", "type": "integer", "nullable": false, "sensitivity": "public", "desc": "卷内顺序" },
+        { "name": "stem_locator", "type": "jsonb", "nullable": false, "sensitivity": "public", "desc": "题干定位；单段或 segments" },
+        { "name": "answer_locator", "type": "jsonb", "nullable": true, "sensitivity": "public", "desc": "答案定位" },
+        { "name": "score", "type": "numeric", "precision": 5, "scale": 2, "nullable": true, "sensitivity": "public", "desc": "分值" },
+        { "name": "segmentation_status", "type": "varchar", "length": 16, "nullable": false, "default": "'auto'", "sensitivity": "public", "desc": "auto / accepted / corrected / rejected" },
+        { "name": "segmentation_source", "type": "varchar", "length": 16, "nullable": false, "default": "'rule'", "sensitivity": "public", "desc": "rule / model / teacher" },
+        { "name": "current_paper_question_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "派生缓存：卷面题型" },
+        { "name": "current_knowledge_points", "type": "text_array", "nullable": true, "sensitivity": "public", "desc": "派生缓存：知识点" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" },
+        { "name": "updated_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "更新时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_knowledge_questions_version_no", "columns": ["document_version_id", "question_no"] },
+        { "type": "check", "name": "ck_knowledge_questions_paper_type", "expr": "current_paper_question_type IN ('single_choice','multiple_choice','fill_blank','free_response')" },
+        { "type": "check", "name": "ck_knowledge_questions_score", "expr": "score IS NULL OR score >= 0" },
+        { "type": "check", "name": "ck_knowledge_questions_segmentation", "expr": "segmentation_status IN ('auto','accepted','corrected','rejected') AND segmentation_source IN ('rule','model','teacher')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_questions_version_order", "columns": ["document_version_id", "ordinal"] },
+        { "name": "ix_knowledge_questions_paper_type", "columns": ["current_paper_question_type"] },
+        { "name": "ix_knowledge_questions_segmentation", "columns": ["segmentation_status"], "where": "segmentation_status <> 'accepted'" }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_annotations",
+      "purpose": "派生标注；带版本，不覆盖历史",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "question_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_questions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "题目" },
+        { "name": "annotation_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "paper_question_type / knowledge_point / difficulty / other" },
+        { "name": "value", "type": "text", "nullable": false, "sensitivity": "public", "desc": "标注值" },
+        { "name": "classification_source", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "rule / model / teacher" },
+        { "name": "confidence", "type": "numeric", "precision": 4, "scale": 3, "nullable": true, "sensitivity": "public", "desc": "0-1" },
+        { "name": "model_version", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "public", "desc": "模型标注时必填" },
+        { "name": "superseded_by", "type": "uuid", "nullable": true, "fk": { "table": "knowledge_annotations", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "被哪条新标注取代" },
+        { "name": "created_by", "type": "uuid", "nullable": true, "sensitivity": "internal", "desc": "教师修正时记录" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_knowledge_annotations_source", "expr": "classification_source IN ('rule','model','teacher')" },
+        { "type": "check", "name": "ck_knowledge_annotations_model_version", "expr": "classification_source <> 'model' OR model_version IS NOT NULL" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_annotations_active", "columns": ["question_id", "annotation_type"], "where": "superseded_by IS NULL", "unique": true }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_question_embeddings",
+      "purpose": "向量；派生数据，可重建",
+      "owner_scoped": false,
+      "optional": true,
+      "requires_extension": "pgvector",
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "question_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_questions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "题目" },
+        { "name": "model", "type": "varchar", "length": 120, "nullable": false, "sensitivity": "public", "desc": "嵌入模型" },
+        { "name": "dim", "type": "smallint", "nullable": false, "sensitivity": "public", "desc": "向量维度" },
+        { "name": "embedding", "type": "vector", "nullable": false, "sensitivity": "internal", "desc": "向量" },
+        { "name": "content_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "被嵌入文本的 Hash" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_knowledge_question_embeddings_model", "columns": ["question_id", "model"] }
+      ],
+      "indexes": [],
+      "policies": []
+    },
+    {
+      "name": "knowledge_ingestion_runs",
+      "purpose": "处理记录；扫描、解析、切分、分类、索引各阶段",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "document_version_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_document_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "文件版本" },
+        { "name": "stage", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "scan / parse / ocr / segment / classify / index" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "running / succeeded / failed / cancelled" },
+        { "name": "tool_version", "type": "varchar", "length": 120, "nullable": true, "sensitivity": "public", "desc": "工具版本" },
+        { "name": "started_at", "type": "timestamptz", "nullable": false, "sensitivity": "public", "desc": "开始时间" },
+        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
+        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "错误码" },
+        { "name": "error_detail", "type": "text", "nullable": true, "sensitivity": "confidential", "desc": "错误详情，不得含原文" },
+        { "name": "metrics", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "耗时、页数、题数" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_knowledge_ingestion_runs_stage", "expr": "stage IN ('scan','parse','ocr','segment','classify','index')" },
+        { "type": "check", "name": "ck_knowledge_ingestion_runs_status", "expr": "status IN ('running','succeeded','failed','cancelled')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_ingestion_runs_version", "columns": ["document_version_id", "stage", "started_at"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_reviews",
+      "purpose": "审核记录；来源审核、切分校对、标注修正、权利确认",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "document_version_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_document_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "文件版本" },
+        { "name": "review_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "source_approval / segmentation / annotation / rights" },
+        { "name": "target_id", "type": "uuid", "nullable": true, "sensitivity": "public", "desc": "细分目标" },
+        { "name": "decision", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "approved / rejected / needs_changes" },
+        { "name": "target_hash", "type": "sha256", "nullable": true, "sensitivity": "internal", "desc": "审核时锁定内容 Hash" },
+        { "name": "reviewer_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "审核人" },
+        { "name": "notes", "type": "text", "nullable": true, "sensitivity": "confidential", "desc": "备注" },
+        { "name": "reviewed_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "审核时间" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_knowledge_reviews_type", "expr": "review_type IN ('source_approval','segmentation','annotation','rights')" },
+        { "type": "check", "name": "ck_knowledge_reviews_decision", "expr": "decision IN ('approved','rejected','needs_changes')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_reviews_version", "columns": ["document_version_id", "review_type"] },
+        { "name": "ix_knowledge_reviews_target", "columns": ["target_id"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_indexing_jobs",
+      "purpose": "索引任务队列",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "document_version_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_document_versions", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "文件版本" },
+        { "name": "job_type", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "public", "desc": "keyword / embedding / full_rebuild" },
+        { "name": "status", "type": "varchar", "length": 16, "nullable": false, "sensitivity": "public", "desc": "queued / running / succeeded / failed / cancelled" },
+        { "name": "scheduled_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "计划时间" },
+        { "name": "started_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "开始时间" },
+        { "name": "finished_at", "type": "timestamptz", "nullable": true, "sensitivity": "public", "desc": "结束时间" },
+        { "name": "attempt", "type": "smallint", "nullable": false, "default": "0", "sensitivity": "public", "desc": "重试次数" },
+        { "name": "error_code", "type": "varchar", "length": 80, "nullable": true, "sensitivity": "public", "desc": "错误码" }
+      ],
+      "constraints": [
+        { "type": "check", "name": "ck_knowledge_indexing_jobs_status", "expr": "status IN ('queued','running','succeeded','failed','cancelled')" },
+        { "type": "check", "name": "ck_knowledge_indexing_jobs_type", "expr": "job_type IN ('keyword','embedding','full_rebuild')" }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_indexing_jobs_queue", "columns": ["status", "scheduled_at"], "where": "status IN ('queued','running')" }
+      ],
+      "policies": []
+    },
+    {
+      "name": "knowledge_retrieval_runs",
+      "purpose": "检索运行；Citation 的检索证据",
+      "owner_scoped": true,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "owner_id", "type": "uuid", "nullable": false, "sensitivity": "internal", "desc": "发起检索的教师" },
+        { "name": "query_text", "type": "text", "nullable": true, "sensitivity": "confidential", "desc": "原始查询" },
+        { "name": "query_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "查询 Hash，进 Citation" },
+        { "name": "filters", "type": "jsonb", "nullable": true, "sensitivity": "internal", "desc": "分类、卷面题型、年份、scope" },
+        { "name": "top_k", "type": "smallint", "nullable": false, "default": "20", "sensitivity": "public", "desc": "返回条数上限" },
+        { "name": "result_count", "type": "integer", "nullable": true, "sensitivity": "public", "desc": "实际结果数" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [],
+      "indexes": [
+        { "name": "ix_knowledge_retrieval_runs_owner", "columns": ["owner_id", "created_at"] }
+      ],
+      "policies": [
+        { "name": "pol_knowledge_retrieval_runs_owner", "command": "ALL", "using": "owner_id = public.app_current_user_id()", "with_check": "owner_id = public.app_current_user_id()" }
+      ]
+    },
+    {
+      "name": "knowledge_retrieval_results",
+      "purpose": "检索结果；证明引用确实来自一次检索",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "retrieval_run_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_retrieval_runs", "on_delete": "CASCADE" }, "sensitivity": "public", "desc": "检索运行" },
+        { "name": "question_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_questions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "命中的题目" },
+        { "name": "rank", "type": "smallint", "nullable": false, "sensitivity": "public", "desc": "排序，1 起" },
+        { "name": "score", "type": "numeric", "precision": 8, "scale": 4, "nullable": true, "sensitivity": "public", "desc": "相关性分" },
+        { "name": "matched_chunk_id", "type": "uuid", "nullable": true, "fk": { "table": "knowledge_chunks", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "命中的具体块" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_knowledge_retrieval_results_run_question", "columns": ["retrieval_run_id", "question_id"] }
+      ],
+      "indexes": [
+        { "name": "ix_knowledge_retrieval_results_run", "columns": ["retrieval_run_id", "rank"] }
+      ],
+      "policies": []
+    },
+    {
+      "name": "material_knowledge_citations",
+      "purpose": "引用投影；发布时从不可变 AST 固化",
+      "owner_scoped": false,
+      "fields": [
+        { "name": "id", "type": "uuid", "nullable": false, "primary_key": true, "sensitivity": "public", "desc": "主键" },
+        { "name": "material_version_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "K012 的不可变版本" },
+        { "name": "content_node_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "AST 节点 ID" },
+        { "name": "citation_id", "type": "uuid", "nullable": false, "sensitivity": "public", "desc": "AST 内 Citation ID" },
+        { "name": "source_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_sources", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "来源" },
+        { "name": "document_version_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_document_versions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "来源版本" },
+        { "name": "question_id", "type": "uuid", "nullable": true, "fk": { "table": "knowledge_questions", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "引用的具体题目" },
+        { "name": "chunk_id", "type": "uuid", "nullable": false, "fk": { "table": "knowledge_chunks", "on_delete": "RESTRICT" }, "sensitivity": "public", "desc": "定位块" },
+        { "name": "excerpt_hash", "type": "sha256", "nullable": false, "sensitivity": "internal", "desc": "与 Citation Snapshot 一致" },
+        { "name": "rights_status_snapshot", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "confidential", "desc": "发布时权利状态" },
+        { "name": "distribution_scope_snapshot", "type": "varchar", "length": 32, "nullable": false, "sensitivity": "confidential", "desc": "发布时分发范围" },
+        { "name": "created_at", "type": "timestamptz", "nullable": false, "default": "now()", "sensitivity": "public", "desc": "创建时间" }
+      ],
+      "constraints": [
+        { "type": "unique", "name": "uq_material_knowledge_citations_version_citation", "columns": ["material_version_id", "citation_id"] }
+      ],
+      "indexes": [
+        { "name": "ix_material_knowledge_citations_version", "columns": ["material_version_id"] },
+        { "name": "ix_material_knowledge_citations_source", "columns": ["source_id"] },
+        { "name": "ix_material_knowledge_citations_question", "columns": ["question_id"], "where": "question_id IS NOT NULL" }
+      ],
+      "policies": []
+    }
+  ],
+  "table_order": [
+    "knowledge_categories",
+    "knowledge_sources",
+    "knowledge_document_versions",
+    "knowledge_chunks",
+    "knowledge_questions",
+    "knowledge_annotations",
+    "knowledge_question_embeddings",
+    "knowledge_ingestion_runs",
+    "knowledge_reviews",
+    "knowledge_indexing_jobs",
+    "knowledge_retrieval_runs",
+    "knowledge_retrieval_results",
+    "material_knowledge_citations"
+  ]
+}

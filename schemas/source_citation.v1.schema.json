@@ -1,0 +1,481 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chilon.local/schemas/source_citation.v1.schema.json",
+  "title": "Chilon Source Citation Snapshot v1",
+  "description": "Immutable, self-contained provenance evidence embedded in a teaching document revision.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "citation_id",
+    "source",
+    "locator",
+    "excerpt",
+    "retrieval",
+    "usage",
+    "integrity",
+    "teacher_verification"
+  ],
+  "properties": {
+    "schema": {
+      "const": "chilon.source_citation"
+    },
+    "schema_version": {
+      "const": "1.0.0"
+    },
+    "citation_id": {
+      "$ref": "#/$defs/uuid"
+    },
+    "source": {
+      "$ref": "#/$defs/source"
+    },
+    "locator": {
+      "$ref": "#/$defs/locator"
+    },
+    "excerpt": {
+      "$ref": "#/$defs/excerpt"
+    },
+    "retrieval": {
+      "$ref": "#/$defs/retrieval"
+    },
+    "usage": {
+      "$ref": "#/$defs/usage"
+    },
+    "integrity": {
+      "$ref": "#/$defs/integrity"
+    },
+    "teacher_verification": {
+      "$ref": "#/$defs/teacherVerification"
+    }
+  },
+  "$defs": {
+    "uuid": {
+      "type": "string",
+      "format": "uuid"
+    },
+    "sha256": {
+      "type": "string",
+      "pattern": "^sha256:[0-9a-f]{64}$"
+    },
+    "source": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_id",
+        "document_version_id",
+        "source_type",
+        "title"
+      ],
+      "properties": {
+        "source_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "document_version_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "source_type": {
+          "enum": [
+            "textbook",
+            "workbook",
+            "gaokao_paper",
+            "mock_exam",
+            "curriculum_standard",
+            "teacher_authored",
+            "licensed_material",
+            "other"
+          ]
+        },
+        "title": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "publisher": {
+          "type": "string",
+          "maxLength": 300
+        },
+        "edition": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "year": {
+          "type": "integer",
+          "minimum": 1949,
+          "maximum": 2100
+        },
+        "region": {
+          "type": "string",
+          "maxLength": 100
+        },
+        "paper_name": {
+          "type": "string",
+          "maxLength": 200
+        },
+        "question_number": {
+          "type": "string",
+          "maxLength": 50
+        },
+        "language": {
+          "type": "string",
+          "default": "zh-CN"
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "source_type": {
+                "const": "textbook"
+              }
+            },
+            "required": [
+              "source_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "edition",
+              "publisher"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source_type": {
+                "const": "gaokao_paper"
+              }
+            },
+            "required": [
+              "source_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "year",
+              "region",
+              "paper_name",
+              "question_number"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source_type": {
+                "const": "workbook"
+              }
+            },
+            "required": [
+              "source_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "edition",
+              "publisher"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "source_type": {
+                "const": "mock_exam"
+              }
+            },
+            "required": [
+              "source_type"
+            ]
+          },
+          "then": {
+            "required": [
+              "year",
+              "region",
+              "paper_name",
+              "question_number"
+            ]
+          }
+        }
+      ]
+    },
+    "locator": {
+      "type": "object",
+      "additionalProperties": false,
+      "description": "单段或跨段定位。单段使用 char_start/char_end；跨页或跨多行时使用 segments，两者必须至少提供一种。",
+      "required": [
+        "chunk_id",
+        "locator_kind"
+      ],
+      "anyOf": [
+        {
+          "required": [
+            "char_start",
+            "char_end"
+          ]
+        },
+        {
+          "required": [
+            "segments"
+          ]
+        }
+      ],
+      "properties": {
+        "chunk_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "locator_kind": {
+          "enum": [
+            "pdf_text",
+            "docx_text",
+            "ocr",
+            "table_cell"
+          ]
+        },
+        "char_start": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "char_end": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "page_number": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "bbox": {
+          "type": "array",
+          "description": "Normalized [x0, y0, x1, y1] coordinates in the page coordinate system.",
+          "items": {
+            "type": "number",
+            "minimum": 0,
+            "maximum": 1
+          },
+          "minItems": 4,
+          "maxItems": 4
+        },
+        "segments": {
+          "type": "array",
+          "description": "跨段定位：每段独立给出字符区间与页码，按阅读顺序排列。",
+          "minItems": 2,
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "required": [
+              "char_start",
+              "char_end"
+            ],
+            "properties": {
+              "char_start": {
+                "type": "integer",
+                "minimum": 0
+              },
+              "char_end": {
+                "type": "integer",
+                "minimum": 1
+              },
+              "page_number": {
+                "type": "integer",
+                "minimum": 1
+              }
+            }
+          }
+        },
+        "table_cell": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "row",
+            "column"
+          ],
+          "properties": {
+            "row": {
+              "type": "integer",
+              "minimum": 0
+            },
+            "column": {
+              "type": "integer",
+              "minimum": 0
+            }
+          }
+        }
+      }
+    },
+    "excerpt": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "text",
+        "text_hash"
+      ],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1
+        },
+        "text_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "truncated": {
+          "type": "boolean",
+          "default": false
+        }
+      }
+    },
+    "retrieval": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "retrieval_run_id",
+        "retrieval_result_id",
+        "query_hash",
+        "rank",
+        "retrieved_at"
+      ],
+      "properties": {
+        "retrieval_run_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "retrieval_result_id": {
+          "$ref": "#/$defs/uuid"
+        },
+        "query_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "rank": {
+          "type": "integer",
+          "minimum": 1
+        },
+        "retrieved_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    },
+    "usage": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "relation",
+        "attribution_text",
+        "rights"
+      ],
+      "properties": {
+        "relation": {
+          "enum": [
+            "verbatim",
+            "excerpt",
+            "adapted",
+            "supporting_evidence",
+            "solution_reference"
+          ]
+        },
+        "attribution_text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 500
+        },
+        "adaptation_note": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000
+        },
+        "rights": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "status",
+            "distribution_scope",
+            "attribution_required"
+          ],
+          "properties": {
+            "status": {
+              "enum": [
+                "unverified",
+                "teacher_confirmed",
+                "licensed",
+                "restricted"
+              ]
+            },
+            "distribution_scope": {
+              "enum": [
+                "private_teacher",
+                "classroom",
+                "public"
+              ]
+            },
+            "attribution_required": {
+              "type": "boolean"
+            },
+            "policy_reference": {
+              "type": "string",
+              "maxLength": 500
+            }
+          }
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "relation": {
+                "const": "adapted"
+              }
+            },
+            "required": [
+              "relation"
+            ]
+          },
+          "then": {
+            "required": [
+              "adaptation_note"
+            ]
+          }
+        }
+      ]
+    },
+    "integrity": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "source_version_hash",
+        "chunk_hash",
+        "excerpt_hash"
+      ],
+      "properties": {
+        "source_version_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "chunk_hash": {
+          "$ref": "#/$defs/sha256"
+        },
+        "excerpt_hash": {
+          "$ref": "#/$defs/sha256"
+        }
+      }
+    },
+    "teacherVerification": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "verified",
+        "verified_by",
+        "verified_at"
+      ],
+      "properties": {
+        "verified": {
+          "const": true
+        },
+        "verified_by": {
+          "$ref": "#/$defs/uuid"
+        },
+        "verified_at": {
+          "type": "string",
+          "format": "date-time"
+        }
+      }
+    }
+  }
+}

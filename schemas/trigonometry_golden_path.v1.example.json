@@ -1,0 +1,581 @@
+{
+  "schema": "chilon.teaching_document",
+  "schema_version": "1.1.0",
+  "document_id": "01900000-0000-7000-8000-000000000001",
+  "document_kind": "mixed",
+  "metadata": {
+    "title": "三角函数教学讲义与配套练习",
+    "subject": "mathematics",
+    "grade": "senior_high",
+    "curriculum": "china_gaokao",
+    "language": "zh-CN",
+    "topics": [
+      "三角函数"
+    ],
+    "lesson_count": 2,
+    "estimated_minutes": 90
+  },
+  "citations": [
+    {
+      "schema": "chilon.source_citation",
+      "schema_version": "1.0.0",
+      "citation_id": "01900000-0000-7000-8000-000000000101",
+      "source": {
+        "source_id": "01900000-0000-7000-8000-000000000201",
+        "document_version_id": "01900000-0000-7000-8000-000000000202",
+        "source_type": "workbook",
+        "title": "高中数学同步练习册（必修第一册）",
+        "publisher": "示例教育出版社",
+        "edition": "2025版",
+        "language": "zh-CN"
+      },
+      "locator": {
+        "chunk_id": "01900000-0000-7000-8000-000000000203",
+        "locator_kind": "pdf_text",
+        "char_start": 1200,
+        "char_end": 1360,
+        "page_number": 52
+      },
+      "excerpt": {
+        "text": "例1 已知角 θ 的终边上一点，求角 θ 的正弦值、余弦值和正切值。",
+        "text_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111",
+        "truncated": false
+      },
+      "retrieval": {
+        "retrieval_run_id": "01900000-0000-7000-8000-000000000301",
+        "retrieval_result_id": "01900000-0000-7000-8000-000000000302",
+        "query_hash": "sha256:2222222222222222222222222222222222222222222222222222222222222222",
+        "rank": 1,
+        "retrieved_at": "2026-11-03T23:20:00+08:00"
+      },
+      "usage": {
+        "relation": "excerpt",
+        "attribution_text": "教辅例题：《高中数学同步练习册（必修第一册）》2025版，第52页",
+        "rights": {
+          "status": "teacher_confirmed",
+          "distribution_scope": "classroom",
+          "attribution_required": true
+        }
+      },
+      "integrity": {
+        "source_version_hash": "sha256:3333333333333333333333333333333333333333333333333333333333333333",
+        "chunk_hash": "sha256:4444444444444444444444444444444444444444444444444444444444444444",
+        "excerpt_hash": "sha256:1111111111111111111111111111111111111111111111111111111111111111"
+      },
+      "teacher_verification": {
+        "verified": true,
+        "verified_by": "01900000-0000-7000-8000-000000000401",
+        "verified_at": "2026-11-03T23:21:00+08:00"
+      }
+    },
+    {
+      "schema": "chilon.source_citation",
+      "schema_version": "1.0.0",
+      "citation_id": "01900000-0000-7000-8000-000000000102",
+      "source": {
+        "source_id": "01900000-0000-7000-8000-000000000204",
+        "document_version_id": "01900000-0000-7000-8000-000000000205",
+        "source_type": "gaokao_paper",
+        "title": "2024年普通高等学校招生全国统一考试数学试卷",
+        "year": 2024,
+        "region": "全国",
+        "paper_name": "新课标I卷",
+        "question_number": "7",
+        "language": "zh-CN"
+      },
+      "locator": {
+        "chunk_id": "01900000-0000-7000-8000-000000000206",
+        "locator_kind": "pdf_text",
+        "char_start": 320,
+        "char_end": 460,
+        "page_number": 3
+      },
+      "excerpt": {
+        "text": "示例高考真题：利用三角恒等变换求值。",
+        "text_hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555",
+        "truncated": false
+      },
+      "retrieval": {
+        "retrieval_run_id": "01900000-0000-7000-8000-000000000303",
+        "retrieval_result_id": "01900000-0000-7000-8000-000000000304",
+        "query_hash": "sha256:6666666666666666666666666666666666666666666666666666666666666666",
+        "rank": 1,
+        "retrieved_at": "2026-11-03T23:20:30+08:00"
+      },
+      "usage": {
+        "relation": "verbatim",
+        "attribution_text": "2024年全国新课标I卷数学第7题",
+        "rights": {
+          "status": "teacher_confirmed",
+          "distribution_scope": "classroom",
+          "attribution_required": true
+        }
+      },
+      "integrity": {
+        "source_version_hash": "sha256:7777777777777777777777777777777777777777777777777777777777777777",
+        "chunk_hash": "sha256:8888888888888888888888888888888888888888888888888888888888888888",
+        "excerpt_hash": "sha256:5555555555555555555555555555555555555555555555555555555555555555"
+      },
+      "teacher_verification": {
+        "verified": true,
+        "verified_by": "01900000-0000-7000-8000-000000000401",
+        "verified_at": "2026-11-03T23:21:30+08:00"
+      }
+    },
+    {
+      "schema": "chilon.source_citation",
+      "schema_version": "1.0.0",
+      "citation_id": "01900000-0000-7000-8000-000000000103",
+      "source": {
+        "source_id": "01900000-0000-7000-8000-000000000207",
+        "document_version_id": "01900000-0000-7000-8000-000000000208",
+        "source_type": "mock_exam",
+        "title": "2026届示例省高三第一次模拟考试数学",
+        "year": 2026,
+        "region": "示例省",
+        "paper_name": "高三第一次模拟考试",
+        "question_number": "12",
+        "language": "zh-CN"
+      },
+      "locator": {
+        "chunk_id": "01900000-0000-7000-8000-000000000209",
+        "locator_kind": "pdf_text",
+        "char_start": 500,
+        "char_end": 620,
+        "page_number": 3
+      },
+      "excerpt": {
+        "text": "12. 已知 sinα + cosα = 1/5，求 sinα·cosα 的值。",
+        "text_hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999",
+        "truncated": false
+      },
+      "retrieval": {
+        "retrieval_run_id": "01900000-0000-7000-8000-000000000305",
+        "retrieval_result_id": "01900000-0000-7000-8000-000000000306",
+        "query_hash": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+        "rank": 1,
+        "retrieved_at": "2026-11-03T23:21:00+08:00"
+      },
+      "usage": {
+        "relation": "verbatim",
+        "attribution_text": "2026年示例省高三第一次模拟考试数学第12题",
+        "rights": {
+          "status": "teacher_confirmed",
+          "distribution_scope": "classroom",
+          "attribution_required": true
+        }
+      },
+      "integrity": {
+        "source_version_hash": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+        "chunk_hash": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+        "excerpt_hash": "sha256:9999999999999999999999999999999999999999999999999999999999999999"
+      },
+      "teacher_verification": {
+        "verified": true,
+        "verified_by": "01900000-0000-7000-8000-000000000401",
+        "verified_at": "2026-11-03T23:22:00+08:00"
+      }
+    }
+  ],
+  "blocks": [
+    {
+      "id": "01900000-0000-7000-8000-000000000501",
+      "type": "section",
+      "visibility": "student",
+      "provenance": {
+        "kind": "ai_generated",
+        "basis": "synthesis"
+      },
+      "purpose": "overview",
+      "title": [
+        {
+          "type": "text",
+          "text": "三角函数复习"
+        }
+      ],
+      "children": [
+        {
+          "id": "01900000-0000-7000-8000-000000000502",
+          "type": "paragraph",
+          "visibility": "student",
+          "provenance": {
+            "kind": "ai_generated",
+            "basis": "synthesis",
+            "citation_ids": [
+              "01900000-0000-7000-8000-000000000101"
+            ]
+          },
+          "content": [
+            {
+              "type": "text",
+              "text": "从教辅例题出发，复习终边定义与三角恒等变换。"
+            }
+          ]
+        },
+        {
+          "id": "01900000-0000-7000-8000-000000000503",
+          "type": "formula",
+          "visibility": "student",
+          "provenance": {
+            "kind": "ai_generated",
+            "basis": "synthesis"
+          },
+          "latex": "\\sin^2\\theta+\\cos^2\\theta=1",
+          "display_mode": true,
+          "alt_text": "正弦的平方加余弦的平方等于一"
+        }
+      ]
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000515",
+      "type": "section",
+      "visibility": "student",
+      "provenance": {
+        "kind": "ai_generated",
+        "basis": "synthesis",
+        "citation_ids": [
+          "01900000-0000-7000-8000-000000000101"
+        ]
+      },
+      "purpose": "worked_examples",
+      "title": [
+        {
+          "type": "text",
+          "text": "教辅例题"
+        }
+      ],
+      "children": [
+        {
+          "id": "01900000-0000-7000-8000-000000000504",
+          "type": "worked_example",
+          "visibility": "student",
+          "provenance": {
+            "kind": "workbook_example",
+            "basis": "excerpt",
+            "citation_ids": [
+              "01900000-0000-7000-8000-000000000101"
+            ]
+          },
+          "problem": [
+            {
+              "type": "text",
+              "text": "已知角 θ 的终边上一点，分别求正弦值、余弦值和正切值。"
+            },
+            {
+              "type": "citation_ref",
+              "citation_id": "01900000-0000-7000-8000-000000000101",
+              "marker": "[教辅]"
+            }
+          ],
+          "children": [
+            {
+              "id": "01900000-0000-7000-8000-000000000505",
+              "type": "solution_step",
+              "visibility": "teacher",
+              "provenance": {
+                "kind": "ai_generated",
+                "basis": "synthesis"
+              },
+              "instruction": [
+                {
+                  "type": "text",
+                  "text": "先根据终边坐标确定邻边、对边和斜边。"
+                }
+              ]
+            },
+            {
+              "id": "01900000-0000-7000-8000-000000000506",
+              "type": "answer",
+              "visibility": "teacher",
+              "provenance": {
+                "kind": "ai_generated",
+                "basis": "synthesis"
+              },
+              "content": [
+                {
+                  "type": "text",
+                  "text": "按终边坐标分别计算三个三角函数值。"
+                }
+              ]
+            }
+          ],
+          "answer_node_ids": [
+            "01900000-0000-7000-8000-000000000506"
+          ],
+          "solution_node_ids": [
+            "01900000-0000-7000-8000-000000000505"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "01900000-0000-7000-8000-000000000516",
+      "type": "section",
+      "visibility": "student",
+      "provenance": {
+        "kind": "ai_generated",
+        "basis": "synthesis",
+        "citation_ids": [
+          "01900000-0000-7000-8000-000000000102"
+        ]
+      },
+      "purpose": "exercises",
+      "title": [
+        {
+          "type": "text",
+          "text": "高考真题练习"
+        }
+      ],
+      "children": [
+        {
+          "id": "01900000-0000-7000-8000-000000000507",
+          "type": "exercise_group",
+          "visibility": "student",
+          "provenance": {
+            "kind": "ai_generated",
+            "basis": "synthesis"
+          },
+          "title": [
+            {
+              "type": "text",
+              "text": "高考真题"
+            }
+          ],
+          "difficulty": "medium",
+          "children": [
+            {
+              "id": "01900000-0000-7000-8000-000000000508",
+              "type": "exercise",
+              "visibility": "student",
+              "provenance": {
+                "kind": "gaokao_question",
+                "basis": "verbatim",
+                "citation_ids": [
+                  "01900000-0000-7000-8000-000000000102"
+                ]
+              },
+              "question_type": "single_choice",
+              "difficulty": "medium",
+              "ability_dimensions": [
+                "mathematical_operation",
+                "logical_reasoning"
+              ],
+              "stem": [
+                {
+                  "type": "text",
+                  "text": "利用三角恒等变换求值。"
+                },
+                {
+                  "type": "citation_ref",
+                  "citation_id": "01900000-0000-7000-8000-000000000102",
+                  "marker": "[2024新课标I卷7]"
+                }
+              ],
+              "options": [
+                {
+                  "id": "01900000-0000-7000-8000-000000000509",
+                  "label": "A",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例选项 A"
+                    }
+                  ]
+                },
+                {
+                  "id": "01900000-0000-7000-8000-000000000512",
+                  "label": "B",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例选项 B"
+                    }
+                  ]
+                },
+                {
+                  "id": "01900000-0000-7000-8000-000000000513",
+                  "label": "C",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例选项 C"
+                    }
+                  ]
+                },
+                {
+                  "id": "01900000-0000-7000-8000-000000000514",
+                  "label": "D",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例选项 D"
+                    }
+                  ]
+                }
+              ],
+              "children": [
+                {
+                  "id": "01900000-0000-7000-8000-000000000510",
+                  "type": "answer",
+                  "visibility": "teacher",
+                  "provenance": {
+                    "kind": "ai_generated",
+                    "basis": "synthesis",
+                    "citation_ids": [
+                      "01900000-0000-7000-8000-000000000102"
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例答案：A。"
+                    }
+                  ]
+                },
+                {
+                  "id": "01900000-0000-7000-8000-000000000511",
+                  "type": "solution",
+                  "visibility": "teacher",
+                  "provenance": {
+                    "kind": "ai_generated",
+                    "basis": "synthesis",
+                    "citation_ids": [
+                      "01900000-0000-7000-8000-000000000102"
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例解析：说明使用的恒等变换步骤。"
+                    }
+                  ]
+                }
+              ],
+              "answer_node_ids": [
+                "01900000-0000-7000-8000-000000000510"
+              ],
+              "solution_node_ids": [
+                "01900000-0000-7000-8000-000000000511"
+              ]
+            }
+          ]
+        },
+        {
+          "id": "01900000-0000-7000-8000-000000000517",
+          "type": "exercise_group",
+          "visibility": "student",
+          "provenance": {
+            "kind": "ai_generated",
+            "basis": "synthesis",
+            "citation_ids": [
+              "01900000-0000-7000-8000-000000000103"
+            ]
+          },
+          "title": [
+            {
+              "type": "text",
+              "text": "近期模拟题"
+            }
+          ],
+          "difficulty": "medium",
+          "children": [
+            {
+              "id": "01900000-0000-7000-8000-000000000518",
+              "type": "exercise",
+              "visibility": "student",
+              "provenance": {
+                "kind": "mock_question",
+                "basis": "verbatim",
+                "citation_ids": [
+                  "01900000-0000-7000-8000-000000000103"
+                ]
+              },
+              "question_type": "single_choice",
+              "difficulty": "medium",
+              "ability_dimensions": [
+                "mathematical_operation"
+              ],
+              "stem": [
+                {
+                  "type": "text",
+                  "text": "已知 sinα + cosα = 1/5，求 sinα·cosα 的值。"
+                },
+                {
+                  "type": "citation_ref",
+                  "citation_id": "01900000-0000-7000-8000-000000000103",
+                  "marker": "[2026 一模 12]"
+                }
+              ],
+              "options": [
+                {
+                  "id": "01900000-0000-7000-8000-000000000521",
+                  "label": "A",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "-12/25"
+                    }
+                  ]
+                },
+                {
+                  "id": "01900000-0000-7000-8000-000000000522",
+                  "label": "B",
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "12/25"
+                    }
+                  ]
+                }
+              ],
+              "children": [
+                {
+                  "id": "01900000-0000-7000-8000-000000000519",
+                  "type": "answer",
+                  "visibility": "teacher",
+                  "provenance": {
+                    "kind": "ai_generated",
+                    "basis": "synthesis",
+                    "citation_ids": [
+                      "01900000-0000-7000-8000-000000000103"
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例答案：A。"
+                    }
+                  ]
+                },
+                {
+                  "id": "01900000-0000-7000-8000-000000000520",
+                  "type": "solution",
+                  "visibility": "teacher",
+                  "provenance": {
+                    "kind": "ai_generated",
+                    "basis": "synthesis",
+                    "citation_ids": [
+                      "01900000-0000-7000-8000-000000000103"
+                    ]
+                  },
+                  "content": [
+                    {
+                      "type": "text",
+                      "text": "示例解析：两边平方后利用 sin²α + cos²α = 1 求解。"
+                    }
+                  ]
+                }
+              ],
+              "answer_node_ids": [
+                "01900000-0000-7000-8000-000000000519"
+              ],
+              "solution_node_ids": [
+                "01900000-0000-7000-8000-000000000520"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

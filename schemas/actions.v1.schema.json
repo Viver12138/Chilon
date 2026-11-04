@@ -1,0 +1,78 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chilon.local/schemas/actions.v1.schema.json",
+  "title": "Chilon Action Registry v1",
+  "description": "动作注册表格式。与 state_machines.v1.json 的覆盖关系、compound 命令的原子性、错误码引用有效性，由 design/check_actions.py 校验；JSON Schema 只表达结构。",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "schema_version",
+    "title",
+    "source",
+    "freeze_status",
+    "updated_at",
+    "error_codes",
+    "compound_commands",
+    "aggregates"
+  ],
+  "properties": {
+    "schema": { "const": "chilon.actions" },
+    "schema_version": { "type": "string", "pattern": "^\\d+\\.\\d+\\.\\d+$" },
+    "title": { "type": "string", "minLength": 1 },
+    "source": { "type": "string", "minLength": 1 },
+    "freeze_status": { "enum": ["DESIGNED", "FROZEN FOR IMPLEMENTATION", "PROPOSED"] },
+    "updated_at": { "type": "string", "pattern": "^\\d{4}-\\d{2}-\\d{2}$" },
+    "notes": { "type": "array", "items": { "type": "string" } },
+    "error_codes": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/errorCode" } },
+    "compound_commands": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/compound" } },
+    "aggregates": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/aggregate" } }
+  },
+  "$defs": {
+    "errorCode": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["code", "http_status", "when"],
+      "properties": {
+        "code": { "type": "string", "pattern": "^[A-Z][A-Z0-9_]*$" },
+        "http_status": { "type": "integer" },
+        "when": { "type": "string", "minLength": 1 }
+      }
+    },
+    "compound": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "members", "transaction"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "members": { "type": "array", "minItems": 1, "items": { "type": "string" } },
+        "transaction": { "const": "single" }
+      }
+    },
+    "action": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["trigger", "actor", "ui", "transitions"],
+      "properties": {
+        "trigger": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "actor": { "enum": ["teacher", "system", "worker"] },
+        "ui": { "enum": ["primary", "secondary", "danger", "hidden"] },
+        "label": { "type": "string", "minLength": 1 },
+        "description": { "type": "string", "minLength": 1 },
+        "errors": { "type": "array", "items": { "type": "string" } },
+        "compound": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "transitions": { "type": "array", "minItems": 1, "items": { "type": "string", "minLength": 1 } }
+      }
+    },
+    "aggregate": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["aggregate", "entity", "actions"],
+      "properties": {
+        "aggregate": { "type": "string", "pattern": "^[a-z][a-z0-9_]*$" },
+        "entity": { "type": "string", "minLength": 1 },
+        "actions": { "type": "array", "minItems": 1, "items": { "$ref": "#/$defs/action" } }
+      }
+    }
+  }
+}

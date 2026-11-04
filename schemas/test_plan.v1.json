@@ -1,0 +1,3342 @@
+{
+  "schema": "chilon.test_plan",
+  "schema_version": "1.0.0",
+  "title": "Chilon 测试矩阵（机械派生部分）",
+  "generated_by": "design/gen_test_plan.py",
+  "note": "本文件由脚本生成，不要手改；改契约后重新生成。人工测试设计见 D6 分册。",
+  "sources": {
+    "state_machines": "schemas/state_machines.v1.json",
+    "actions": "schemas/actions.v1.json",
+    "api_surface": "schemas/api_surface.v1.json",
+    "navigation": "schemas/navigation.v1.json"
+  },
+  "suites": [
+    {
+      "id": "SM",
+      "name": "状态机迁移",
+      "counts": {
+        "legal": 136,
+        "reject": 101
+      },
+      "cases": [
+        {
+          "id": "SM-L-task-T01",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T01",
+          "from": "draft",
+          "to": "planning",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T02",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T02",
+          "from": "planning",
+          "to": "awaiting_plan_approval",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T03",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T03",
+          "from": "planning",
+          "to": "needs_attention",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T04",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T04",
+          "from": "awaiting_plan_approval",
+          "to": "ready",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T05",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T05",
+          "from": "awaiting_plan_approval",
+          "to": "planning",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T06",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T06",
+          "from": "awaiting_plan_approval",
+          "to": "planning",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T07",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T07",
+          "from": "awaiting_plan_approval",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T08",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T08",
+          "from": "ready",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T09",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T09",
+          "from": "ready",
+          "to": "needs_attention",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T10",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T10",
+          "from": "ready",
+          "to": "planning",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T11",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T11",
+          "from": "running",
+          "to": "completed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T12",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T12",
+          "from": "running",
+          "to": "needs_attention",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T13",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T13",
+          "from": "running",
+          "to": "awaiting_plan_approval",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T14",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T14",
+          "from": "needs_attention",
+          "to": "planning",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T15",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T15",
+          "from": "needs_attention",
+          "to": "ready",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T16",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T16",
+          "from": "needs_attention",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T17",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T17",
+          "from": [
+            "draft",
+            "planning",
+            "awaiting_plan_approval",
+            "ready"
+          ],
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T18",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T18",
+          "from": "running",
+          "to": "cancelling",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T19",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T19",
+          "from": "cancelling",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-task-T20",
+          "kind": "legal",
+          "aggregate": "task",
+          "transition": "T20",
+          "from": "cancelling",
+          "to": "needs_attention",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-task-draft",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "draft",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-planning",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "planning",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-awaiting_plan_approval",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "awaiting_plan_approval",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-ready",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "ready",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-running",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-completed",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "completed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-needs_attention",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "needs_attention",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-cancelling",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "cancelling",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-task-cancelled",
+          "kind": "reject",
+          "aggregate": "task",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-requirement_version-R01",
+          "kind": "legal",
+          "aggregate": "requirement_version",
+          "transition": "R01",
+          "from": "draft",
+          "to": "active",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-requirement_version-R02",
+          "kind": "legal",
+          "aggregate": "requirement_version",
+          "transition": "R02",
+          "from": "draft",
+          "to": "abandoned",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-requirement_version-R03",
+          "kind": "legal",
+          "aggregate": "requirement_version",
+          "transition": "R03",
+          "from": "active",
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-requirement_version-draft",
+          "kind": "reject",
+          "aggregate": "requirement_version",
+          "state": "draft",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-requirement_version-active",
+          "kind": "reject",
+          "aggregate": "requirement_version",
+          "state": "active",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-requirement_version-superseded",
+          "kind": "reject",
+          "aggregate": "requirement_version",
+          "state": "superseded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-requirement_version-abandoned",
+          "kind": "reject",
+          "aggregate": "requirement_version",
+          "state": "abandoned",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-plan_version-PV01",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV01",
+          "from": "draft",
+          "to": "awaiting_approval",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV02",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV02",
+          "from": "awaiting_approval",
+          "to": "approved",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV03",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV03",
+          "from": "awaiting_approval",
+          "to": "rejected",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV04",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV04",
+          "from": "awaiting_approval",
+          "to": "expired",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV05",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV05",
+          "from": "awaiting_approval",
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV06",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV06",
+          "from": "awaiting_approval",
+          "to": "invalidated",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV07",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV07",
+          "from": "approved",
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_version-PV08",
+          "kind": "legal",
+          "aggregate": "plan_version",
+          "transition": "PV08",
+          "from": "approved",
+          "to": "invalidated",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-plan_version-draft",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "draft",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_version-awaiting_approval",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "awaiting_approval",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_version-approved",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "approved",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_version-rejected",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "rejected",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_version-expired",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "expired",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_version-invalidated",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "invalidated",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_version-superseded",
+          "kind": "reject",
+          "aggregate": "plan_version",
+          "state": "superseded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-plan_approval-PA01",
+          "kind": "legal",
+          "aggregate": "plan_approval",
+          "transition": "PA01",
+          "from": "pending",
+          "to": "approved",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_approval-PA02",
+          "kind": "legal",
+          "aggregate": "plan_approval",
+          "transition": "PA02",
+          "from": "pending",
+          "to": "rejected",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_approval-PA03",
+          "kind": "legal",
+          "aggregate": "plan_approval",
+          "transition": "PA03",
+          "from": "pending",
+          "to": "expired",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_approval-PA04",
+          "kind": "legal",
+          "aggregate": "plan_approval",
+          "transition": "PA04",
+          "from": "approved",
+          "to": "revoked",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-plan_approval-PA05",
+          "kind": "legal",
+          "aggregate": "plan_approval",
+          "transition": "PA05",
+          "from": "approved",
+          "to": "invalidated",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-plan_approval-pending",
+          "kind": "reject",
+          "aggregate": "plan_approval",
+          "state": "pending",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_approval-approved",
+          "kind": "reject",
+          "aggregate": "plan_approval",
+          "state": "approved",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_approval-rejected",
+          "kind": "reject",
+          "aggregate": "plan_approval",
+          "state": "rejected",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_approval-revoked",
+          "kind": "reject",
+          "aggregate": "plan_approval",
+          "state": "revoked",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_approval-invalidated",
+          "kind": "reject",
+          "aggregate": "plan_approval",
+          "state": "invalidated",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-plan_approval-expired",
+          "kind": "reject",
+          "aggregate": "plan_approval",
+          "state": "expired",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-execution-E01",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E01",
+          "from": "queued",
+          "to": "starting",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E02",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E02",
+          "from": "queued",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E03",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E03",
+          "from": "queued",
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E04",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E04",
+          "from": "starting",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E05",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E05",
+          "from": "starting",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E06",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E06",
+          "from": "starting",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E07",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E07",
+          "from": "running",
+          "to": "pause_requested",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E08",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E08",
+          "from": "pause_requested",
+          "to": "paused",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E09",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E09",
+          "from": "pause_requested",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E10",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E10",
+          "from": "paused",
+          "to": "queued",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E11",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E11",
+          "from": "paused",
+          "to": "cancel_requested",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E12",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E12",
+          "from": [
+            "queued",
+            "starting",
+            "running",
+            "paused"
+          ],
+          "to": "cancel_requested",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E13",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E13",
+          "from": "cancel_requested",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E14",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E14",
+          "from": "cancel_requested",
+          "to": "cancelling",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E15",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E15",
+          "from": "cancel_requested",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E16",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E16",
+          "from": "cancelling",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E17",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E17",
+          "from": "cancelling",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E18",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E18",
+          "from": "running",
+          "to": "succeeded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E19",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E19",
+          "from": "running",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E20",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E20",
+          "from": "running",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E21",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E21",
+          "from": "outcome_unknown",
+          "to": "succeeded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E22",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E22",
+          "from": "outcome_unknown",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E23",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E23",
+          "from": "outcome_unknown",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-execution-E24",
+          "kind": "legal",
+          "aggregate": "execution",
+          "transition": "E24",
+          "from": [
+            "queued",
+            "starting",
+            "running",
+            "paused"
+          ],
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-execution-queued",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "queued",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-starting",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "starting",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-running",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-pause_requested",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "pause_requested",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-paused",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "paused",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-cancel_requested",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "cancel_requested",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-cancelling",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "cancelling",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-outcome_unknown",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "outcome_unknown",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-succeeded",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "succeeded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-failed",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-cancelled",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-execution-superseded",
+          "kind": "reject",
+          "aggregate": "execution",
+          "state": "superseded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-agent_run-RUN01",
+          "kind": "legal",
+          "aggregate": "agent_run",
+          "transition": "RUN01",
+          "from": "starting",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-agent_run-RUN02",
+          "kind": "legal",
+          "aggregate": "agent_run",
+          "transition": "RUN02",
+          "from": "running",
+          "to": "interrupted",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-agent_run-RUN03",
+          "kind": "legal",
+          "aggregate": "agent_run",
+          "transition": "RUN03",
+          "from": "running",
+          "to": "completed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-agent_run-RUN04",
+          "kind": "legal",
+          "aggregate": "agent_run",
+          "transition": "RUN04",
+          "from": "running",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-agent_run-RUN05",
+          "kind": "legal",
+          "aggregate": "agent_run",
+          "transition": "RUN05",
+          "from": [
+            "starting",
+            "running"
+          ],
+          "to": "lost",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-agent_run-RUN06",
+          "kind": "legal",
+          "aggregate": "agent_run",
+          "transition": "RUN06",
+          "from": [
+            "starting",
+            "running",
+            "interrupted"
+          ],
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-agent_run-starting",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "starting",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-agent_run-running",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-agent_run-interrupted",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "interrupted",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-agent_run-completed",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "completed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-agent_run-failed",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-agent_run-lost",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "lost",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-agent_run-superseded",
+          "kind": "reject",
+          "aggregate": "agent_run",
+          "state": "superseded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-step_execution-ST01",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST01",
+          "from": "pending",
+          "to": "ready",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST02",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST02",
+          "from": "ready",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST03",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST03",
+          "from": "running",
+          "to": "paused",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST04",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST04",
+          "from": "paused",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST05",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST05",
+          "from": "running",
+          "to": "succeeded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST06",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST06",
+          "from": "running",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST07",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST07",
+          "from": [
+            "pending",
+            "ready"
+          ],
+          "to": "blocked",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST08",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST08",
+          "from": [
+            "pending",
+            "ready"
+          ],
+          "to": "skipped",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST09",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST09",
+          "from": [
+            "pending",
+            "ready",
+            "running",
+            "paused"
+          ],
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-step_execution-ST10",
+          "kind": "legal",
+          "aggregate": "step_execution",
+          "transition": "ST10",
+          "from": [
+            "pending",
+            "ready",
+            "running",
+            "paused",
+            "blocked"
+          ],
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-step_execution-pending",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "pending",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-ready",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "ready",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-running",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-paused",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "paused",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-succeeded",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "succeeded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-failed",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-blocked",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "blocked",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-skipped",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "skipped",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-cancelled",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-step_execution-superseded",
+          "kind": "reject",
+          "aggregate": "step_execution",
+          "state": "superseded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-tool_execution-TL01",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL01",
+          "from": "requested",
+          "to": "authorizing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL02",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL02",
+          "from": "authorizing",
+          "to": "authorized",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL03",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL03",
+          "from": "authorizing",
+          "to": "rejected",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL04",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL04",
+          "from": "authorized",
+          "to": "dispatching",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL05",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL05",
+          "from": "dispatching",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL06",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL06",
+          "from": "running",
+          "to": "succeeded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL07",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL07",
+          "from": "running",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL08",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL08",
+          "from": "running",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-tool_execution-TL09",
+          "kind": "legal",
+          "aggregate": "tool_execution",
+          "transition": "TL09",
+          "from": "running",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-tool_execution-requested",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "requested",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-authorizing",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "authorizing",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-authorized",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "authorized",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-rejected",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "rejected",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-dispatching",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "dispatching",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-running",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-succeeded",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "succeeded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-failed",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-cancelled",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-tool_execution-outcome_unknown",
+          "kind": "reject",
+          "aggregate": "tool_execution",
+          "state": "outcome_unknown",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-draft-D01",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D01",
+          "from": "editing",
+          "to": "checking",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D02",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D02",
+          "from": "editing",
+          "to": "needs_rebase",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D03",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D03",
+          "from": "editing",
+          "to": "abandoned",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D04",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D04",
+          "from": "checking",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D05",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D05",
+          "from": "checking",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D06",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D06",
+          "from": "checking",
+          "to": "changes_required",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D07",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D07",
+          "from": "checking",
+          "to": "awaiting_review",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D08",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D08",
+          "from": "checking",
+          "to": "needs_attention",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D09",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D09",
+          "from": "checking",
+          "to": "needs_rebase",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D10",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D10",
+          "from": "changes_required",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D11",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D11",
+          "from": "changes_required",
+          "to": "checking",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D12",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D12",
+          "from": "awaiting_review",
+          "to": "approved",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D13",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D13",
+          "from": "awaiting_review",
+          "to": "changes_required",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D14",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D14",
+          "from": "awaiting_review",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D15",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D15",
+          "from": "approved",
+          "to": "published",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D16",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D16",
+          "from": "approved",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D17",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D17",
+          "from": "approved",
+          "to": "awaiting_review",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D18",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D18",
+          "from": "approved",
+          "to": "needs_rebase",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D19",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D19",
+          "from": "needs_attention",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D20",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D20",
+          "from": "needs_attention",
+          "to": "checking",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D21",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D21",
+          "from": "needs_attention",
+          "to": "abandoned",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D22",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D22",
+          "from": "needs_rebase",
+          "to": "editing",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D23",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D23",
+          "from": "needs_rebase",
+          "to": "abandoned",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D24",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D24",
+          "from": [
+            "editing",
+            "checking",
+            "changes_required",
+            "awaiting_review",
+            "approved"
+          ],
+          "to": "abandoned",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-draft-D25",
+          "kind": "legal",
+          "aggregate": "draft",
+          "transition": "D25",
+          "from": [
+            "editing",
+            "checking",
+            "changes_required",
+            "awaiting_review",
+            "approved",
+            "needs_attention",
+            "needs_rebase"
+          ],
+          "to": "superseded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-draft-editing",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "editing",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-checking",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "checking",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-changes_required",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "changes_required",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-awaiting_review",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "awaiting_review",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-approved",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "approved",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-needs_rebase",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "needs_rebase",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-needs_attention",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "needs_attention",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-published",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "published",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-abandoned",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "abandoned",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-draft-superseded",
+          "kind": "reject",
+          "aggregate": "draft",
+          "state": "superseded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-quality_check_run-QC01",
+          "kind": "legal",
+          "aggregate": "quality_check_run",
+          "transition": "QC01",
+          "from": "queued",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-quality_check_run-QC02",
+          "kind": "legal",
+          "aggregate": "quality_check_run",
+          "transition": "QC02",
+          "from": "running",
+          "to": "succeeded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-quality_check_run-QC03",
+          "kind": "legal",
+          "aggregate": "quality_check_run",
+          "transition": "QC03",
+          "from": "running",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-quality_check_run-QC04",
+          "kind": "legal",
+          "aggregate": "quality_check_run",
+          "transition": "QC04",
+          "from": "running",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-quality_check_run-QC05",
+          "kind": "legal",
+          "aggregate": "quality_check_run",
+          "transition": "QC05",
+          "from": "running",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-quality_check_run-queued",
+          "kind": "reject",
+          "aggregate": "quality_check_run",
+          "state": "queued",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-quality_check_run-running",
+          "kind": "reject",
+          "aggregate": "quality_check_run",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-quality_check_run-succeeded",
+          "kind": "reject",
+          "aggregate": "quality_check_run",
+          "state": "succeeded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-quality_check_run-failed",
+          "kind": "reject",
+          "aggregate": "quality_check_run",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-quality_check_run-cancelled",
+          "kind": "reject",
+          "aggregate": "quality_check_run",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-quality_check_run-outcome_unknown",
+          "kind": "reject",
+          "aggregate": "quality_check_run",
+          "state": "outcome_unknown",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-math_validation_run-MV01",
+          "kind": "legal",
+          "aggregate": "math_validation_run",
+          "transition": "MV01",
+          "from": "queued",
+          "to": "running",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-math_validation_run-MV02",
+          "kind": "legal",
+          "aggregate": "math_validation_run",
+          "transition": "MV02",
+          "from": "running",
+          "to": "succeeded",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-math_validation_run-MV03",
+          "kind": "legal",
+          "aggregate": "math_validation_run",
+          "transition": "MV03",
+          "from": "running",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-math_validation_run-MV04",
+          "kind": "legal",
+          "aggregate": "math_validation_run",
+          "transition": "MV04",
+          "from": "running",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-math_validation_run-MV05",
+          "kind": "legal",
+          "aggregate": "math_validation_run",
+          "transition": "MV05",
+          "from": "running",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-math_validation_run-queued",
+          "kind": "reject",
+          "aggregate": "math_validation_run",
+          "state": "queued",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-math_validation_run-running",
+          "kind": "reject",
+          "aggregate": "math_validation_run",
+          "state": "running",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-math_validation_run-succeeded",
+          "kind": "reject",
+          "aggregate": "math_validation_run",
+          "state": "succeeded",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-math_validation_run-failed",
+          "kind": "reject",
+          "aggregate": "math_validation_run",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-math_validation_run-cancelled",
+          "kind": "reject",
+          "aggregate": "math_validation_run",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-math_validation_run-outcome_unknown",
+          "kind": "reject",
+          "aggregate": "math_validation_run",
+          "state": "outcome_unknown",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-publication_approval-PUB01",
+          "kind": "legal",
+          "aggregate": "publication_approval",
+          "transition": "PUB01",
+          "from": "pending",
+          "to": "approved",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-publication_approval-PUB02",
+          "kind": "legal",
+          "aggregate": "publication_approval",
+          "transition": "PUB02",
+          "from": "pending",
+          "to": "rejected",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-publication_approval-PUB03",
+          "kind": "legal",
+          "aggregate": "publication_approval",
+          "transition": "PUB03",
+          "from": "pending",
+          "to": "expired",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-publication_approval-PUB04",
+          "kind": "legal",
+          "aggregate": "publication_approval",
+          "transition": "PUB04",
+          "from": "approved",
+          "to": "consumed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-publication_approval-PUB05",
+          "kind": "legal",
+          "aggregate": "publication_approval",
+          "transition": "PUB05",
+          "from": "approved",
+          "to": "invalidated",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-publication_approval-pending",
+          "kind": "reject",
+          "aggregate": "publication_approval",
+          "state": "pending",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-publication_approval-approved",
+          "kind": "reject",
+          "aggregate": "publication_approval",
+          "state": "approved",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-publication_approval-rejected",
+          "kind": "reject",
+          "aggregate": "publication_approval",
+          "state": "rejected",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-publication_approval-invalidated",
+          "kind": "reject",
+          "aggregate": "publication_approval",
+          "state": "invalidated",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-publication_approval-expired",
+          "kind": "reject",
+          "aggregate": "publication_approval",
+          "state": "expired",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-publication_approval-consumed",
+          "kind": "reject",
+          "aggregate": "publication_approval",
+          "state": "consumed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-L-export-X01",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X01",
+          "from": "queued",
+          "to": "rendering",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X02",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X02",
+          "from": "queued",
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X03",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X03",
+          "from": "rendering",
+          "to": "uploading",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X04",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X04",
+          "from": "rendering",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X05",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X05",
+          "from": "uploading",
+          "to": "ready",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X06",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X06",
+          "from": "uploading",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X07",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X07",
+          "from": "uploading",
+          "to": "outcome_unknown",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X08",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X08",
+          "from": "outcome_unknown",
+          "to": "ready",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X09",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X09",
+          "from": "outcome_unknown",
+          "to": "failed",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X10",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X10",
+          "from": [
+            "queued",
+            "rendering",
+            "uploading"
+          ],
+          "to": "cancelled",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-L-export-X11",
+          "kind": "legal",
+          "aggregate": "export",
+          "transition": "X11",
+          "from": "ready",
+          "to": "expired",
+          "expect": "ok"
+        },
+        {
+          "id": "SM-N-export-queued",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "queued",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-rendering",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "rendering",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-uploading",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "uploading",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-ready",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "ready",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-failed",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "failed",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-cancelled",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "cancelled",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-outcome_unknown",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "outcome_unknown",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        },
+        {
+          "id": "SM-N-export-expired",
+          "kind": "reject",
+          "aggregate": "export",
+          "state": "expired",
+          "expect": "only_actions_whose_from_includes_state_succeed"
+        }
+      ]
+    },
+    {
+      "id": "ACT",
+      "name": "教师动作",
+      "count": 46,
+      "cases": [
+        {
+          "id": "ACT-OK-task.submit_requirement",
+          "action": "task.submit_requirement",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.submit_requirement",
+          "action": "task.submit_requirement",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-task.approve_plan",
+          "action": "task.approve_plan",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.approve_plan",
+          "action": "task.approve_plan",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-task.request_plan_revision",
+          "action": "task.request_plan_revision",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.request_plan_revision",
+          "action": "task.request_plan_revision",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-task.cancel",
+          "action": "task.cancel",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.cancel",
+          "action": "task.cancel",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-task.replan",
+          "action": "task.replan",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.replan",
+          "action": "task.replan",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-task.retry",
+          "action": "task.retry",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.retry",
+          "action": "task.retry",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-task.request_cancel",
+          "action": "task.request_cancel",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-task.request_cancel",
+          "action": "task.request_cancel",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-requirement_version.abandon",
+          "action": "requirement_version.abandon",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-requirement_version.abandon",
+          "action": "requirement_version.abandon",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-plan_version.reject",
+          "action": "plan_version.reject",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-plan_version.reject",
+          "action": "plan_version.reject",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-plan_approval.revoke",
+          "action": "plan_approval.revoke",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-plan_approval.revoke",
+          "action": "plan_approval.revoke",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-execution.request_pause",
+          "action": "execution.request_pause",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-execution.request_pause",
+          "action": "execution.request_pause",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-execution.resume",
+          "action": "execution.resume",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-execution.resume",
+          "action": "execution.resume",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.submit_check",
+          "action": "draft.submit_check",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.submit_check",
+          "action": "draft.submit_check",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.abandon",
+          "action": "draft.abandon",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.abandon",
+          "action": "draft.abandon",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.cancel_check",
+          "action": "draft.cancel_check",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.cancel_check",
+          "action": "draft.cancel_check",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.approve",
+          "action": "draft.approve",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.approve",
+          "action": "draft.approve",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.request_changes",
+          "action": "draft.request_changes",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.request_changes",
+          "action": "draft.request_changes",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.publish",
+          "action": "draft.publish",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.publish",
+          "action": "draft.publish",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.withdraw_approval",
+          "action": "draft.withdraw_approval",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.withdraw_approval",
+          "action": "draft.withdraw_approval",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.resolve_issue",
+          "action": "draft.resolve_issue",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.resolve_issue",
+          "action": "draft.resolve_issue",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.retry_check",
+          "action": "draft.retry_check",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.retry_check",
+          "action": "draft.retry_check",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-draft.rebase",
+          "action": "draft.rebase",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-draft.rebase",
+          "action": "draft.rebase",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        },
+        {
+          "id": "ACT-OK-export.cancel",
+          "action": "export.cancel",
+          "kind": "success",
+          "expect": "state_advanced"
+        },
+        {
+          "id": "ACT-ERR-export.cancel",
+          "action": "export.cancel",
+          "kind": "failure",
+          "expect": "error_codes_listed"
+        }
+      ]
+    },
+    {
+      "id": "API",
+      "name": "接口契约",
+      "count": 64,
+      "cases": [
+        {
+          "id": "API-ACT-task.submit_requirement",
+          "path": "/tasks/{task_id}/actions/submit-requirement",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-task.approve_plan",
+          "path": "/tasks/{task_id}/actions/approve-plan",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-task.request_plan_revision",
+          "path": "/tasks/{task_id}/actions/request-plan-revision",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-task.cancel",
+          "path": "/tasks/{task_id}/actions/cancel",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-task.replan",
+          "path": "/tasks/{task_id}/actions/replan",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-task.retry",
+          "path": "/tasks/{task_id}/actions/retry",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-task.request_cancel",
+          "path": "/tasks/{task_id}/actions/request-cancel",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-requirement_version.abandon",
+          "path": "/requirement-versions/{requirement_version_id}/actions/abandon",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-plan_version.reject",
+          "path": "/plan-versions/{plan_version_id}/actions/reject",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-plan_approval.revoke",
+          "path": "/plan-approvals/{plan_approval_id}/actions/revoke",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-execution.request_pause",
+          "path": "/executions/{execution_id}/actions/request-pause",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-execution.resume",
+          "path": "/executions/{execution_id}/actions/resume",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.submit_check",
+          "path": "/drafts/{draft_id}/actions/submit-check",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.abandon",
+          "path": "/drafts/{draft_id}/actions/abandon",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.cancel_check",
+          "path": "/drafts/{draft_id}/actions/cancel-check",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.approve",
+          "path": "/drafts/{draft_id}/actions/approve",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.request_changes",
+          "path": "/drafts/{draft_id}/actions/request-changes",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.publish",
+          "path": "/drafts/{draft_id}/actions/publish",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.withdraw_approval",
+          "path": "/drafts/{draft_id}/actions/withdraw-approval",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.resolve_issue",
+          "path": "/drafts/{draft_id}/actions/resolve-issue",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.retry_check",
+          "path": "/drafts/{draft_id}/actions/retry-check",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-draft.rebase",
+          "path": "/drafts/{draft_id}/actions/rebase",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-ACT-export.cancel",
+          "path": "/exports/{export_id}/actions/cancel",
+          "method": "POST",
+          "kind": "action",
+          "checks": [
+            "idempotency_replay",
+            "state_version_conflict",
+            "allowed_actions_present"
+          ]
+        },
+        {
+          "id": "API-RES-GET-me",
+          "path": "/me",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-projects",
+          "path": "/projects",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-projects",
+          "path": "/projects",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-projects-project_id",
+          "path": "/projects/{project_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-PATCH-projects-project_id",
+          "path": "/projects/{project_id}",
+          "method": "PATCH",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-projects-project_id-materials",
+          "path": "/projects/{project_id}/materials",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-materials",
+          "path": "/materials",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-materials-material_id",
+          "path": "/materials/{material_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-materials-material_id-versions",
+          "path": "/materials/{material_id}/versions",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-materials-material_id-versions-version_id",
+          "path": "/materials/{material_id}/versions/{version_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-materials-material_id-drafts",
+          "path": "/materials/{material_id}/drafts",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-drafts-draft_id",
+          "path": "/drafts/{draft_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-PUT-drafts-draft_id-revision",
+          "path": "/drafts/{draft_id}/revision",
+          "method": "PUT",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-drafts-draft_id-revisions",
+          "path": "/drafts/{draft_id}/revisions",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-drafts-draft_id-quality-runs",
+          "path": "/drafts/{draft_id}/quality-runs",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-quality-runs-run_id",
+          "path": "/quality-runs/{run_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-drafts-draft_id-math-runs",
+          "path": "/drafts/{draft_id}/math-runs",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-tasks",
+          "path": "/tasks",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-tasks",
+          "path": "/tasks",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-tasks-task_id",
+          "path": "/tasks/{task_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-tasks-task_id-plan",
+          "path": "/tasks/{task_id}/plan",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-executions-execution_id",
+          "path": "/executions/{execution_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-conversations-conversation_id-messages",
+          "path": "/conversations/{conversation_id}/messages",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-conversations-conversation_id-messages",
+          "path": "/conversations/{conversation_id}/messages",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-search",
+          "path": "/knowledge/search",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-sources",
+          "path": "/knowledge/sources",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-knowledge-upload-intents",
+          "path": "/knowledge/upload-intents",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-sources-source_id",
+          "path": "/knowledge/sources/{source_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-materials-material_id-exports",
+          "path": "/materials/{material_id}/exports",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-exports-export_id",
+          "path": "/exports/{export_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-exports-export_id-download-url",
+          "path": "/exports/{export_id}/download-url",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-activity",
+          "path": "/activity",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-questions",
+          "path": "/knowledge/questions",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-questions-question_id",
+          "path": "/knowledge/questions/{question_id}",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-sources-source_id-questions",
+          "path": "/knowledge/sources/{source_id}/questions",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-knowledge-questions-question_id-segments",
+          "path": "/knowledge/questions/{question_id}/segments",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-knowledge-questions-question_id-annotations",
+          "path": "/knowledge/questions/{question_id}/annotations",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-knowledge-categories",
+          "path": "/knowledge/categories",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-knowledge-categories",
+          "path": "/knowledge/categories",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-POST-knowledge-sources",
+          "path": "/knowledge/sources",
+          "method": "POST",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        },
+        {
+          "id": "API-RES-GET-exports-export_id-preview-url",
+          "path": "/exports/{export_id}/preview-url",
+          "method": "GET",
+          "kind": "resource",
+          "checks": [
+            "owner_isolation_404",
+            "shape_matches_contract"
+          ]
+        }
+      ]
+    },
+    {
+      "id": "ERR",
+      "name": "错误码路径",
+      "count": 18,
+      "cases": [
+        {
+          "id": "ERR-STATE_CONFLICT",
+          "code": "STATE_CONFLICT",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-TERMINAL_STATE",
+          "code": "TERMINAL_STATE",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-REVISION_CONFLICT",
+          "code": "REVISION_CONFLICT",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-PLAN_NOT_APPROVED",
+          "code": "PLAN_NOT_APPROVED",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-STALE_GATE",
+          "code": "STALE_GATE",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-APPROVAL_CONSUMED",
+          "code": "APPROVAL_CONSUMED",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-CHECK_IN_PROGRESS",
+          "code": "CHECK_IN_PROGRESS",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-AST_INVALID",
+          "code": "AST_INVALID",
+          "http_status": 422
+        },
+        {
+          "id": "ERR-CITATION_INVALID",
+          "code": "CITATION_INVALID",
+          "http_status": 422
+        },
+        {
+          "id": "ERR-SOURCE_NOT_AUTHORIZED",
+          "code": "SOURCE_NOT_AUTHORIZED",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-RIGHTS_BLOCKED",
+          "code": "RIGHTS_BLOCKED",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-CAPABILITY_GAP",
+          "code": "CAPABILITY_GAP",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-SCOPE_EXPANSION_REQUIRED",
+          "code": "SCOPE_EXPANSION_REQUIRED",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-EXPORT_NOT_READY",
+          "code": "EXPORT_NOT_READY",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-WORKER_LEASE_LOST",
+          "code": "WORKER_LEASE_LOST",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-OUTCOME_UNKNOWN",
+          "code": "OUTCOME_UNKNOWN",
+          "http_status": 409
+        },
+        {
+          "id": "ERR-FORBIDDEN",
+          "code": "FORBIDDEN",
+          "http_status": 403
+        },
+        {
+          "id": "ERR-NOT_FOUND",
+          "code": "NOT_FOUND",
+          "http_status": 404
+        }
+      ]
+    },
+    {
+      "id": "UI",
+      "name": "界面验收",
+      "count": 12,
+      "cases": [
+        {
+          "id": "UI-01",
+          "assertion": "每屏最多一个主按钮"
+        },
+        {
+          "id": "UI-02",
+          "assertion": "按钮集合完全由 allowed_actions 决定"
+        },
+        {
+          "id": "UI-03",
+          "assertion": "四种通用状态（加载/空/错/冲突）均已实现"
+        },
+        {
+          "id": "UI-04",
+          "assertion": "冲突面板不允许静默覆盖"
+        },
+        {
+          "id": "UI-05",
+          "assertion": "学生视图从 AST 投影，非 CSS 隐藏"
+        },
+        {
+          "id": "UI-06",
+          "assertion": "问题条目可展开证据并跳转定位"
+        },
+        {
+          "id": "UI-07",
+          "assertion": "忽略 S1 必须填理由并留痕"
+        },
+        {
+          "id": "UI-08",
+          "assertion": "门禁过期时发布按钮禁用"
+        },
+        {
+          "id": "UI-09",
+          "assertion": "发布成功提示含版本号且声明不可修改"
+        },
+        {
+          "id": "UI-10",
+          "assertion": "预览与下载同源，预览先于下载"
+        },
+        {
+          "id": "UI-11",
+          "assertion": "断线重连后界面状态与接口一致"
+        },
+        {
+          "id": "UI-12",
+          "assertion": "outcome_unknown 时禁止重复提交并提示"
+        }
+      ]
+    },
+    {
+      "id": "METRIC",
+      "name": "验收指标",
+      "count": 18,
+      "cases": [
+        {
+          "id": "METRIC-M1",
+          "target": "引用可追溯率 100%"
+        },
+        {
+          "id": "METRIC-M2",
+          "target": "来源定位可回读率 100%"
+        },
+        {
+          "id": "METRIC-M3",
+          "target": "AI 内容误标率 0"
+        },
+        {
+          "id": "METRIC-M4",
+          "target": "可判定节点验证覆盖率 ≥ 90%"
+        },
+        {
+          "id": "METRIC-M5",
+          "target": "假通过数 0"
+        },
+        {
+          "id": "METRIC-M6",
+          "target": "基准集通过率 ≥ 95%"
+        },
+        {
+          "id": "METRIC-M7",
+          "target": "生成时长 P50 ≤ 4min / P95 ≤ 8min"
+        },
+        {
+          "id": "METRIC-M8",
+          "target": "端到端时长 P50 ≤ 15min"
+        },
+        {
+          "id": "METRIC-M9",
+          "target": "首轮 Plan 一次通过率 ≥ 70%"
+        },
+        {
+          "id": "METRIC-M10",
+          "target": "教师编辑节点占比 ≤ 20%"
+        },
+        {
+          "id": "METRIC-M11",
+          "target": "发布前重检轮次 ≤ 2"
+        },
+        {
+          "id": "METRIC-M12",
+          "target": "S1 阻断密度 ≤ 1"
+        },
+        {
+          "id": "METRIC-M13",
+          "target": "学生版泄漏数 0"
+        },
+        {
+          "id": "METRIC-M14",
+          "target": "必需署名缺失数 0"
+        },
+        {
+          "id": "METRIC-M15",
+          "target": "发布重复版本数 1"
+        },
+        {
+          "id": "METRIC-M16",
+          "target": "未对账重试数 0"
+        },
+        {
+          "id": "METRIC-M17",
+          "target": "SSE 事件丢失数 0"
+        },
+        {
+          "id": "METRIC-M18",
+          "target": "并发 CAS 正确率 100%"
+        }
+      ]
+    },
+    {
+      "id": "DATA",
+      "name": "数据质量与引用完整性",
+      "count": 24,
+      "cases": [
+        {
+          "id": "DATA-A1",
+          "assertion": "document_kind = mixed"
+        },
+        {
+          "id": "DATA-A2",
+          "assertion": "section 数量与 purpose 符合要求"
+        },
+        {
+          "id": "DATA-A3",
+          "assertion": "workbook_example ≥ 2 且绑定 workbook Citation"
+        },
+        {
+          "id": "DATA-A4",
+          "assertion": "gaokao_question ≥ 3 且绑定 gaokao_paper Citation"
+        },
+        {
+          "id": "DATA-A5",
+          "assertion": "ai_generated 题目 ≥ 2 且难度受控"
+        },
+        {
+          "id": "DATA-A6",
+          "assertion": "答案/解析/提示均非 student 可见"
+        },
+        {
+          "id": "DATA-A7",
+          "assertion": "选择题 options ≥ 2，answer_node_ids 指向后代"
+        },
+        {
+          "id": "DATA-A8",
+          "assertion": "节点 ID 全局唯一"
+        },
+        {
+          "id": "DATA-A9",
+          "assertion": "mock_question ≥ 1 且绑定 mock_exam Citation"
+        },
+        {
+          "id": "DATA-C1",
+          "assertion": "citation_id 唯一且至少被一个节点使用"
+        },
+        {
+          "id": "DATA-C2",
+          "assertion": "usage.rights 满足目标 Profile"
+        },
+        {
+          "id": "DATA-C3",
+          "assertion": "excerpt_hash = sha256(excerpt.text)"
+        },
+        {
+          "id": "DATA-C4",
+          "assertion": "locator 页码与类型匹配（含 segments）"
+        },
+        {
+          "id": "DATA-C5",
+          "assertion": "retrieval_run_id 指向真实检索"
+        },
+        {
+          "id": "DATA-G1",
+          "assertion": "Gate 结果为 passed/passed_with_warnings"
+        },
+        {
+          "id": "DATA-G2",
+          "assertion": "math_validation_result = validated"
+        },
+        {
+          "id": "DATA-G3",
+          "assertion": "检查目标 Revision 与发布 Revision 一致"
+        },
+        {
+          "id": "DATA-G4",
+          "assertion": "存在 S0 时发布被拒绝"
+        },
+        {
+          "id": "DATA-G5",
+          "assertion": "相同幂等键二次发布返回同一版本"
+        },
+        {
+          "id": "DATA-X1",
+          "assertion": "教师版含 student+teacher，不含 internal"
+        },
+        {
+          "id": "DATA-X2",
+          "assertion": "学生版答案类节点数 = 0"
+        },
+        {
+          "id": "DATA-X3",
+          "assertion": "学生版保留必需 Attribution"
+        },
+        {
+          "id": "DATA-X4",
+          "assertion": "两个导出文件 Hash 可复现"
+        },
+        {
+          "id": "DATA-X5",
+          "assertion": "export.source_document_hash 与版本一致"
+        }
+      ]
+    }
+  ],
+  "concurrency_checks": [
+    {
+      "id": "CC-01",
+      "case": "两个请求同时审批同一 Plan，只有一个 CAS 成功"
+    },
+    {
+      "id": "CC-02",
+      "case": "两个请求同时暂停同一 Execution，只有一个生效"
+    },
+    {
+      "id": "CC-03",
+      "case": "两个 Draft 同时发布，后者进入 needs_rebase"
+    },
+    {
+      "id": "CC-04",
+      "case": "同一发布幂等键重复请求返回同一版本"
+    },
+    {
+      "id": "CC-05",
+      "case": "丢失 Lease 后用旧 Fencing Token 写入，不能推进状态"
+    },
+    {
+      "id": "CC-06",
+      "case": "outcome_unknown 分别对账为成功/失败/取消，不重复调用副作用工具"
+    },
+    {
+      "id": "CC-07",
+      "case": "SSE 断线按 Last-Event-ID 回放后，投影与数据库一致"
+    },
+    {
+      "id": "CC-08",
+      "case": "Draft 当前 Revision 与 Chat base_revision_no 不一致时返回冲突且不修改"
+    },
+    {
+      "id": "CC-09",
+      "case": "检查期间修改 Draft，旧报告变 stale 且发布门禁拒绝"
+    },
+    {
+      "id": "CC-10",
+      "case": "发布事务逐步注入失败，不产生孤立版本或重复消费审批"
+    }
+  ]
+}

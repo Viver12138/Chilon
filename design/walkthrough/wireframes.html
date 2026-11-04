@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>Chilon 界面草图</title>
+<style>
+  :root {
+    --ink: #1f2328;
+    --muted: #6b7280;
+    --line: #d0d7de;
+    --soft: #f6f8fa;
+    --accent: #2563eb;
+    --warn: #b45309;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    padding: 0 0 80px;
+    font-family: "Microsoft YaHei", "PingFang SC", "Hiragino Sans GB", sans-serif;
+    color: var(--ink);
+    background: #eef1f4;
+    line-height: 1.6;
+  }
+  .toolbar {
+    position: sticky; top: 0; z-index: 10;
+    display: flex; gap: 16px; align-items: center;
+    padding: 10px 24px;
+    background: #fff; border-bottom: 1px solid var(--line);
+    font-size: 13px;
+  }
+  .toolbar .hint { color: var(--muted); }
+  .wrap { max-width: 980px; margin: 24px auto; padding: 0 20px; }
+  .panel {
+    background: #fff; border: 1px solid var(--line); border-radius: 10px;
+    padding: 24px 28px; margin-bottom: 28px;
+  }
+  .panel > header { border-bottom: 1px solid var(--line); padding-bottom: 12px; margin-bottom: 20px; }
+  .panel h2 { margin: 0 0 4px; font-size: 19px; }
+  .screen {
+    border: 1px solid var(--line); border-radius: 8px; overflow: hidden;
+    margin-bottom: 8px;
+  }
+  .screen .bar {
+    background: var(--soft); border-bottom: 1px solid var(--line);
+    padding: 8px 12px; font-size: 12px; color: var(--muted);
+    display: flex; justify-content: space-between;
+  }
+  .screen .body { padding: 18px; }
+  .block {
+    border: 1px dashed var(--line); border-radius: 6px;
+    padding: 10px 12px; margin-bottom: 12px; font-size: 14px;
+  }
+  .block .label { font-size: 12px; color: var(--muted); display: block; margin-bottom: 4px; }
+  .row { display: flex; gap: 12px; flex-wrap: wrap; }
+  .row > .block { flex: 1 1 200px; margin-bottom: 0; }
+  .field {
+    border: 1px solid var(--line); border-radius: 4px;
+    padding: 6px 10px; font-size: 13px; color: var(--muted);
+    background: #fff; margin-bottom: 8px;
+  }
+  .btn {
+    display: inline-block; padding: 7px 16px; border-radius: 6px;
+    font-size: 13px; border: 1px solid var(--line); background: #fff;
+  }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.danger { color: #b91c1c; border-color: #fca5a5; }
+  .actions { display: flex; gap: 10px; margin-top: 14px; flex-wrap: wrap; }
+  .list { margin: 0; padding-left: 18px; font-size: 13px; }
+  .list li { margin-bottom: 4px; }
+  .tag {
+    display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 999px;
+    background: var(--soft); border: 1px solid var(--line); color: var(--muted);
+    margin-right: 6px;
+  }
+  .tag.s0 { background: #fee2e2; border-color: #fecaca; color: #991b1b; }
+  .tag.s1 { background: #ffedd5; border-color: #fed7aa; color: #9a3412; }
+  .tag.s2 { background: #fef9c3; border-color: #fde68a; color: #854d0e; }
+  .tag.ok { background: #dcfce7; border-color: #bbf7d0; color: #166534; }
+  .q { margin: 6px 0 0; padding-left: 18px; }
+  .q li { margin-bottom: 2px; }
+  @media print {
+    body { background: #fff; padding: 0; }
+    .toolbar { display: none !important; }
+    .wrap { max-width: none; margin: 0; padding: 0; }
+    .panel { border: none; margin: 0; padding: 0; page-break-after: always; }
+    .panel:last-child { page-break-after: auto; }
+    .screen { border-color: #999; }
+  }
+</style>
+</head>
+<body>
+
+<div class="toolbar">
+  <span class="hint">打印：每个面板一页 A4</span>
+  <button class="btn" onclick="window.print()">打印</button>
+</div>
+
+<div class="wrap">
+  <div class="panel">
+    <header>
+      <h2>0 · 起点</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>Chilon</span><span>张老师 · 高二数学</span></div>
+      <div class="body">
+        <div class="block">
+          <span class="label">空状态</span>
+          还没有项目。项目 = 一个教学专题（比如“三角函数一轮复习”）。
+        </div>
+        <div class="row">
+          <div class="block">＋ 创建项目</div>
+          <div class="block">↑ 上传教学资料</div>
+        </div>
+        <div class="actions"><span class="btn primary">创建第一个项目</span></div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>1 · 说清楚要什么</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>新建任务 · 三角函数一轮复习</span><span>第 1 步 / 共 4 步</span></div>
+      <div class="body">
+        <div class="row">
+          <div class="field">年级：高二</div>
+          <div class="field">专题：三角函数的图象与性质</div>
+        </div>
+        <div class="row">
+          <div class="field">内容类型：讲义 + 练习</div>
+          <div class="field">课时：1 课时</div>
+        </div>
+        <div class="block">
+          <span class="label">需要的内容</span>
+          讲义（学习目标、定义、例题、易错点）<br>
+          2 道教辅例题、5 道高考真题（中等难度）<br>
+          2 道近期模拟题
+        </div>
+        <div class="row">
+          <div class="field">导出用途：学生版 + 教师版</div>
+          <div class="field">使用资料：仅我已审核的资料</div>
+        </div>
+        <div class="actions">
+          <span class="btn primary">下一步：生成计划</span>
+          <span class="btn">保存草稿</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>2 · 计划审批</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>执行计划 · 等待你确认</span><span>第 2 步 / 共 4 步</span></div>
+      <div class="body">
+        <div class="block">
+          <span class="label">将使用的资料（3 份，均已审核）</span>
+          《高中数学同步练习册（必修第一册）》2025 版 · 第 52 页<br>
+          2024 新课标 I 卷 · 第 7 题<br>
+          2026 示例省高三一模 · 第 12 题
+        </div>
+        <div class="block">
+          <span class="label">讲义结构</span>
+          学习目标 → 前置知识 → 定义与性质 → 教辅例题 ×2 → 易错点 → 章节总结
+        </div>
+        <div class="row">
+          <div class="block">教辅例题：2 道</div>
+          <div class="block">高考真题：5 道（中等）</div>
+          <div class="block">模拟题：2 道（近 3 年）</div>
+          <div class="block">预计耗时：约 3 分钟</div>
+        </div>
+        <div class="block">
+          <span class="label">将执行的检查</span>
+          结构与引用完整性 · 数学正确性验证 · 答案与解析一致性
+        </div>
+        <div class="actions">
+          <span class="btn primary">批准并开始生成</span>
+          <span class="btn">要求修改计划</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>3 · 生成中</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>正在生成 · 三角函数一轮复习</span><span>第 3 步 / 共 4 步</span></div>
+      <div class="body">
+        <div class="block">
+          <span class="label">进度</span>
+          3 / 7 步完成 —— 正在检查公式正确性<br>
+          预计还需 1 分钟
+        </div>
+        <ul class="list">
+          <li>✓ 读取资料</li>
+          <li>✓ 生成讲义结构</li>
+          <li>✓ 编写定义与例题</li>
+          <li>… 正在验证公式（SymPy）</li>
+        </ul>
+        <div class="actions">
+          <span class="btn">暂停</span>
+          <span class="btn danger">取消任务</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>4 · 检查结果</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>检查结果 · 草稿 v3</span><span>第 4 步 / 共 4 步</span></div>
+      <div class="body">
+        <div class="block">
+          <span class="label">总体结论</span>
+          <span class="tag ok">可以通过</span> 有 1 个警告，不影响发布
+        </div>
+        <div class="block">
+          <span class="label">发现的问题</span>
+          <span class="tag s1">需要你决定</span> 第 4 题的答案与解析步骤不一致
+          <div style="color:#6b7280;font-size:12px;margin-top:6px;">证据：Validator 输出 × 3 行 · 点击查看</div>
+        </div>
+        <div class="block">
+          <span class="label">通过的项目</span>
+          <span class="tag ok">数学验证</span> 18 个公式全部通过 ·
+          <span class="tag ok">引用完整</span> 7 处引用均可追溯
+        </div>
+        <div class="actions">
+          <span class="btn primary">去修改</span>
+          <span class="btn">重新检查</span>
+          <span class="btn">忽略此警告，继续发布</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>5 · 发布审核</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>发布为正式版本</span><span>材料：三角函数一轮复习讲义</span></div>
+      <div class="body">
+        <div class="row">
+          <div class="block"><span class="label">版本</span>将生成 v3（永久不可修改）</div>
+          <div class="block"><span class="label">检查结论</span>通过 · 1 个已处理警告</div>
+        </div>
+        <div class="block">
+          <span class="label">引用来源（3 份）</span>
+          教材 ×1（已确认可用于课堂）· 2024 真题 ×2（已确认可用于课堂）
+        </div>
+        <div class="block">
+          <span class="label">学生版将排除</span>
+          6 个答案节点 · 4 个解析节点 · 2 条教师备注
+        </div>
+        <div class="actions">
+          <span class="btn primary">发布</span>
+          <span class="btn">要求修改</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>6 · 导出</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>导出 · v3</span><span>最近一次发布：今天 14:20</span></div>
+      <div class="body">
+        <div class="row">
+          <div class="block"><span class="label">教师版</span>含答案、解析、教师备注<br><span style="color:#6b7280;font-size:12px;">Word / PDF</span></div>
+          <div class="block"><span class="label">学生版</span>不含答案、解析、教师备注<br><span style="color:#6b7280;font-size:12px;">Word / PDF</span></div>
+        </div>
+        <div class="block">
+          <span class="label">已核对</span>
+          学生版共 24 个内容块，其中答案类 0 个 · 解析类 0 个
+        </div>
+        <div class="actions">
+          <span class="btn primary">导出学生版</span>
+          <span class="btn">导出教师版</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="panel">
+    <header>
+      <h2>7 · 上传纸质资料</h2>
+    </header>
+    <div class="screen">
+      <div class="bar"><span>上传教学资料</span><span>练习册第 12 页</span></div>
+      <div class="body">
+        <div class="block">
+          <span class="label">解析结果（识别可能需要你确认）</span>
+          12. 已知 α 为第二象限角，且 sinα = 3/5，求 cosα 的值。<br>
+          13. 化简 <span style="font-family:monospace">sin(π/2 + α)·cos(π − α)</span>
+        </div>
+        <div class="row">
+          <div class="block"><span class="label">识别置信度</span><span class="tag s2">第 13 题公式可能有误</span></div>
+          <div class="block"><span class="label">来源</span>练习册第 12 页 · 拍照上传</div>
+        </div>
+        <div class="actions">
+          <span class="btn primary">确认并加入知识库</span>
+          <span class="btn">编辑识别结果</span>
+          <span class="btn">重新上传</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div>
+</body>
+</html>
