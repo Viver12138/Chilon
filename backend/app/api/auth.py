@@ -24,6 +24,7 @@ from pydantic import BaseModel, Field
 
 from app.api.deps import ApiError, UserDep, current_user
 from app.db import session as db
+from app.services import agent as agent_service
 from app.services import identity
 
 router = APIRouter(tags=["auth"], prefix="/auth")
@@ -55,6 +56,10 @@ async def register(payload: RegisterRequest) -> dict:
             raise ApiError(409, "USERNAME_TAKEN", f"username {payload.username!r} is taken")
         except identity.IdentityError as exc:
             raise ApiError(422, "AST_INVALID", str(exc)) from exc
+    # a brand new teacher owns no tools yet; grants are owner-scoped, so they are
+    # written in that teacher's own context rather than the registration session
+    async with db.session_for(user_id) as session:
+        await agent_service.ensure_default_grants(session, user_id)
     return {"user_id": str(user_id), "username": payload.username.strip().lower()}
 
 
