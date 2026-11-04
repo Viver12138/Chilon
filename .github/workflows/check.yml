@@ -78,3 +78,7 @@ jobs:
       # 12) HTTP surface: frozen endpoints and codes, real RLS (non-superuser role).
       - name: Verify HTTP surface
         run: pwsh -NoProfile -File database/tests/run_api_test.ps1
+      # 13) Agent turn: requirement -> validated plan. Uses the template planner;
+      #     the DeepSeek case skips when no API key is configured.
+      - name: Verify agent turn
+        run: pwsh -NoProfile -File database/tests/run_agent_test.ps1
