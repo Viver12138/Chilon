@@ -131,7 +131,7 @@
         {
           "type": "check",
           "name": "ck_tasks_status",
-          "expr": "status IN ('draft','clarifying','ready','planned','awaiting_approval','approved','executing','paused','completed','failed','cancelled')"
+          "expr": "status IN ('draft','planning','awaiting_plan_approval','ready','running','completed','needs_attention','cancelling','cancelled')"
         }
       ],
       "indexes": [
@@ -254,7 +254,7 @@
         {
           "type": "check",
           "name": "ck_task_requirement_versions_status",
-          "expr": "status IN ('draft','confirmed','superseded')"
+          "expr": "status IN ('draft','active','superseded','abandoned')"
         }
       ],
       "indexes": [],
@@ -479,7 +479,7 @@
         {
           "type": "check",
           "name": "ck_agent_plan_versions_status",
-          "expr": "status IN ('draft','awaiting_approval','approved','superseded','abandoned')"
+          "expr": "status IN ('draft','awaiting_approval','approved','rejected','expired','invalidated','superseded')"
         }
       ],
       "indexes": [
@@ -614,7 +614,7 @@
         {
           "type": "check",
           "name": "ck_agent_plan_approvals_status",
-          "expr": "status IN ('pending','approved','rejected','invalidated','expired','consumed')"
+          "expr": "status IN ('pending','approved','rejected','revoked','invalidated','expired')"
         },
         {
           "type": "check",
@@ -1272,7 +1272,7 @@
         {
           "type": "check",
           "name": "ck_agent_executions_status",
-          "expr": "status IN ('queued','starting','running','paused','waiting_approval','completing','succeeded','failed','cancelled','outcome_unknown','recovering','expired')"
+          "expr": "status IN ('queued','starting','running','pause_requested','paused','cancel_requested','cancelling','outcome_unknown','succeeded','failed','cancelled','superseded')"
         },
         {
           "type": "check",
@@ -1375,7 +1375,7 @@
           "type": "varchar",
           "length": 24,
           "nullable": false,
-          "default": "'queued'",
+          "default": "'starting'",
           "sensitivity": "public",
           "desc": "queued / running / succeeded / failed / cancelled / timeout"
         },
@@ -1414,7 +1414,7 @@
         {
           "type": "check",
           "name": "ck_agent_runs_status",
-          "expr": "status IN ('queued','running','succeeded','failed','cancelled','timeout')"
+          "expr": "status IN ('starting','running','interrupted','completed','failed','lost','superseded')"
         }
       ],
       "indexes": [
@@ -1530,7 +1530,7 @@
         {
           "type": "check",
           "name": "ck_agent_step_executions_status",
-          "expr": "status IN ('pending','ready','running','succeeded','failed','skipped','cancelled','blocked','outcome_unknown','retrying')"
+          "expr": "status IN ('pending','ready','running','paused','succeeded','failed','blocked','skipped','cancelled','superseded')"
         }
       ],
       "indexes": [
@@ -1618,7 +1618,7 @@
           "type": "varchar",
           "length": 24,
           "nullable": false,
-          "default": "'pending'",
+          "default": "'requested'",
           "sensitivity": "public",
           "desc": "工具调用状态机"
         },
@@ -1678,7 +1678,7 @@
         {
           "type": "check",
           "name": "ck_agent_tool_executions_status",
-          "expr": "status IN ('pending','running','succeeded','failed','cancelled','timeout','outcome_unknown','blocked')"
+          "expr": "status IN ('requested','authorizing','authorized','rejected','dispatching','running','succeeded','failed','cancelled','outcome_unknown')"
         }
       ],
       "indexes": [
