@@ -123,7 +123,7 @@
       "id": "K013",
       "name": "Conversation & Activity",
       "status": "DESIGNED",
-      "registry_file": null
+      "registry_file": "fields/k013.json"
     },
     {
       "id": "K014",
@@ -135,7 +135,7 @@
       "id": "K021",
       "name": "Administrative Security",
       "status": "DESIGNED",
-      "registry_file": null
+      "registry_file": "fields/k021.json"
     }
   ],
   "tables": [
@@ -574,6 +574,83 @@
       "layer": "detail",
       "owner_scoped": false,
       "soft_delete": false
+    },
+    {
+      "name": "conversations",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": true
+    },
+    {
+      "name": "conversation_messages",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "conversation_events",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "agent_activities",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "conversation_attachments",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "conversation_participants",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "conversation_cursors",
+      "module": "K013",
+      "layer": "detail",
+      "owner_scoped": true,
+      "soft_delete": false
+    },
+    {
+      "name": "admin_operation_requests",
+      "module": "K021",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "admin_operation_approvals",
+      "module": "K021",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "admin_operation_executions",
+      "module": "K021",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
+    },
+    {
+      "name": "admin_security_events",
+      "module": "K021",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
     }
   ],
   "layers": {
@@ -603,6 +680,13 @@
     "agent_runtime_events",
     "agent_execution_events",
     "outbox_events",
+    "conversations",
+    "conversation_messages",
+    "conversation_events",
+    "agent_activities",
+    "conversation_attachments",
+    "conversation_participants",
+    "conversation_cursors",
     "material_drafts",
     "material_draft_revisions",
     "document_schema_definitions",
@@ -634,6 +718,10 @@
     "quality_releases",
     "quality_release_approvals",
     "quality_release_events",
+    "admin_operation_requests",
+    "admin_operation_approvals",
+    "admin_operation_executions",
+    "admin_security_events",
     "knowledge_categories",
     "knowledge_sources",
     "knowledge_document_versions",
