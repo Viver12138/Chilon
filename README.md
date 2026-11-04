@@ -106,6 +106,9 @@ pwsh -NoProfile -File database/tests/run_material_test.ps1
 
 # 发布与导出：审批单次消费、版本不可变、学生版 DOCX 解压后搜不到答案
 pwsh -NoProfile -File database/tests/run_publish_export_test.ps1
+
+# 认证：注册 → 登录拿 token → 用它建任务 → 登出立即失效
+pwsh -NoProfile -File database/tests/run_auth_test.ps1
 ```
 
 ## 配置与模型
