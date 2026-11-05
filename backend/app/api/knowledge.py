@@ -158,6 +158,7 @@ async def upload_source(
         "file_size_bytes": len(data),
         "chunks": parsed.get("chunks", 0),
         "questions": parsed.get("questions", 0),
+        "answers": parsed.get("answers", 0),
         "parse_error": parsed.get("error"),
         "parse_detail": parsed.get("detail"),
     }

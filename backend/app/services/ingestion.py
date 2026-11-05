@@ -50,6 +50,13 @@ QUESTION_START = re.compile(
 )
 SECTION_START = re.compile(r"^\s*(?:一|二|三|四|五|六|七|八|九|十)\s*[、.]")
 
+# a trailing answer key: the heading, then `1. A` lines
+ANSWER_KEY_HEADING = re.compile(r"^\s*(?:参考答案|答案与解析|答案|解析)\s*[:：]?\s*$")
+KEY_ENTRY = re.compile(r"^\s*(?P<no>\d{1,3})\s*[.、．]\s*(?P<ans>\S.*?)\s*$")
+
+# an answer stated inside the question
+INLINE_ANSWER = re.compile(r"^\s*(?:【答案】|【解析】|【解答】|答案\s*[:：]|解析\s*[:：]|答\s*[:：])")
+
 
 class IngestionError(Exception):
     pass
@@ -115,26 +122,39 @@ class Segment:
     section: str | None
     locator: dict[str, Any]
     text: str
+    answer_locator: dict[str, Any] | None = None
+    answer_text: str | None = None
 
 
 def segment(blocks: list[Block]) -> list[Segment]:
     """Split paragraphs into one segment per question, or per run of prose.
 
-    A paragraph that starts like a question opens a segment; every paragraph after it
-    belongs to it until the next question starts. Text before the first question (the
-    paper's title, instructions) becomes its own segment so it is still retrievable.
+    Answers are extracted, not left inside the stem, for two reasons:
+
+    1. the stem is what retrieval matches on, and an answer line dilutes it;
+    2. the answer is *teacher-only* content. Keeping it in its own chunk with its own
+       locator is what lets a later step project it out instead of hoping a renderer
+       hides it.
+
+    Three shapes are recognised, all deterministic:
+    `答案：…` inline, `【答案】…` inline, and a trailing key section
+    (`参考答案` followed by `1. A` lines) matched back by question number.
     """
     segments: list[Segment] = []
     section: str | None = None
     current: list[Block] = []
+    answer_blocks: list[Block] = []
     current_no: str | None = None
+    key_mode = False
+    key_answers: dict[str, tuple[int, str]] = {}
 
     def flush() -> None:
-        nonlocal current, current_no
+        nonlocal current, answer_blocks, current_no
         if not current:
             return
-        body = "\n".join(b.text for b in current).strip()
-        if body:
+        stem = "\n".join(b.text for b in current).strip()
+        answer = "\n".join(b.text for b in answer_blocks).strip()
+        if stem:
             segments.append(
                 Segment(
                     ordinal=len(segments),
@@ -144,13 +164,32 @@ def segment(blocks: list[Block]) -> list[Segment]:
                         "paragraph_start": current[0].index,
                         "paragraph_end": current[-1].index,
                     },
-                    text=body,
+                    text=stem,
+                    answer_locator=(
+                        {
+                            "paragraph_start": answer_blocks[0].index,
+                            "paragraph_end": answer_blocks[-1].index,
+                        }
+                        if answer_blocks
+                        else None
+                    ),
+                    answer_text=answer or None,
                 )
             )
         current = []
+        answer_blocks = []
         current_no = None
 
     for block in blocks:
+        if ANSWER_KEY_HEADING.match(block.text):
+            flush()
+            key_mode = True
+            continue
+        if key_mode:
+            entry = KEY_ENTRY.match(block.text)
+            if entry:
+                key_answers[entry.group("no")] = (block.index, entry.group("ans").strip())
+            continue
         if SECTION_START.match(block.text):
             flush()
             section = block.text.strip()[:60]
@@ -159,8 +198,24 @@ def segment(blocks: list[Block]) -> list[Segment]:
         if match:
             flush()
             current_no = match.group("num") or match.group("paren")
+            current.append(block)
+            continue
+        if INLINE_ANSWER.match(block.text):
+            # the answer starts here; everything after it belongs to the answer
+            answer_blocks.append(block)
+            continue
+        if answer_blocks:
+            answer_blocks.append(block)
+            continue
         current.append(block)
     flush()
+
+    # a trailing key fills in the questions that carried no inline answer
+    for item in segments:
+        if item.question_no and item.answer_text is None and item.question_no in key_answers:
+            index, value = key_answers[item.question_no]
+            item.answer_text = value
+            item.answer_locator = {"paragraph_start": index, "paragraph_end": index}
     return segments
 
 
@@ -168,8 +223,13 @@ def text_hash(value: str) -> str:
     return hashlib.sha256(value.encode("utf-8")).hexdigest()
 
 
-def chunk_key(segment: Segment) -> str:
+def stem_key(segment: Segment) -> str:
     return f"p{segment.locator['paragraph_start']:05d}"
+
+
+def answer_key(segment: Segment) -> str:
+    locator = segment.answer_locator or {}
+    return f"a{locator.get('paragraph_start', 0):05d}"
 
 
 # ── ingestion ──────────────────────────────────────────────────────────────────
@@ -296,6 +356,7 @@ async def ingest(
     )
 
     question_count = 0
+    answer_count = 0
     for item in segments:
         await session.execute(
             text(
@@ -310,7 +371,7 @@ async def ingest(
             ),
             {
                 "v": document_version_id,
-                "key": chunk_key(item),
+                "key": stem_key(item),
                 "ordinal": item.ordinal,
                 "body": item.text,
                 "hash": text_hash(item.text),
@@ -319,6 +380,37 @@ async def ingest(
                 "schema": PARSE_SCHEMA_VERSION,
             },
         )
+
+        # The answer lives in its own chunk with its own locator. That is what makes
+        # it projectable: a viewer can leave it out by not following answer_locator,
+        # instead of a renderer having to guess which line is the answer.
+        answer_locator_json: str | None = None
+        if item.answer_text and item.answer_locator:
+            answer_locator_json = json.dumps(item.answer_locator, sort_keys=True)
+            answer_count += 1
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO knowledge_chunks
+                        (id, document_version_id, chunk_key, ordinal, text_content, text_hash,
+                         locator, content_kind, parser_version, parse_schema_version)
+                    VALUES
+                        (gen_random_uuid(), :v, :key, :ordinal, :body, :hash,
+                         CAST(:locator AS jsonb), 'text', :parser, :schema)
+                    """
+                ),
+                {
+                    "v": document_version_id,
+                    "key": answer_key(item),
+                    "ordinal": item.ordinal + 10000,
+                    "body": item.answer_text,
+                    "hash": text_hash(item.answer_text),
+                    "locator": answer_locator_json,
+                    "parser": PARSER_VERSION,
+                    "schema": PARSE_SCHEMA_VERSION,
+                },
+            )
+
         if item.question_no:
             question_count += 1
             await session.execute(
@@ -326,10 +418,11 @@ async def ingest(
                     """
                     INSERT INTO knowledge_questions
                         (id, document_version_id, question_no, section_label, ordinal,
-                         stem_locator, segmentation_status, segmentation_source)
+                         stem_locator, answer_locator, segmentation_status, segmentation_source)
                     VALUES
                         (gen_random_uuid(), :v, :no, :section, :ordinal,
-                         CAST(:locator AS jsonb), 'auto', 'rule')
+                         CAST(:locator AS jsonb), CAST(:answer_locator AS jsonb),
+                         'auto', 'rule')
                     """
                 ),
                 {
@@ -338,6 +431,7 @@ async def ingest(
                     "section": item.section,
                     "ordinal": item.ordinal,
                     "locator": json.dumps(item.locator, sort_keys=True),
+                    "answer_locator": answer_locator_json,
                 },
             )
 
@@ -355,8 +449,9 @@ async def ingest(
 
     metrics = {
         "paragraphs": len(blocks),
-        "chunks": len(segments),
+        "chunks": len(segments) + answer_count,
         "questions": question_count,
+        "answers": answer_count,
         "characters": sum(len(s.text) for s in segments),
     }
     await _record_run(session, document_version_id, status="succeeded", metrics=metrics)
@@ -364,8 +459,9 @@ async def ingest(
     return {
         "status": "indexed",
         "document_version_id": str(document_version_id),
-        "chunks": len(segments),
+        "chunks": len(segments) + answer_count,
         "questions": question_count,
+        "answers": answer_count,
         "source_id": str(version.source_id),
         **metrics,
     }

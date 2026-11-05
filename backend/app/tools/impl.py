@@ -77,6 +77,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                        c.locator,
                        q.id AS question_id,
                        q.question_no,
+                       ac.text_content AS answer_text,
                        s.id AS source_id,
                        s.title,
                        s.source_type,
@@ -88,6 +89,11 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                 LEFT JOIN knowledge_questions q
                        ON q.document_version_id = dv.id
                       AND q.stem_locator = c.locator
+                -- the paper's own answer, when it had one; joined by the question's
+                -- answer_locator so it never has to be guessed from the stem's text
+                LEFT JOIN knowledge_chunks ac
+                       ON ac.document_version_id = dv.id
+                      AND ac.locator = q.answer_locator
                 WHERE dv.lifecycle_status IN ('approved', 'indexed')
                   AND c.text_content ILIKE :pattern
                   {source_filter}
@@ -104,6 +110,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             "chunk_id": str(r.chunk_id),
             "question_id": str(r.question_id) if r.question_id else None,
             "question_no": r.question_no,
+            "answer": r.answer_text,
             "source_id": str(r.source_id),
             "source_title": r.title,
             "source_type": r.source_type,
@@ -233,10 +240,25 @@ async def content_generate(session: AsyncSession, ctx: ToolContext) -> dict[str,
     use_model = engine != "template" and config.load().llm_configured
 
     if use_model:
-        refs = "\n".join(
-            f"- chunk_id={h['chunk_id']}：《{h['source_title']}》{(h.get('excerpt') or '')[:120]}"
-            for h in hits[:6]
-        ) or "（无可用参考资料）"
+        def reference_lines() -> str:
+            """Reference block for the model.
+
+            When the paper carries its own answer, it is given explicitly and the
+            model is told to prefer it: an answer copied from a licensed paper is
+            traceable, an answer invented by the model is not.
+            """
+            out = []
+            for h in hits[:6]:
+                line = (
+                    f"- chunk_id={h['chunk_id']}：《{h['source_title']}》"
+                    f"{(h.get('excerpt') or '')[:120]}"
+                )
+                if h.get("answer"):
+                    line += f"\n    该题原卷答案：{str(h['answer'])[:120]}（优先采用）"
+                out.append(line)
+            return "\n".join(out) or "（无可用参考资料）"
+
+        refs = reference_lines()
         prompt = f"课题：{topic}\n题量：{count}\n参考资料：\n{refs}\n\n请输出 JSON。"
         raw = await _call_deepseek(prompt)
         questions = _validate_questions(raw, count)

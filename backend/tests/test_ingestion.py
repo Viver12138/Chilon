@@ -47,8 +47,13 @@ PARAGRAPHS = [
     "一、选择题",
     "1. 已知三角函数 f(x)=sin(2x+π/3)，求其最小正周期与单调递增区间。",
     "A. π  B. 2π  C. π/2  D. 4π",
+    "答案：π",
     "2. 化简 sin²x + cos²x + tan x·cot x。",
     "3. 在 △ABC 中，a=3，b=4，C=90°，求 c。",
+    "4. 求 tan 45° 的值。",
+    "参考答案",
+    "2. 2",
+    "3. c=5",
 ]
 
 
@@ -124,8 +129,9 @@ async def main() -> int:
         check(r.status_code == 201, f"upload accepted (got {r.status_code}: {r.text[:160]})")
         body = r.json()
         check(body["lifecycle_status"] == "indexed", f"version indexed (got {body['lifecycle_status']})")
-        check(body["chunks"] == 4, f"4 chunks (got {body['chunks']})")
-        check(body["questions"] == 3, f"3 questions (got {body['questions']})")
+        check(body["chunks"] == 8, f"5 stem + 3 answer chunks (got {body['chunks']})")
+        check(body["questions"] == 4, f"4 questions (got {body['questions']})")
+        check(body["answers"] == 3, f"3 answers found (got {body['answers']})")
         source_id = uuid.UUID(body["source_id"])
 
         print("2. the chunks and questions are stored with matching locators")
@@ -146,9 +152,9 @@ async def main() -> int:
                     {"v": uuid.UUID(body["document_version_id"])},
                 )
             ).all()
-        check(len(rows) == 4, f"4 chunk rows (got {len(rows)})")
+        check(len(rows) == 8, f"8 chunk rows (got {len(rows)})")
         linked = [r for r in rows if r.q_loc is not None]
-        check(len(linked) == 3, f"3 chunks are linked to a question (got {len(linked)})")
+        check(len(linked) == 4, f"4 chunks are linked to a question (got {len(linked)})")
         check(
             all(r.c_loc == r.q_loc for r in linked),
             "question locators equal their chunk locators",
@@ -170,6 +176,40 @@ async def main() -> int:
             "the hit is linked to question 1",
         )
 
+
+        print("3b. the paper's own answers are extracted and attached")
+        async with db.session_for(owner) as session:
+            answered = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT question_no, answer_locator,
+                               (SELECT text_content FROM knowledge_chunks c
+                                WHERE c.document_version_id = q.document_version_id
+                                  AND c.locator = q.answer_locator) AS answer_text
+                        FROM knowledge_questions q
+                        WHERE q.document_version_id = :v
+                        ORDER BY q.ordinal
+                        """
+                    ),
+                    {"v": uuid.UUID(body["document_version_id"])},
+                )
+            ).all()
+        by_no = {r.question_no: r for r in answered}
+        check(by_no["1"].answer_text == "答案：π", f"Q1 inline answer (got {by_no['1'].answer_text!r})")
+        check(by_no["2"].answer_text == "2", f"Q2 key answer (got {by_no['2'].answer_text!r})")
+        check(by_no["3"].answer_text == "c=5", f"Q3 key answer (got {by_no['3'].answer_text!r})")
+        check(by_no["4"].answer_locator is None, "Q4 has no answer, and says so with NULL")
+
+        async with db.session_for(owner) as session:
+            hit_with_answer = await tools_impl.knowledge_search(
+                session, search_ctx(owner, {"topic": "最小正周期", "sources": []})
+            )
+        check(
+            any(h.get("answer") == "答案：π" for h in hit_with_answer["hits"]),
+            "retrieval carries the paper's answer next to the stem",
+        )
+
         print("4. another teacher cannot see it")
         async with db.system_session() as session:
             other_name = f"ing_other_{uuid.uuid4().hex[:6]}"
@@ -183,7 +223,7 @@ async def main() -> int:
         print("5. re-ingesting replaces rather than appends")
         async with db.session_for(owner) as session:
             again = await ingestion.ingest_latest(session, owner, source_id)
-        check(again["chunks"] == 4, f"still 4 chunks after re-ingest (got {again['chunks']})")
+        check(again["chunks"] == 8, f"still 8 chunks after re-ingest (got {again['chunks']})")
         async with db.session_for(owner) as session:
             count = (
                 await session.execute(
@@ -191,7 +231,7 @@ async def main() -> int:
                     {"v": uuid.UUID(body["document_version_id"])},
                 )
             ).scalar_one()
-        check(count == 4, f"no duplicated chunks (got {count})")
+        check(count == 8, f"no duplicated chunks (got {count})")
 
         print("6. a PDF is refused with a reason, and the version is marked failed")
         async with httpx.AsyncClient(
