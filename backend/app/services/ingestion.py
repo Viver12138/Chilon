@@ -33,7 +33,9 @@ from xml.etree import ElementTree
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services import taxonomy
+from app import settings as config
+
+from app.services import ocr, taxonomy
 
 PARSER_VERSION = "chilon-ingest-1"
 PARSE_SCHEMA_VERSION = "1.0"
@@ -323,6 +325,7 @@ async def _record_run(
     version_id: uuid.UUID,
     *,
     status: str,
+    stage: str = "parse",
     metrics: dict[str, Any] | None = None,
     error_code: str | None = None,
     error_detail: str | None = None,
@@ -334,12 +337,13 @@ async def _record_run(
                 (id, document_version_id, stage, status, tool_version,
                  started_at, finished_at, error_code, error_detail, metrics)
             VALUES
-                (gen_random_uuid(), :v, 'parse', :status, :tool,
+                (gen_random_uuid(), :v, :stage, :status, :tool,
                  now(), now(), :code, :detail, CAST(:metrics AS jsonb))
             """
         ),
         {
             "v": version_id,
+            "stage": stage,
             "status": status,
             "tool": PARSER_VERSION,
             "code": error_code,
@@ -401,20 +405,78 @@ async def ingest(
         return {"status": "failed", "error": "file_missing", "chunks": 0, "questions": 0}
 
     data = path.read_bytes()
+    ocr_meta: dict[str, Any] = {}
     try:
         blocks = paragraphs_for(version.mime_type, data)
-        segments = segment(blocks)
     except UnsupportedFormat as exc:
+        # A scan has no text layer. If an operator configured OCR, use it; if not, keep
+        # refusing with the reason. Never fall through to "indexed with no content".
+        provider = None
+        try:
+            provider = ocr.build()
+        except ocr.OcrUnavailable as problem:
+            exc = UnsupportedFormat(f"{exc}（OCR 未启用：{problem}）")
+
+        if provider is None or version.mime_type != PDF_MIME:
+            await _record_run(
+                session,
+                document_version_id,
+                status="failed",
+                error_code="unsupported_format",
+                error_detail=str(exc),
+            )
+            await _mark_failed(session, document_version_id)
+            return {"status": "failed", "error": "unsupported_format", "detail": str(exc),
+                    "chunks": 0, "questions": 0}
+
+        try:
+            result = provider.read(data)
+        except (ocr.OcrUnavailable, ocr.OcrFailed) as problem:
+            await _record_run(
+                session,
+                document_version_id,
+                status="failed",
+                stage="ocr",
+                error_code="ocr_failed",
+                error_detail=str(problem),
+                metrics={"engine": provider.name, "version": provider.version},
+            )
+            await _mark_failed(session, document_version_id)
+            return {"status": "failed", "error": "ocr_failed", "detail": str(problem),
+                    "chunks": 0, "questions": 0}
+
+        blocks = []
+        for page in result.pages:
+            for line in (raw.strip() for raw in page.text.splitlines()):
+                if line:
+                    blocks.append(Block(len(blocks), line, page.page_number))
+        ocr_meta = {
+            "engine": result.engine,
+            "engine_version": result.version,
+            "confidence": round(result.confidence, 3),
+            "pages": len(result.pages),
+        }
         await _record_run(
             session,
             document_version_id,
-            status="failed",
-            error_code="unsupported_format",
-            error_detail=str(exc),
+            status="succeeded",
+            stage="ocr",
+            metrics=ocr_meta,
         )
-        await _mark_failed(session, document_version_id)
-        return {"status": "failed", "error": "unsupported_format", "detail": str(exc),
-                "chunks": 0, "questions": 0}
+        if not blocks:
+            await _record_run(
+                session,
+                document_version_id,
+                status="failed",
+                error_code="no_text",
+                error_detail="OCR produced no text",
+                metrics=ocr_meta,
+            )
+            await _mark_failed(session, document_version_id)
+            return {"status": "failed", "error": "no_text",
+                    "detail": "OCR 没有识别出文字", "chunks": 0, "questions": 0}
+
+    segments = segment(blocks)
 
     if not segments:
         await _record_run(
@@ -521,16 +583,34 @@ async def ingest(
                 },
             )
 
+    settings = config.load()
+    low_confidence = (
+        bool(ocr_meta)
+        and float(ocr_meta.get("confidence") or 0.0) < settings.ocr_min_confidence
+    )
+    # A scan that OCR read badly must not enter retrieval silently. `pending_review` is
+    # a declared state, and retrieval only reads approved/indexed, so the gate is the
+    # existing vocabulary rather than a new flag.
+    lifecycle = "pending_review" if low_confidence else "indexed"
     await session.execute(
         text(
             """
             UPDATE knowledge_document_versions
-            SET lifecycle_status = 'indexed', indexed_at = now(),
+            SET lifecycle_status = :lifecycle,
+                indexed_at = CASE WHEN :is_indexed THEN now() ELSE NULL END,
                 parser_version = :parser, parse_schema_version = :schema
             WHERE id = :v
             """
         ),
-        {"v": document_version_id, "parser": PARSER_VERSION, "schema": PARSE_SCHEMA_VERSION},
+        {
+            "v": document_version_id,
+            "lifecycle": lifecycle,
+            # a boolean keeps the parameter out of a text comparison: reusing the
+            # lifecycle value there made Postgres deduce two types for one parameter
+            "is_indexed": lifecycle == "indexed",
+            "parser": PARSER_VERSION,
+            "schema": PARSE_SCHEMA_VERSION,
+        },
     )
 
     metrics = {
@@ -543,7 +623,9 @@ async def ingest(
     await _record_run(session, document_version_id, status="succeeded", metrics=metrics)
 
     return {
-        "status": "indexed",
+        "status": lifecycle,
+        "needs_review": low_confidence,
+        "ocr": ocr_meta or None,
         "document_version_id": str(document_version_id),
         "chunks": len(segments) + answer_count,
         "questions": question_count,

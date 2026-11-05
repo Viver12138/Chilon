@@ -159,6 +159,8 @@ async def upload_source(
         "chunks": parsed.get("chunks", 0),
         "questions": parsed.get("questions", 0),
         "answers": parsed.get("answers", 0),
+        "needs_review": parsed.get("needs_review", False),
+        "ocr": parsed.get("ocr"),
         "parse_error": parsed.get("error"),
         "parse_detail": parsed.get("detail"),
     }
