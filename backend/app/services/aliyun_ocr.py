@@ -51,6 +51,9 @@ class PaperQuestion:
     # invent; `content_list_info[].pos` is the bounding box, kept for highlighting
     number: str | None = None
     box: list | None = None
+    # 解析版 interleaves 【详解】 with the questions; that prose belongs beside the stem,
+    # never inside it — a teacher's question text must stay the question text
+    analysis: str = ""
 
     def as_text(self) -> str:
         parts = [self.stem]
@@ -218,13 +221,15 @@ def extract_questions(payload: Any, *, page: int | None = None) -> list[PaperQue
         except json.JSONDecodeError as exc:
             raise ShapeUnknown(f"Data is not JSON: {exc}") from exc
 
-    if isinstance(payload, dict):
+    if isinstance(payload, dict) and "page_list" in payload:
+        # A recognised shape with no subjects means "this page has no questions" — a
+        # cover page, a figure page, or the tail of the answer section. That is not an
+        # unknown response, and raising here made 23-page documents fail on page 1.
         direct = _questions_from_page_list(payload)
-        if direct:
-            if page is not None:
-                for item in direct:
-                    item.page = page
-            return direct
+        if page is not None:
+            for item in direct:
+                item.page = page
+        return direct
 
     candidates: list[dict[str, Any]] = []
 
