@@ -558,8 +558,8 @@
         {
           "name": "pol_knowledge_document_versions_write",
           "command": "ALL",
-          "using": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
-          "with_check": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+          "using": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())"
         }
       ]
     },
@@ -692,8 +692,8 @@
         {
           "name": "pol_knowledge_chunks_write",
           "command": "ALL",
-          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
-          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())"
         }
       ]
     },
@@ -880,8 +880,8 @@
         {
           "name": "pol_knowledge_questions_write",
           "command": "ALL",
-          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))",
-          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))"
+          "using": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())"
         }
       ]
     },
