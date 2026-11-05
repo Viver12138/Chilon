@@ -119,6 +119,12 @@ pwsh -NoProfile -File database/tests/run_ui_test.ps1
 # SSE：Last-Event-ID 回放、实时跟随、空闲心跳
 pwsh -NoProfile -File database/tests/run_sse_test.ps1
 
+# 密码重置：管理员端点 + 运维脚本，重置即吊销全部会话
+pwsh -NoProfile -File database/tests/run_password_reset_test.ps1
+
+# 忘记密码（运维）：
+# $env:CHILON_DATABASE_URL='postgresql+psycopg://...'; python tools/reset_password.py --username teacher_demo
+
 # PDF 导出与教师上传（上传在 RLS 下运行，非超级用户）
 pwsh -NoProfile -File database/tests/run_pdf_upload_test.ps1
 
