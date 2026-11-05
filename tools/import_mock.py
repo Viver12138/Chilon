@@ -37,7 +37,6 @@ async def main() -> int:
     parser = argparse.ArgumentParser(description="Import mock papers by OCR")
     parser.add_argument("--dir", default="corpus/mock-exams")
     parser.add_argument("--limit", type=int, default=5)
-    parser.add_argument("--max-pages", type=int, default=0)
     parser.add_argument("--database-url", default=os.environ.get("CHILON_DATABASE_URL"))
     args = parser.parse_args()
 
@@ -61,8 +60,7 @@ async def main() -> int:
             try:
                 async with db.system_session() as session:
                     result = await mock_import.import_mock_paper(
-                        session, path=path, title=path.stem.replace("__数学试题", ""),
-                        max_pages=args.max_pages,
+                        session, path=path, title=path.stem.replace("__数学试题", "")
                     )
             except Exception as exc:  # noqa: BLE001
                 print(f"FAIL {path.name[:50]}: {exc}", file=sys.stderr)
