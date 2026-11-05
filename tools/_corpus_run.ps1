@@ -1,0 +1,76 @@
+# One-off: import the real materials we actually have into a throwaway platform
+# corpus, then ask three teacher-style questions against it.
+#
+#   .\tools\_corpus_run.ps1
+
+param(
+    [string]$Container = "chilon-pg-corpus",
+    [int]$Port = 55470,
+    [string]$Password = "chilon_test_only"
+)
+
+$ErrorActionPreference = "Continue"
+if (Get-Variable PSNativeCommandUseErrorActionPreference -ErrorAction SilentlyContinue) {
+    $PSNativeCommandUseErrorActionPreference = $false
+}
+
+$root = "D:\Chilon"
+$ddl = Join-Path $root "database/generated/schema.sql"
+$python = Join-Path $root ".venv/Scripts/python.exe"
+
+# stage only what belongs in the corpus as a question source
+$stage = Join-Path $root "var/corpus_stage"
+Remove-Item $stage -Recurse -Force -ErrorAction SilentlyContinue
+New-Item -ItemType Directory -Path $stage -Force | Out-Null
+$picks = @(
+    "docs/2024年新课标全国Ⅰ卷数学真题（原卷版）.pdf",
+    "docs/2024年新课标全国Ⅱ卷数学真题（原卷版）.pdf",
+    "docs/samples/Chilon-三角函数练习-教师版.docx"
+)
+foreach ($p in $picks) {
+    $src = Join-Path $root $p
+    if (Test-Path $src) { Copy-Item $src $stage; Write-Host "    staged $(Split-Path $src -Leaf)" }
+    else { Write-Host "    MISSING $p" -ForegroundColor Yellow }
+}
+
+Write-Host "==> starting postgres:17" -ForegroundColor Cyan
+docker rm -f $Container 2>&1 | Out-Null
+$started = $false
+for ($attempt = 1; $attempt -le 3; $attempt++) {
+    docker rm -f $Container 2>&1 | Out-Null
+    $out = docker run -d --name $Container -e "POSTGRES_PASSWORD=$Password" -e "POSTGRES_DB=chilon" -p "${Port}:5432" postgres:17 2>&1
+    if ($LASTEXITCODE -eq 0) { $started = $true; break }
+    Start-Sleep -Seconds 2
+}
+if (-not $started) { Write-Host "docker run failed: $out" -ForegroundColor Red; exit 1 }
+
+$ready = $false
+for ($i = 0; $i -lt 120; $i++) {
+    docker exec $Container pg_isready -h 127.0.0.1 -p 5432 -U postgres -d chilon *> $null
+    if ($LASTEXITCODE -eq 0) { $ready = $true; break }
+    Start-Sleep -Milliseconds 500
+}
+if (-not $ready) { Write-Host "postgres did not become ready" -ForegroundColor Red; docker rm -f $Container | Out-Null; exit 1 }
+
+docker cp $ddl "${Container}:/tmp/schema.sql" 2>&1 | Out-Null
+Write-Host "==> applying schema" -ForegroundColor Cyan
+docker exec $Container psql -U postgres -d chilon -v ON_ERROR_STOP=1 -q -f /tmp/schema.sql 2>&1 | Out-Null
+if ($LASTEXITCODE -ne 0) { Write-Host "DDL failed" -ForegroundColor Red; docker rm -f $Container | Out-Null; exit 1 }
+
+$url = "postgresql+psycopg://postgres:$Password@localhost:$Port/chilon"
+Write-Host "==> importing corpus" -ForegroundColor Cyan
+$env:CHILON_DATABASE_URL = $url
+# scanned PDFs need OCR, and cloud OCR is opt-in by design
+$env:CHILON_OCR_PROVIDER = "aliyun"
+Push-Location $root
+try {
+    & $python "tools/import_platform.py" --dir $stage --source-type gaokao_paper *>&1 | ForEach-Object { Write-Host "  $_" }
+
+    Write-Host "==> asking three teacher-style questions" -ForegroundColor Cyan
+    $env:CHILON_TEST_DATABASE_URL = $url
+    & $python "tools/_corpus_probe.py" *>&1 | ForEach-Object { Write-Host "  $_" }
+}
+finally {
+    Pop-Location
+    docker rm -f $Container 2>&1 | Out-Null
+}

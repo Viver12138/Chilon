@@ -25,6 +25,9 @@ COPY backend ./backend
 COPY schemas ./schemas
 COPY database ./database
 COPY scripts ./scripts
+# the operator import tool must exist inside the image: the corpus is loaded by
+# running it against the deployed database, not from a developer machine
+COPY tools ./tools
 
 # a non-root runtime user: the process that reads teacher uploads must not be root
 RUN useradd --create-home --uid 10001 chilon \

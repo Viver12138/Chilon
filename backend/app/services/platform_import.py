@@ -193,5 +193,7 @@ async def import_document(
         "questions": parsed.get("questions", 0),
         "chunks": parsed.get("chunks", 0),
         "review_reasons": parsed.get("review_reasons", []),
+        # a failed import must say why; "0 questions" is a symptom, not a reason
+        "detail": parsed.get("detail") or parsed.get("error") or "",
         "promoted": bool(promoted and promoted.get("promoted")),
     }
