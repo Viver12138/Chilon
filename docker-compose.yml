@@ -36,6 +36,18 @@ services:
       CHILON_DEEPSEEK_API_KEY: ${CHILON_DEEPSEEK_API_KEY:-}
       CHILON_DEEPSEEK_BASE_URL: ${CHILON_DEEPSEEK_BASE_URL:-https://api.deepseek.com}
       CHILON_DEEPSEEK_MODEL: ${CHILON_DEEPSEEK_MODEL:-deepseek-chat}
+      # OCR is off unless these are set. Passing them here is what makes editing .env
+      # actually reach the container; without this block the settings would look
+      # configured on the host and be empty inside.
+      CHILON_OCR_PROVIDER: ${CHILON_OCR_PROVIDER:-none}
+      CHILON_OCR_MIN_CONFIDENCE: ${CHILON_OCR_MIN_CONFIDENCE:-0.6}
+      CHILON_OCR_LANGUAGES: ${CHILON_OCR_LANGUAGES:-chi_sim+eng}
+      CHILON_OCR_ALIYUN_KEY_ID: ${CHILON_OCR_ALIYUN_KEY_ID:-}
+      CHILON_OCR_ALIYUN_KEY_SECRET: ${CHILON_OCR_ALIYUN_KEY_SECRET:-}
+      CHILON_OCR_ALIYUN_IMAGE_TYPE: ${CHILON_OCR_ALIYUN_IMAGE_TYPE:-scan}
+      CHILON_OCR_ALIYUN_SUBJECT: ${CHILON_OCR_ALIYUN_SUBJECT:-Math}
+      CHILON_OCR_CLOUD_ENDPOINT: ${CHILON_OCR_CLOUD_ENDPOINT:-}
+      CHILON_OCR_CLOUD_KEY: ${CHILON_OCR_CLOUD_KEY:-}
     ports:
       - "${CHILON_PORT:-8000}:8000"
     volumes:
