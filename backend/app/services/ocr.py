@@ -52,6 +52,10 @@ class OcrResult:
     gaps: list[int] = field(default_factory=list)
     # how many analysis blocks were found; a paper full of 解析 is a 解析版
     analysis_blocks: int = 0
+    # raw subject counts before merging: merging folds unnumbered 解析 prose into the
+    # previous question, so post-merge counts cannot show that it was there at all
+    total_blocks: int = 0
+    unnumbered_blocks: int = 0
 
     @property
     def text(self) -> str:
@@ -307,6 +311,8 @@ class AliyunPaperCutProvider:
 
         questions: list = []
         confidence_pages: list[PageText] = []
+        raw_total = 0
+        raw_unnumbered = 0
         for page_number, png in enumerate(render_pages(pdf_bytes), 1):
             params = {
                 "CutType": "question",
@@ -323,6 +329,12 @@ class AliyunPaperCutProvider:
                     f"page {page_number}: {exc}. The vendor response shape is not what "
                     "this reader expects; adjust aliyun_ocr.extract_questions."
                 ) from exc
+            raw_total += len(found)
+            raw_unnumbered += sum(
+                1
+                for q in found
+                if leading_number(q.stem) is None and bare_number(q.stem) is None
+            )
             questions.extend(found)
             # the vendor does not return a confidence; treat "it parsed" as usable and
             # let the review gate catch bad scans through other signals
@@ -340,6 +352,8 @@ class AliyunPaperCutProvider:
             questions=merged,
             gaps=gaps,
             analysis_blocks=analysis_blocks,
+            total_blocks=raw_total,
+            unnumbered_blocks=raw_unnumbered,
         )
 
     def _call(self, png: bytes, params: dict[str, str], page_number: int) -> dict:

@@ -337,3 +337,39 @@ async def remove_question(
         )
     except knowledge_review.ReviewNotFound as exc:
         raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+
+
+@router.post("/versions/{version_id}/questions/{number}/restore")
+async def restore_question(
+    session: SessionDep, user: UserDep, version_id: uuid.UUID, number: int
+) -> dict:
+    """Undo a delete."""
+    try:
+        return await knowledge_review.restore_question(
+            session, user, version_id, number=number
+        )
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+
+
+class RenumberRequest(BaseModel):
+    new_number: int = Field(ge=1, le=200)
+
+
+@router.post("/versions/{version_id}/questions/{number}/renumber")
+async def renumber_question(
+    session: SessionDep,
+    user: UserDep,
+    version_id: uuid.UUID,
+    number: int,
+    payload: RenumberRequest,
+) -> dict:
+    """Move a question to another number, e.g. after the cutter merged two into one."""
+    try:
+        return await knowledge_review.renumber(
+            session, user, version_id, number=number, new_number=payload.new_number
+        )
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+    except knowledge_review.ReviewError as exc:
+        raise ApiError(422, "AST_INVALID", str(exc)) from exc

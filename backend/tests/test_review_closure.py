@@ -280,6 +280,45 @@ async def main() -> int:
         outline = r.json()
         check(2 not in outline["numbers"], f"it is gone from the outline (got {outline['numbers']})")
 
+
+        print("11. a delete can be undone")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
+        ) as client:
+            r = await client.post(
+                "/ui/knowledge/questions/restore",
+                data={"version_id": version_id, "number": "2"},
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"restore submits (got {r.status_code})")
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.get(f"/knowledge/versions/{version_id}", headers=headers)
+        outline = r.json()
+        check(2 in outline["numbers"], f"the restored number is back (got {outline['numbers']})")
+
+        print("12. a question's number can be moved")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
+        ) as client:
+            r = await client.post(
+                "/ui/knowledge/questions/renumber",
+                data={"version_id": version_id, "number": "4", "new_number": "5"},
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"renumber submits (got {r.status_code})")
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.get(f"/knowledge/versions/{version_id}", headers=headers)
+        outline = r.json()
+        check(5 in outline["numbers"] and 4 not in outline["numbers"],
+              f"the number moved (got {outline['numbers']})")
+        check(outline["gaps"] == [4], f"the vacated number is reported as a hole (got {outline['gaps']})")
+
         print("8. another teacher cannot touch this version")
         async with db.system_session() as session:
             other_name = f"rev_other_{uuid.uuid4().hex[:6]}"

@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: a11414eb6441bb4e113cd82980249c4c7811c55cf7408555ecf9a7eb97f917be
+-- registry_hash: 9c60efb85e26e796900460a7488b3113cec9a418ac726c7d0a62b559fb6e7128
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -1817,6 +1817,7 @@ CREATE TABLE knowledge_questions (
     "current_knowledge_points" TEXT[],
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "deleted_at" TIMESTAMPTZ,
     CONSTRAINT pk_knowledge_questions PRIMARY KEY ("id"),
     CONSTRAINT fk_knowledge_questions_document_version_id FOREIGN KEY ("document_version_id") REFERENCES knowledge_document_versions(id) ON DELETE CASCADE,
     CONSTRAINT uq_knowledge_questions_version_no UNIQUE ("document_version_id", "question_no"),

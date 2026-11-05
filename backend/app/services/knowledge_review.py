@@ -70,6 +70,7 @@ async def outline(session: AsyncSession, owner_id: uuid.UUID, version_id: uuid.U
                 SELECT question_no, current_paper_question_type, current_knowledge_points,
                        answer_locator IS NOT NULL AS has_answer
                 FROM knowledge_questions WHERE document_version_id = :v
+                  AND deleted_at IS NULL
                 ORDER BY ordinal
                 """
             ),
@@ -399,17 +400,21 @@ async def update_question(
 async def delete_question(
     session: AsyncSession, owner_id: uuid.UUID, version_id: uuid.UUID, *, number: int
 ) -> dict[str, Any]:
-    """Remove a question the cutter got wrong, together with its chunks.
+    """Remove a question from everything the teacher sees, reversibly.
 
-    Deleting the question but leaving the chunk would keep it discoverable in search —
-    a "deleted" question that still answers queries is worse than one that was never
-    removed.
+    The row is kept and stamped `deleted_at`; only the chunks go. Deleting the row would
+    make the action final, and a mis-click would cost a re-typed question — so the
+    reversible version is the one implemented, and the chunks still go because
+    retrieval must stop returning it immediately.
     """
     await outline(session, owner_id, version_id)
     stem_chunk, answer_chunk, _, _ = await _chunk_ids(session, version_id, number)
 
     await session.execute(
-        text("DELETE FROM knowledge_questions WHERE document_version_id = :v AND question_no = :n"),
+        text(
+            "UPDATE knowledge_questions SET deleted_at = now(), updated_at = now() "
+            "WHERE document_version_id = :v AND question_no = :n AND deleted_at IS NULL"
+        ),
         {"v": version_id, "n": str(number)},
     )
     for chunk_id in (stem_chunk, answer_chunk):
@@ -418,3 +423,69 @@ async def delete_question(
                 text("DELETE FROM knowledge_chunks WHERE id = :id"), {"id": chunk_id}
             )
     return {"document_version_id": str(version_id), "question_no": str(number), "deleted": True}
+
+
+async def restore_question(
+    session: AsyncSession, owner_id: uuid.UUID, version_id: uuid.UUID, *, number: int
+) -> dict[str, Any]:
+    """Undo a delete by re-creating the question from what was kept."""
+    await outline(session, owner_id, version_id)
+    row = (
+        await session.execute(
+            text(
+                """
+                SELECT id FROM knowledge_questions
+                WHERE document_version_id = :v AND question_no = :n AND deleted_at IS NOT NULL
+                """
+            ),
+            {"v": version_id, "n": str(number)},
+        )
+    ).first()
+    if row is None:
+        raise ReviewNotFound(f"第 {number} 题没有待恢复的删除记录")
+
+    await session.execute(
+        text("UPDATE knowledge_questions SET deleted_at = NULL, updated_at = now() WHERE id = :id"),
+        {"id": row.id},
+    )
+    return {"document_version_id": str(version_id), "question_no": str(number), "restored": True}
+
+
+async def renumber(
+    session: AsyncSession,
+    owner_id: uuid.UUID,
+    version_id: uuid.UUID,
+    *,
+    number: int,
+    new_number: int,
+) -> dict[str, Any]:
+    """Move a question to another number.
+
+    Needed when the cutter merged two questions into one block: the fix is to add the
+    second one and shift the rest, not to delete and retype everything after it.
+    """
+    await outline(session, owner_id, version_id)
+    if number == new_number:
+        return {"document_version_id": str(version_id), "moved": False}
+    taken = (
+        await session.execute(
+            text(
+                "SELECT 1 FROM knowledge_questions WHERE document_version_id = :v "
+                "AND question_no = :n AND deleted_at IS NULL"
+            ),
+            {"v": version_id, "n": str(new_number)},
+        )
+    ).first()
+    if taken:
+        raise ReviewError(f"第 {new_number} 题已存在，不能占用")
+
+    result = await session.execute(
+        text(
+            "UPDATE knowledge_questions SET question_no = :new, updated_at = now() "
+            "WHERE document_version_id = :v AND question_no = :old AND deleted_at IS NULL"
+        ),
+        {"v": version_id, "new": str(new_number), "old": str(number)},
+    )
+    if result.rowcount == 0:
+        raise ReviewNotFound(f"第 {number} 题不存在")
+    return {"document_version_id": str(version_id), "from": number, "to": new_number, "moved": True}
