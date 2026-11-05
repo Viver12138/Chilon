@@ -24,6 +24,7 @@ from fastapi import APIRouter, File, Form, UploadFile
 from sqlalchemy import text
 
 from app.api.deps import ApiError, SessionDep, UserDep
+from app.services import ingestion
 
 router = APIRouter(tags=["knowledge"], prefix="/knowledge")
 
@@ -140,6 +141,10 @@ async def upload_source(
         },
     )
 
+    # parse immediately: a stored-but-unparsed paper is invisible to retrieval, and the
+    # teacher would have no way to tell the difference from an empty knowledge base
+    parsed = await ingestion.ingest(session, user, version_id)
+
     return {
         "source_id": str(source_id),
         "document_version_id": str(version_id),
@@ -148,10 +153,13 @@ async def upload_source(
         "scope": "teacher",
         "rights_status": "unverified",
         "distribution_scope": "private_teacher",
-        "lifecycle_status": "processing",
+        "lifecycle_status": parsed.get("status"),
         "checksum_sha256": checksum,
         "file_size_bytes": len(data),
-        "note": "已保存；解析与切分尚未实现，该版本会停在 processing",
+        "chunks": parsed.get("chunks", 0),
+        "questions": parsed.get("questions", 0),
+        "parse_error": parsed.get("error"),
+        "parse_detail": parsed.get("detail"),
     }
 
 
@@ -184,3 +192,17 @@ async def list_sources(session: SessionDep, user: UserDep) -> dict:
             for r in rows
         ]
     }
+
+
+@router.post("/sources/{source_id}/ingest")
+async def reingest(session: SessionDep, user: UserDep, source_id: uuid.UUID) -> dict:
+    """Re-run parsing for a source's newest version.
+
+    Re-ingest replaces the chunks rather than appending, so calling it twice cannot
+    double a paper's retrieval weight.
+    """
+    try:
+        result = await ingestion.ingest_latest(session, user, source_id)
+    except ingestion.IngestionError as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+    return result

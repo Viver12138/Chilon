@@ -211,7 +211,7 @@ async def main() -> int:
             r = await client.post("/knowledge/sources", headers=headers, files=files, data=data)
         check(r.status_code == 201, f"upload accepted (got {r.status_code}: {r.text[:120]})")
         body = r.json()
-        check(body["lifecycle_status"] == "processing", "the version is processing, not indexed")
+        check(body["lifecycle_status"] == "indexed", "the upload is parsed immediately (indexed)")
         check(body["scope"] == "teacher", "the source is teacher-scoped")
         check(body["distribution_scope"] == "private_teacher", "the source is private")
         check(body["rights_status"] == "unverified", "rights start unverified")
@@ -276,7 +276,7 @@ async def main() -> int:
         for f in FAILURES:
             print(f"  - {f}")
         return 1
-    print("PASS: PDF converts the projected DOCX, and uploads are private and unparsed")
+    print("PASS: PDF converts the projected DOCX, and uploads are private and now parsed")
     return 0
 
 

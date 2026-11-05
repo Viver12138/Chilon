@@ -121,6 +121,9 @@ pwsh -NoProfile -File database/tests/run_sse_test.ps1
 
 # PDF 导出与教师上传（上传在 RLS 下运行，非超级用户）
 pwsh -NoProfile -File database/tests/run_pdf_upload_test.ps1
+
+# 知识库摄入：上传即解析、题目与块通过 locator 关联、仅所有者可检索
+pwsh -NoProfile -File database/tests/run_ingestion_test.ps1
 ```
 
 ## 配置与模型
