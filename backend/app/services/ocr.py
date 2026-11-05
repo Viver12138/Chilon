@@ -89,6 +89,11 @@ def render_pages(pdf_bytes: bytes, *, scale: float = 3.0) -> list[bytes]:
     here: an OCR pipeline that needs poppler installed is a pipeline half the
     deployments cannot run.
     """
+    if not pdf_bytes.startswith(b"%PDF"):
+        # a JPEG/PNG is already one page; sending it through a PDF renderer would fail
+        # and there is nothing to render
+        return [pdf_bytes]
+
     try:
         import pypdfium2 as pdfium
     except ImportError as exc:  # pragma: no cover - depends on the environment

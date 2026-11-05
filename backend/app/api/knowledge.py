@@ -33,6 +33,9 @@ UPLOAD_ROOT = Path(os.environ.get("CHILON_UPLOAD_DIR", "var/uploads"))
 ALLOWED_MIME = {
     "application/pdf": ".pdf",
     "application/vnd.openxmlformats-officedocument.wordprocessingml.document": ".docx",
+    # a photographed or exported page; the teacher's most common input
+    "image/jpeg": ".jpg",
+    "image/png": ".png",
 }
 MAX_BYTES = 50 * 1024 * 1024
 DEFAULT_CATEGORY_KEY = "teacher_uploads"
