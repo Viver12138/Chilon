@@ -29,7 +29,7 @@ from urllib.parse import quote
 from pathlib import Path
 from typing import Annotated
 
-from fastapi import APIRouter, Cookie, Form, Request
+from fastapi import APIRouter, Cookie, File, Form, Request, UploadFile
 from fastapi.responses import HTMLResponse, RedirectResponse, Response, StreamingResponse
 from sqlalchemy import text
 
@@ -84,6 +84,7 @@ def page(title: str, body: str, *, teacher: str | None = None) -> HTMLResponse:
         header = (
             '<div class="muted" style="display:flex;justify-content:space-between">'
             f"<span>{esc(teacher)}</span>"
+            '<a href="/ui/knowledge" style="margin-right:12px">知识库</a>'
             '<form method="post" action="/ui/logout" style="margin:0">'
             '<button class="secondary" type="submit">退出</button></form></div>'
         )
@@ -262,6 +263,104 @@ async def post_password(
             )
             return page("修改密码", body)
     return RedirectResponse("/ui/tasks", status_code=303)
+
+
+
+REASON_TEXT = {
+    "numbering_gaps": "题号有缺口，可能漏题——请补录或重传更完整的一页",
+    "analysis_version": "看起来是解析版（含大量解析），请上传原卷版作为题目来源",
+    "low_confidence": "识别置信度偏低——请重传更清晰的扫描件",
+}
+
+
+@router.get("/ui/knowledge")
+async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    """What the teacher uploaded, and what to do about anything held for review.
+
+    The reason is rendered next to the state because the two together are the actionable
+    part; a bare "待复核" only moves the judgement back to the teacher.
+    """
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+
+    async with db.session_for(user_id) as session:
+        rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT s.title, s.source_type, s.rights_status,
+                           v.lifecycle_status,
+                           (SELECT r.metrics->'review_reasons' FROM knowledge_ingestion_runs r
+                            WHERE r.document_version_id = v.id
+                            ORDER BY r.started_at DESC LIMIT 1) AS review_reasons
+                    FROM knowledge_sources s
+                    LEFT JOIN LATERAL (
+                        SELECT dv.id, dv.lifecycle_status FROM knowledge_document_versions dv
+                        WHERE dv.source_id = s.id ORDER BY dv.version_no DESC LIMIT 1
+                    ) v ON true
+                    WHERE s.deleted_at IS NULL
+                    ORDER BY s.created_at DESC LIMIT 100
+                    """
+                )
+            )
+        ).all()
+
+    blocks = []
+    for row in rows:
+        status = row.lifecycle_status or "未上传版本"
+        reasons = list(row.review_reasons or [])
+        reason_html = ""
+        if reasons:
+            items = "".join(
+                f"<li>{esc(REASON_TEXT.get(code, code))}</li>" for code in reasons
+            )
+            reason_html = f"<ul class='muted'>{items}</ul>"
+        blocks.append(
+            f"<div class='card'><p><b>{esc(row.title)}</b> "
+            f"<span class='tag'>{esc(status)}</span> "
+            f"<span class='muted'>{esc(row.source_type)}</span></p>{reason_html}</div>"
+        )
+
+    body = (
+        (''.join(blocks) if blocks else "<p class='muted'>还没有上传任何材料。</p>")
+        + "<h2>上传试卷</h2><div class='card'>"
+        "<form method='post' action='/ui/knowledge' enctype='multipart/form-data'>"
+        "<p><label>标题<br><input name='title' required></label></p>"
+        "<p><label>类型<br><select name='source_type'>"
+        "<option value='gaokao_paper'>高考真题</option>"
+        "<option value='mock_exam'>模拟题</option>"
+        "<option value='textbook'>教材</option>"
+        "<option value='other'>其他</option></select></label></p>"
+        "<p><label>文件（.docx 或可复制文字的 .pdf）<br>"
+        "<input type='file' name='file' accept='.docx,.pdf' required></label></p>"
+        "<button type='submit'>上传并解析</button></form></div>"
+    )
+    return page("知识库", body, teacher=name)
+
+
+@router.post("/ui/knowledge")
+async def knowledge_upload(
+    title: Annotated[str, Form()],
+    source_type: Annotated[str, Form()],
+    file: Annotated[UploadFile, File()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+
+    from app.api import knowledge as knowledge_api
+
+    async with db.session_for(user_id) as session:
+        await knowledge_api.store_and_ingest(session, user_id, file, title, source_type)
+    return RedirectResponse("/ui/knowledge", status_code=303)
 
 
 @router.get("/ui/tasks")

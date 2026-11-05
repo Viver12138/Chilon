@@ -50,6 +50,8 @@ class OcrResult:
     questions: list = field(default_factory=list)
     # question numbers the paper implies but the vendor did not return
     gaps: list[int] = field(default_factory=list)
+    # how many analysis blocks were found; a paper full of 解析 is a 解析版
+    analysis_blocks: int = 0
 
     @property
     def text(self) -> str:
@@ -330,12 +332,14 @@ class AliyunPaperCutProvider:
 
         merged = merge_fragments(questions)
         gaps = missing_numbers(merged)
+        analysis_blocks = sum(1 for q in merged if getattr(q, "analysis", ""))
         return OcrResult(
             pages=confidence_pages,
             engine=self.name,
             version=self.version,
             questions=merged,
             gaps=gaps,
+            analysis_blocks=analysis_blocks,
         )
 
     def _call(self, png: bytes, params: dict[str, str], page_number: int) -> dict:
