@@ -45,13 +45,23 @@ def load_pages(path: Path, *, page: int | None) -> list[bytes]:
     raise SystemExit(f"unsupported input type {suffix!r}; pass a PDF or an image")
 
 
-def report(payload: dict, page_number: int) -> int:
+def report(payload: dict, page_number: int, *, action: str = aliyun_ocr.ACTION_CUT) -> int:
     print(f"\n=== page {page_number} ===")
     print("top-level keys:", sorted(payload.keys()))
 
     data = aliyun_ocr.decode_data(payload)
     print("\n-- Data, as this reader sees it --")
     print(aliyun_ocr.describe_shape(data, max_depth=3))
+
+    if action == aliyun_ocr.ACTION_PAGE:
+        try:
+            page_text = aliyun_ocr.extract_page_text(payload)
+        except aliyun_ocr.ShapeUnknown as exc:
+            print(f"\n!! no text recovered: {exc}")
+            return 1
+        print(f"\n-- text recovered: {len(page_text)} chars --")
+        print(page_text[:400])
+        return 0
 
     try:
         questions = aliyun_ocr.extract_questions(data, page=page_number)
@@ -80,6 +90,12 @@ def main() -> int:
     parser.add_argument("--all-pages", action="store_true", help="send every PDF page")
     parser.add_argument("--subject", default=os.environ.get("CHILON_OCR_ALIYUN_SUBJECT", "Math"))
     parser.add_argument(
+        "--action",
+        default=os.environ.get("CHILON_OCR_ALIYUN_ACTION", aliyun_ocr.ACTION_CUT),
+        choices=sorted(aliyun_ocr.EDUCATION_ACTIONS),
+        help="which education API to probe",
+    )
+    parser.add_argument(
         "--image-type",
         default=os.environ.get("CHILON_OCR_ALIYUN_IMAGE_TYPE", "scan"),
         choices=("scan", "photo"),
@@ -106,8 +122,13 @@ def main() -> int:
     print(f"file: {path.name}  pages: {len(pages)}  subject: {args.subject}  type: {args.image_type}")
 
     provider = ocr_service.AliyunPaperCutProvider(
-        key_id, key_secret, image_type=args.image_type, subject=args.subject
+        key_id,
+        key_secret,
+        image_type=args.image_type,
+        subject=args.subject,
+        action=args.action,
     )
+    print(f"action: {args.action}  ({aliyun_ocr.EDUCATION_ACTIONS[args.action]})")
     params = {
         "CutType": "question",
         "ImageType": args.image_type,
@@ -120,13 +141,13 @@ def main() -> int:
     for index, png in enumerate(pages, 1):
         print(f"\n-- calling RecognizeEduPaperCut (page {index}, {len(png)} bytes) --")
         try:
-            payload = provider._call(png, params, index)
+            payload = provider._call(png, params, index, action=args.action)
         except ocr_service.OcrFailed as exc:
             print(f"!! {exc}", file=sys.stderr)
             failures += 1
             continue
         raw_responses.append({"page": index, "response": payload})
-        failures += report(payload, index)
+        failures += report(payload, index, action=args.action)
 
     if args.dump:
         target = Path(args.dump)
