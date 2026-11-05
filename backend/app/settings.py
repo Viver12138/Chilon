@@ -76,7 +76,6 @@ class Settings:
     ocr_aliyun_key_secret: str
     ocr_aliyun_image_type: str
     ocr_aliyun_subject: str
-    ocr_aliyun_action: str
 
     @property
     def llm_configured(self) -> bool:
@@ -122,6 +121,4 @@ def load() -> Settings:
         ocr_aliyun_key_secret=get("CHILON_OCR_ALIYUN_KEY_SECRET"),
         ocr_aliyun_image_type=get("CHILON_OCR_ALIYUN_IMAGE_TYPE", "scan"),
         ocr_aliyun_subject=get("CHILON_OCR_ALIYUN_SUBJECT", "Math"),
-        # which education API to call; the default segments a paper into questions
-        ocr_aliyun_action=get("CHILON_OCR_ALIYUN_ACTION", "RecognizeEduPaperCut"),
     )

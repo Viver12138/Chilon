@@ -27,17 +27,12 @@ from typing import Any
 
 OCR_HOST = "ocr-api.cn-hangzhou.aliyuncs.com"
 OCR_VERSION = "2021-07-07"
+# Only paper-cut is wired. `RecognizeEduPaperOcr` (full page, no segmentation) and
+# `RecognizeEduPaperStructed` (section labels) were evaluated and deferred: the first
+# duplicates what our own splitter does, the second mostly adds labels the taxonomy
+# already derives. Neither is reachable, so neither is kept. D.66 records how to bring
+# them back.
 ACTION_CUT = "RecognizeEduPaperCut"
-# Full-page text: no segmentation, used as the fallback when cutting yields nothing.
-ACTION_PAGE = "RecognizeEduPaperOcr"
-# Fine-grained structure: adds section/topic labels on top of cutting.
-ACTION_STRUCTED = "RecognizeEduPaperStructed"
-
-EDUCATION_ACTIONS = {
-    ACTION_CUT: "试卷切题：按题切分，返回题干/选项/答案",
-    ACTION_PAGE: "整页识别：整页文字与公式，不切题（兜底）",
-    ACTION_STRUCTED: "精细版结构化：切题 + 标题/主题等版面标签",
-}
 
 # keys that plausibly carry the question text, most specific first
 TEXT_KEYS = ("Text", "text", "Content", "content", "Stem", "stem", "Question", "question", "Title")
@@ -284,38 +279,3 @@ def decode_data(payload: Any) -> Any:
             return data
     return data
 
-def extract_page_text(payload: Any) -> str:
-    """Collect the text out of a full-page OCR payload.
-
-    `RecognizeEduPaperOcr` does not segment, so there is nothing to map onto
-    questions: it returns text (and word boxes). The reader gathers the string fields
-    in order and joins them. Same honesty rule as `extract_questions`: if there is no
-    text at all it raises rather than returning `""`, because empty text looks like a
-    blank page.
-    """
-    data = decode_data(payload)
-
-    chunks: list[str] = []
-
-    def walk(node: Any, depth: int = 0) -> None:
-        if depth > 8:
-            return
-        if isinstance(node, dict):
-            for key, value in node.items():
-                if isinstance(value, str) and len(value.strip()) >= 2 and key.lower() not in (
-                    "requestid",
-                    "errormessage",
-                    "errorcode",
-                ):
-                    chunks.append(value.strip())
-                else:
-                    walk(value, depth + 1)
-        elif isinstance(node, list):
-            for item in node:
-                walk(item, depth + 1)
-
-    walk(data)
-    text = "\n".join(chunks).strip()
-    if not text:
-        raise ShapeUnknown("no text found in the page payload")
-    return text
