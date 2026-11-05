@@ -27,6 +27,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
+from app import settings as config  # noqa: E402
 from app.services import aliyun_ocr, identity, ingestion, ocr  # noqa: E402
 from tests.support import provision_runtime_role  # noqa: E402
 
@@ -154,11 +155,19 @@ async def main() -> int:
         _ = docx_like
 
         print("5. the provider refuses to build without credentials")
-        os.environ["CHILON_OCR_PROVIDER"] = "aliyun"
-        os.environ.pop("CHILON_OCR_ALIYUN_KEY_ID", None)
-        os.environ.pop("CHILON_OCR_ALIYUN_KEY_SECRET", None)
+        import dataclasses
+
+        # .env carries real keys now, so the negative case is built explicitly rather
+        # than produced by clearing environment variables, which would change nothing
+        bare = dataclasses.replace(
+            config.load(),
+            ocr_provider="aliyun",
+            ocr_aliyun_key_id="",
+            ocr_aliyun_key_secret="",
+        )
+        check(bare.ocr_configured is False, "settings know it cannot run")
         try:
-            ocr.build()
+            ocr.build(bare)
             check(False, "the aliyun provider built without credentials")
         except ocr.OcrUnavailable as exc:
             check("CHILON_OCR_ALIYUN" in str(exc), "refused with the variable names")

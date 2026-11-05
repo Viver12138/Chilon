@@ -26,6 +26,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT / "backend"))
 
+from app import settings as config  # noqa: E402
 from app.services import aliyun_ocr  # noqa: E402
 from app.services import ocr as ocr_service  # noqa: E402
 
@@ -78,24 +79,35 @@ def main() -> int:
     parser.add_argument("file", help="PDF or image to send")
     parser.add_argument("--page", type=int, default=1, help="1-based page for PDFs")
     parser.add_argument("--all-pages", action="store_true", help="send every PDF page")
-    parser.add_argument("--subject", default=os.environ.get("CHILON_OCR_ALIYUN_SUBJECT", "Math"))
+    _defaults = config.load()
+    parser.add_argument(
+        "--subject",
+        default=os.environ.get("CHILON_OCR_ALIYUN_SUBJECT") or _defaults.ocr_aliyun_subject or "Math",
+    )
     parser.add_argument(
         "--image-type",
-        default=os.environ.get("CHILON_OCR_ALIYUN_IMAGE_TYPE", "scan"),
+        default=os.environ.get("CHILON_OCR_ALIYUN_IMAGE_TYPE")
+        or config.load().ocr_aliyun_image_type
+        or "scan",
         choices=("scan", "photo"),
     )
     parser.add_argument("--dump", default=None, help="write the raw JSON response here")
     args = parser.parse_args()
 
-    key_id = os.environ.get("CHILON_OCR_ALIYUN_KEY_ID", "")
-    key_secret = os.environ.get("CHILON_OCR_ALIYUN_KEY_SECRET", "")
+    # same source as the application: environment first, then .env. A probe that reads
+    # credentials differently from the app can pass while the app cannot start.
+    loaded = config.load()
+    key_id = os.environ.get("CHILON_OCR_ALIYUN_KEY_ID") or loaded.ocr_aliyun_key_id
+    key_secret = os.environ.get("CHILON_OCR_ALIYUN_KEY_SECRET") or loaded.ocr_aliyun_key_secret
     if not key_id or not key_secret:
         print(
             "missing credentials: set CHILON_OCR_ALIYUN_KEY_ID and "
-            "CHILON_OCR_ALIYUN_KEY_SECRET",
+            "CHILON_OCR_ALIYUN_KEY_SECRET (environment or .env)",
             file=sys.stderr,
         )
         return 2
+    if not os.environ.get("CHILON_OCR_ALIYUN_KEY_ID"):
+        print("credentials: read from .env")
 
     path = Path(args.file)
     if not path.exists():
@@ -130,6 +142,7 @@ def main() -> int:
 
     if args.dump:
         target = Path(args.dump)
+        target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(
             json.dumps(raw_responses, ensure_ascii=False, indent=2), encoding="utf-8"
         )

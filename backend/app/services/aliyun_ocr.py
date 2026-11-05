@@ -47,6 +47,10 @@ class PaperQuestion:
     options: list[str] = field(default_factory=list)
     answer: str | None = None
     page: int | None = None
+    # `subject_list[].ids` carries the paper's own numbering, which beats an index we
+    # invent; `content_list_info[].pos` is the bounding box, kept for highlighting
+    number: str | None = None
+    box: list | None = None
 
     def as_text(self) -> str:
         parts = [self.stem]
@@ -163,6 +167,43 @@ def _options_of(item: dict[str, Any]) -> list[str]:
     return []
 
 
+
+def _questions_from_page_list(data: Any) -> list[PaperQuestion]:
+    """Read the documented-by-observation shape: `page_list[].subject_list[]`.
+
+    Verified against a real call on 2024 新课标Ⅰ卷: each subject is one question, with
+    `text` (LaTeX inline), `ids` (question numbers) and `content_list_info[].pos`
+    (bounding boxes).
+    """
+    found: list[PaperQuestion] = []
+    for page_index, page in enumerate(data.get("page_list") or [], 1):
+        if not isinstance(page, dict):
+            continue
+        for subject in page.get("subject_list") or []:
+            if not isinstance(subject, dict):
+                continue
+            text = (subject.get("text") or "").strip()
+            if not text:
+                continue
+            ids = [str(value) for value in (subject.get("ids") or []) if str(value).strip()]
+            box = None
+            for info in subject.get("content_list_info") or []:
+                if isinstance(info, dict) and info.get("pos"):
+                    box = info["pos"]
+                    break
+            found.append(
+                PaperQuestion(
+                    stem=text,
+                    options=[],
+                    answer=None,
+                    page=page_index,
+                    number=ids[0] if ids else None,
+                    box=box,
+                )
+            )
+    return found
+
+
 def extract_questions(payload: Any, *, page: int | None = None) -> list[PaperQuestion]:
     """Find question-shaped items anywhere in the response.
 
@@ -176,6 +217,14 @@ def extract_questions(payload: Any, *, page: int | None = None) -> list[PaperQue
             payload = json.loads(payload)
         except json.JSONDecodeError as exc:
             raise ShapeUnknown(f"Data is not JSON: {exc}") from exc
+
+    if isinstance(payload, dict):
+        direct = _questions_from_page_list(payload)
+        if direct:
+            if page is not None:
+                for item in direct:
+                    item.page = page
+            return direct
 
     candidates: list[dict[str, Any]] = []
 
