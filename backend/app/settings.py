@@ -72,6 +72,10 @@ class Settings:
     ocr_cloud_key: str
     ocr_languages: str
     ocr_min_confidence: float
+    ocr_aliyun_key_id: str
+    ocr_aliyun_key_secret: str
+    ocr_aliyun_image_type: str
+    ocr_aliyun_subject: str
 
     @property
     def llm_configured(self) -> bool:
@@ -90,6 +94,8 @@ class Settings:
             return False
         if provider == "cloud":
             return bool(self.ocr_cloud_endpoint) and bool(self.ocr_cloud_key)
+        if provider == "aliyun":
+            return bool(self.ocr_aliyun_key_id) and bool(self.ocr_aliyun_key_secret)
         return True
 
 
@@ -111,4 +117,8 @@ def load() -> Settings:
         ocr_cloud_key=get("CHILON_OCR_CLOUD_KEY"),
         ocr_languages=get("CHILON_OCR_LANGUAGES", "chi_sim+eng"),
         ocr_min_confidence=float(get("CHILON_OCR_MIN_CONFIDENCE", "0.6")),
+        ocr_aliyun_key_id=get("CHILON_OCR_ALIYUN_KEY_ID"),
+        ocr_aliyun_key_secret=get("CHILON_OCR_ALIYUN_KEY_SECRET"),
+        ocr_aliyun_image_type=get("CHILON_OCR_ALIYUN_IMAGE_TYPE", "scan"),
+        ocr_aliyun_subject=get("CHILON_OCR_ALIYUN_SUBJECT", "Math"),
     )
