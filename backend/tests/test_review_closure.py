@@ -299,6 +299,14 @@ async def main() -> int:
         outline = r.json()
         check(2 in outline["numbers"], f"the restored number is back (got {outline['numbers']})")
 
+        # undoing a delete must restore search, not just the list entry
+        async with db.session_for(owner) as session:
+            back = await tools_impl.knowledge_search(session, search_ctx(owner, "复数"))
+        check(
+            any("复数" in (h.get("excerpt") or "") for h in back["hits"]),
+            "and the question is searchable again",
+        )
+
         print("12. a question's number can be moved")
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
