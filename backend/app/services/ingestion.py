@@ -66,7 +66,10 @@ INLINE_ANSWER = re.compile(
 )
 
 # options, as a paper prints them: A. / A、 / A）
-OPTION = re.compile(r"(?:^|\s)[A-D]\s*[.、．)）]\s*\S")
+# OCR output puts options inside LaTeX: `$$A . 2 \sqrt 3 \pi$$`. Requiring
+# whitespace before the letter missed those, so every such question was classified as
+# fill_blank because of the `()` placeholder in the stem.
+OPTION = re.compile(r"(?:^|[\s$])[A-D]\s*[.、．:：)）]\s*\S")
 BLANK = re.compile(r"_{3,}|＿{2,}|[（(]\s{2,}[)）]|（\s*）|\(\s*\)")
 MULTI_HINT = re.compile(r"多选|至少有一项|有多项符合|正确的有|不正确的有")
 SECTION_SINGLE = re.compile(r"选择")
@@ -309,12 +312,23 @@ def text_hash(value: str) -> str:
 
 
 def stem_key(segment: Segment) -> str:
-    return f"p{segment.locator['paragraph_start']:05d}"
+    """Chunk key for a stem, for both locator shapes.
+
+    DOCX locators carry a paragraph range; a structured OCR provider carries a page and
+    a question index. The key has to be unique per version either way, and it is part of
+    a unique constraint, so the two shapes must not collide.
+    """
+    locator = segment.locator
+    if "question_index" in locator:
+        return f"q{int(locator.get('page_number') or 1):02d}_{int(locator['question_index']):03d}"
+    return f"p{int(locator.get('paragraph_start') or 0):05d}"
 
 
 def answer_key(segment: Segment) -> str:
     locator = segment.answer_locator or {}
-    return f"a{locator.get('paragraph_start', 0):05d}"
+    if "answer_index" in locator:
+        return f"aq{int(locator.get('page_number') or 1):02d}_{int(locator['answer_index']):03d}"
+    return f"a{int(locator.get('paragraph_start') or 0):05d}"
 
 
 # ── ingestion ──────────────────────────────────────────────────────────────────
@@ -458,11 +472,21 @@ async def ingest(
                 segments.append(
                     Segment(
                         ordinal=index,
+                        # The vendor's `ids` turned out to be page-local (page 4 restarts
+                        # at 1), so it cannot serve as the document-wide number. The
+                        # document gets sequential numbering; the vendor's id is kept in
+                        # the locator so the original can still be found.
                         question_no=str(index + 1),
                         section=None,
                         locator={
                             "page_number": question.page or 1,
                             "question_index": index,
+                            **(
+                                {"vendor_id": str(getattr(question, "number"))}
+                                if getattr(question, "number", None)
+                                else {}
+                            ),
+                            **({"box": question.box} if getattr(question, "box", None) else {}),
                         },
                         text=body,
                         answer_text=question.answer or None,
@@ -494,7 +518,9 @@ async def ingest(
             stage="ocr",
             metrics=ocr_meta,
         )
-        if not blocks:
+        # a structured provider delivers questions and leaves `blocks` empty; checking
+        # only `blocks` reported "no text" for a page that had six questions cut
+        if not blocks and not segments:
             await _record_run(
                 session,
                 document_version_id,
