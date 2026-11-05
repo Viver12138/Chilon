@@ -21,10 +21,11 @@ from pathlib import Path
 from typing import Annotated
 
 from fastapi import APIRouter, File, Form, UploadFile
+from pydantic import BaseModel, Field
 from sqlalchemy import text
 
 from app.api.deps import ApiError, SessionDep, UserDep
-from app.services import ingestion
+from app.services import ingestion, knowledge_review
 
 router = APIRouter(tags=["knowledge"], prefix="/knowledge")
 
@@ -250,3 +251,52 @@ async def reingest(session: SessionDep, user: UserDep, source_id: uuid.UUID) -> 
     except ingestion.IngestionError as exc:
         raise ApiError(404, "NOT_FOUND", str(exc)) from exc
     return result
+
+
+class ManualQuestionRequest(BaseModel):
+    number: int = Field(ge=1, le=200)
+    stem: str = Field(min_length=1, max_length=5000)
+    answer: str | None = Field(default=None, max_length=5000)
+
+
+@router.get("/versions/{version_id}")
+async def version_outline(session: SessionDep, user: UserDep, version_id: uuid.UUID) -> dict:
+    """Questions, numbers and the holes that still need transcribing."""
+    try:
+        return await knowledge_review.outline(session, user, version_id)
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+
+
+@router.post("/versions/{version_id}/questions", status_code=201)
+async def add_question(
+    session: SessionDep,
+    user: UserDep,
+    version_id: uuid.UUID,
+    payload: ManualQuestionRequest,
+) -> dict:
+    """Transcribe a question the scanner missed.
+
+    Writes a chunk as well as a question: a question without a chunk is invisible to
+    retrieval, and "I added it but it never shows up" is the bug that follows.
+    """
+    try:
+        return await knowledge_review.add_question(
+            session, user, version_id,
+            number=payload.number, stem=payload.stem, answer=payload.answer,
+        )
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+    except knowledge_review.ReviewError as exc:
+        raise ApiError(422, "AST_INVALID", str(exc)) from exc
+
+
+@router.post("/versions/{version_id}/promote")
+async def promote_version(session: SessionDep, user: UserDep, version_id: uuid.UUID) -> dict:
+    """Enable retrieval for a version held for review."""
+    try:
+        return await knowledge_review.promote(session, user, version_id)
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+    except knowledge_review.ReviewError as exc:
+        raise ApiError(422, "AST_INVALID", str(exc)) from exc
