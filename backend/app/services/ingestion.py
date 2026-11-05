@@ -383,6 +383,8 @@ def review_reasons(
     min_confidence: float,
     analysis_blocks: int,
     questions: int,
+    total_blocks: int = 0,
+    unnumbered_blocks: int = 0,
 ) -> list[str]:
     """Why this version should be reviewed, in the order the teacher should care.
 
@@ -392,8 +394,11 @@ def review_reasons(
     reasons: list[str] = []
     if gaps:
         reasons.append(REVIEW_NUMBERING_GAPS)
-    if analysis_blocks and questions and analysis_blocks >= max(2, questions // 2):
-        # most questions carry 解析 → this is an analysis version, not a question paper
+    # Measured, not guessed: on 2024 新课标Ⅰ卷 the 原卷版 has 21% unnumbered subjects and
+    # the 解析版 has 55%. Merging folds 解析 prose into the previous question, so the
+    # share has to be taken **before** merging — which is why the provider counts it.
+    share = (unnumbered_blocks / total_blocks) if total_blocks else 0.0
+    if questions >= 3 and share >= 0.4:
         reasons.append(REVIEW_ANALYSIS_VERSION)
     if confidence and confidence < min_confidence:
         reasons.append(REVIEW_LOW_CONFIDENCE)
@@ -545,6 +550,8 @@ async def ingest(
             "pages": len(result.pages),
             "gaps": gaps,
             "analysis_blocks": int(getattr(result, "analysis_blocks", 0) or 0),
+            "total_blocks": int(getattr(result, "total_blocks", 0) or 0),
+            "unnumbered_blocks": int(getattr(result, "unnumbered_blocks", 0) or 0),
         }
         # the run is recorded once, at the end, with review reasons included;
         # recording it here as well doubled every OCR ingest in the audit log
@@ -702,6 +709,8 @@ async def ingest(
             min_confidence=settings.ocr_min_confidence,
             analysis_blocks=int(ocr_meta.get("analysis_blocks") or 0),
             questions=question_count,
+            total_blocks=int(ocr_meta.get("total_blocks") or 0),
+            unnumbered_blocks=int(ocr_meta.get("unnumbered_blocks") or 0),
         )
         if ocr_meta
         else []

@@ -105,6 +105,14 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                        ON ac.document_version_id = dv.id
                       AND ac.locator = q.answer_locator
                 WHERE dv.lifecycle_status IN ('approved', 'indexed')
+                  -- a soft-deleted question keeps its row for undo; its chunk must not
+                  -- keep answering queries in the meantime
+                  AND NOT EXISTS (
+                        SELECT 1 FROM knowledge_questions dq
+                        WHERE dq.document_version_id = dv.id
+                          AND dq.stem_locator = c.locator
+                          AND dq.deleted_at IS NOT NULL
+                      )
                   AND (
                         c.text_content ILIKE :pattern
                         OR (q.current_knowledge_points && CAST(:topic_points AS text[]))

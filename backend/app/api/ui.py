@@ -486,7 +486,7 @@ async def knowledge_questions(
                     LEFT JOIN knowledge_chunks c
                            ON c.document_version_id = q.document_version_id
                           AND c.locator = q.stem_locator
-                    WHERE q.document_version_id = :v
+                    WHERE q.document_version_id = :v AND q.deleted_at IS NULL
                     ORDER BY q.ordinal
                     """
                 ),
@@ -510,6 +510,12 @@ async def knowledge_questions(
             f"<textarea name='stem' rows='2'>{esc(body_text)}</textarea></label></p>"
             "<p><label>改答案（留空则不动）<br><input name='answer'></label></p>"
             "<button class='secondary' type='submit'>保存修改</button></form>"
+            "<form method='post' action='/ui/knowledge/questions/renumber' style='margin-top:6px'>"
+            f"<input type='hidden' name='version_id' value='{esc(version_id)}'>"
+            f"<input type='hidden' name='number' value='{esc(row.question_no)}'>"
+            "<label class='muted'>改题号为 <input name='new_number' size='3' "
+            f"value='{esc(row.question_no)}'></label> "
+            "<button class='secondary' type='submit'>移动</button></form>"
             "<form method='post' action='/ui/knowledge/questions/delete' style='margin-top:6px'>"
             f"<input type='hidden' name='version_id' value='{esc(version_id)}'>"
             f"<input type='hidden' name='number' value='{esc(row.question_no)}'>"
@@ -568,6 +574,47 @@ async def ui_delete_question(
         try:
             await knowledge_review.delete_question(
                 session, user_id, uuid.UUID(version_id), number=number
+            )
+        except knowledge_review.ReviewError:
+            pass
+    return RedirectResponse(f"/ui/knowledge/{version_id}", status_code=303)
+
+
+
+@router.post("/ui/knowledge/questions/restore")
+async def ui_restore_question(
+    version_id: Annotated[str, Form()],
+    number: Annotated[int, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    user_id, redirect = await _ui_question_action(chilon_session)
+    if redirect:
+        return redirect
+    async with db.session_for(user_id) as session:
+        try:
+            await knowledge_review.restore_question(
+                session, user_id, uuid.UUID(version_id), number=number
+            )
+        except knowledge_review.ReviewError:
+            pass
+    return RedirectResponse(f"/ui/knowledge/{version_id}", status_code=303)
+
+
+@router.post("/ui/knowledge/questions/renumber")
+async def ui_renumber_question(
+    version_id: Annotated[str, Form()],
+    number: Annotated[int, Form()],
+    new_number: Annotated[int, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    user_id, redirect = await _ui_question_action(chilon_session)
+    if redirect:
+        return redirect
+    async with db.session_for(user_id) as session:
+        try:
+            await knowledge_review.renumber(
+                session, user_id, uuid.UUID(version_id),
+                number=number, new_number=new_number,
             )
         except knowledge_review.ReviewError:
             pass

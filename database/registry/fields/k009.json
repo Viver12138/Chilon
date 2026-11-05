@@ -815,6 +815,13 @@
           "default": "now()",
           "sensitivity": "public",
           "desc": "更新时间"
+        },
+        {
+          "name": "deleted_at",
+          "type": "timestamptz",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "软删除时间；删除后可撤销，检索与题号统计都排除它"
         }
       ],
       "constraints": [

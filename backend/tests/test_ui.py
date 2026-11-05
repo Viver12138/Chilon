@@ -132,11 +132,17 @@ async def main() -> int:
                 analysis_blocks=0, questions=16,
             )
             check(reasons == ["numbering_gaps"], f"gap reason computed (got {reasons})")
+            # measured on the real papers: 原卷版 21% unnumbered, 解析版 55%
             reasons = ingestion_service.review_reasons(
                 gaps=[], confidence=0.9, min_confidence=0.6,
-                analysis_blocks=9, questions=14,
+                analysis_blocks=3, questions=14, total_blocks=31, unnumbered_blocks=17,
             )
             check(reasons == ["analysis_version"], f"analysis version detected (got {reasons})")
+            reasons = ingestion_service.review_reasons(
+                gaps=[], confidence=0.9, min_confidence=0.6,
+                analysis_blocks=0, questions=15, total_blocks=19, unnumbered_blocks=4,
+            )
+            check(reasons == [], f"a normal paper is not flagged (got {reasons})")
             reasons = ingestion_service.review_reasons(
                 gaps=[], confidence=0.2, min_confidence=0.6,
                 analysis_blocks=0, questions=5,
