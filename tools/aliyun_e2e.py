@@ -29,7 +29,7 @@ from app.services import identity, ingestion  # noqa: E402
 from app.tools import impl as tools_impl  # noqa: E402
 from tests.support import provision_runtime_role  # noqa: E402
 
-SAMPLE = ROOT / "docs/2024年新课标全国Ⅰ卷数学真题（原卷版）.pdf"
+SAMPLE = Path(os.environ.get("CHILON_SAMPLE", str(ROOT / "docs/2024年新课标全国Ⅰ卷数学真题（原卷版）.pdf")))
 
 
 def search_ctx(owner_id):
@@ -92,8 +92,16 @@ async def main() -> int:
                 {"id": source_id, "o": owner},
             )
 
+        suffix = SAMPLE.suffix.lower()
+        mime = {
+            ".pdf": "application/pdf",
+            ".jpg": "image/jpeg",
+            ".jpeg": "image/jpeg",
+            ".png": "image/png",
+            ".docx": "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        }.get(suffix, "application/pdf")
         version_id = uuid.uuid4()
-        storage_key = f"uploads/{source_id}/{version_id}.pdf"
+        storage_key = f"uploads/{source_id}/{version_id}{suffix}"
         data = SAMPLE.read_bytes()
         target = Path(ingestion.UPLOAD_ROOT) / storage_key.split("uploads/", 1)[-1]
         target.parent.mkdir(parents=True, exist_ok=True)
@@ -106,7 +114,7 @@ async def main() -> int:
                     INSERT INTO knowledge_document_versions
                         (id, source_id, version_no, storage_key, checksum_sha256,
                          mime_type, file_size_bytes, lifecycle_status, uploaded_by)
-                    VALUES (:id, :s, 1, :k, :h, 'application/pdf', :size, 'processing', :o)
+                    VALUES (:id, :s, 1, :k, :h, :mime, :size, 'processing', :o)
                     """
                 ),
                 {
@@ -114,6 +122,7 @@ async def main() -> int:
                     "s": source_id,
                     "k": storage_key,
                     "h": "d" * 64,
+                    "mime": mime,
                     "size": len(data),
                     "o": owner,
                 },

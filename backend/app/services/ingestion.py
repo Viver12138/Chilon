@@ -164,6 +164,9 @@ def paragraphs_for(mime: str, data: bytes) -> list[Block]:
         return extract_docx_paragraphs(data)
     if mime == PDF_MIME:
         return extract_pdf_blocks(data)
+    if mime.startswith("image/"):
+        # no text layer exists; OCR is the only way in
+        raise UnsupportedFormat("图片需要用 OCR 解析")
     raise UnsupportedFormat(f"unsupported mime type {mime!r}")
 
 
@@ -470,7 +473,9 @@ async def ingest(
         except ocr.OcrUnavailable as problem:
             exc = UnsupportedFormat(f"{exc}（OCR 未启用：{problem}）")
 
-        if provider is None or version.mime_type != PDF_MIME:
+        if provider is None or not (
+            version.mime_type == PDF_MIME or version.mime_type.startswith("image/")
+        ):
             await _record_run(
                 session,
                 document_version_id,

@@ -168,6 +168,57 @@ async def main() -> int:
             check(False, "an unknown provider was accepted")
         except ocr.OcrUnavailable as exc:
             check("unknown OCR provider" in str(exc), "unknown provider refused")
+        print("7. an uploaded image is parsed through the OCR path")
+        # scenario 6 left the provider set to an unknown name; put the fake back
+        os.environ["CHILON_OCR_PROVIDER"] = "fake"
+        image_marker = "FAKE_OCR:0.95|1. 已知集合 A，求交集。\\n2. 化简 sin²x+cos²x。"
+        jpeg = b"\xff\xd8\xff\xe0" + image_marker.encode("utf-8") + b"\xff\xd9"
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.post(
+                "/knowledge/sources",
+                headers=headers,
+                files={"file": ("page.jpg", jpeg, "image/jpeg")},
+                data={"title": "拍照页", "source_type": "other"},
+            )
+        check(r.status_code == 201, f"image accepted (got {r.status_code}: {r.text[:120]})")
+        body = r.json()
+        check(body["lifecycle_status"] == "indexed", f"image indexed (got {body['lifecycle_status']})")
+        check(body["questions"] == 2, f"two questions from the image (got {body['questions']})")
+        check(
+            body["ocr"]["engine"] == "fake",
+            f"it went through OCR, not the text extractor (got {body['ocr']})",
+        )
+
+        print("8. an image without OCR configured is refused, not silently empty")
+        import dataclasses
+
+        saved_provider = os.environ.get("CHILON_OCR_PROVIDER")
+        os.environ["CHILON_OCR_PROVIDER"] = "none"
+        try:
+            async with httpx.AsyncClient(
+                transport=httpx.ASGITransport(app=app), base_url="http://test"
+            ) as client:
+                r = await client.post(
+                    "/knowledge/sources",
+                    headers=headers,
+                    files={"file": ("page2.jpg", jpeg, "image/jpeg")},
+                    data={"title": "无 OCR", "source_type": "other"},
+                )
+            refused = r.json()
+        finally:
+            if saved_provider is None:
+                os.environ.pop("CHILON_OCR_PROVIDER", None)
+            else:
+                os.environ["CHILON_OCR_PROVIDER"] = saved_provider
+        check(
+            refused["lifecycle_status"] == "failed",
+            f"refused without a provider (got {refused['lifecycle_status']})",
+        )
+        check("OCR" in (refused["parse_detail"] or ""), "and the reason says OCR")
+
+
     finally:
         for key, value in saved_env.items():
             if value is None:
