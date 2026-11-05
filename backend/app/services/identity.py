@@ -66,6 +66,7 @@ class Session:
     session_id: uuid.UUID
     user_id: uuid.UUID
     expires_at: datetime
+    must_change_password: bool = False
 
 
 def hash_password(password: str) -> str:
@@ -158,7 +159,8 @@ async def login(
         await session.execute(
             text(
                 """
-                SELECT u.id, u.status, c.password_hash
+                SELECT u.id, u.status, c.password_hash,
+                       COALESCE(c.must_change_password, false) AS must_change_password
                 FROM users u
                 JOIN user_credentials c ON c.user_id = u.id
                 WHERE u.username = :username
@@ -198,7 +200,13 @@ async def login(
     await session.execute(
         text("UPDATE users SET last_login_at = now() WHERE id = :id"), {"id": row.id}
     )
-    return Session(token=token, session_id=session_id, user_id=row.id, expires_at=expires_at)
+    return Session(
+        token=token,
+        session_id=session_id,
+        user_id=row.id,
+        expires_at=expires_at,
+        must_change_password=bool(row.must_change_password),
+    )
 
 
 async def authenticate(
@@ -234,3 +242,14 @@ async def logout(session: AsyncSession, token: str) -> None:
         text("UPDATE user_sessions SET revoked_at = now() WHERE token_hash = :th AND revoked_at IS NULL"),
         {"th": token_hash(token)},
     )
+
+
+async def must_change_password(session: AsyncSession, user_id: uuid.UUID) -> bool:
+    """Whether the account is still using a password an operator handed over."""
+    value = (
+        await session.execute(
+            text("SELECT must_change_password FROM user_credentials WHERE user_id = :u"),
+            {"u": user_id},
+        )
+    ).scalar()
+    return bool(value)

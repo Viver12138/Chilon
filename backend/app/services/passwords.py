@@ -15,7 +15,12 @@ class ResetNotAllowed(identity.IdentityError):
 
 
 async def set_password(
-    session: AsyncSession, user_id, new_password: str, *, revoke_sessions: bool = True
+    session: AsyncSession,
+    user_id,
+    new_password: str,
+    *,
+    revoke_sessions: bool = True,
+    must_change: bool = True,
 ) -> int:
     """Replace the password, clear the lockout, and revoke sessions.
 
@@ -36,12 +41,17 @@ async def set_password(
                     algorithm = 'scrypt',
                     password_changed_at = now(),
                     failed_attempts = 0,
-                    locked_until = NULL
+                    locked_until = NULL,
+                    must_change_password = :must_change
                 WHERE user_id = :user
                 RETURNING id
                 """
             ),
-            {"hash": identity.hash_password(new_password), "user": user_id},
+            {
+                "hash": identity.hash_password(new_password),
+                "user": user_id,
+                "must_change": must_change,
+            },
         )
     ).first()
     if updated is None:
@@ -99,7 +109,8 @@ async def change_own(
                 """
                 UPDATE user_credentials
                 SET password_hash = :hash, algorithm = 'scrypt',
-                    password_changed_at = now(), failed_attempts = 0, locked_until = NULL
+                    password_changed_at = now(), failed_attempts = 0, locked_until = NULL,
+                    must_change_password = false
                 WHERE user_id = :user
                 RETURNING id
                 """

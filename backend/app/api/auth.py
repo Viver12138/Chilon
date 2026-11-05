@@ -80,6 +80,7 @@ async def login(payload: LoginRequest) -> dict:
         "token": issued.token,
         "expires_at": issued.expires_at.isoformat(),
         "user_id": str(issued.user_id),
+        "must_change_password": issued.must_change_password,
     }
 
 

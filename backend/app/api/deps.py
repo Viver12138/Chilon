@@ -105,7 +105,17 @@ async def error_handler(request: Request, exc: Exception) -> JSONResponse:
     return _response(500, "INTERNAL", str(exc))
 
 
+# Routes an account may still use while it must change its password. Anything else is
+# refused: a flag that only the UI respects is advice, not enforcement.
+PASSWORD_CHANGE_ALLOWED = (
+    "/auth/password",
+    "/auth/me",
+    "/auth/logout",
+)
+
+
 async def current_user(
+    request: Request,
     authorization: Annotated[str | None, Header()] = None,
 ) -> uuid.UUID:
     if not authorization or not authorization.lower().startswith("bearer "):
@@ -113,9 +123,19 @@ async def current_user(
     token = authorization.split(" ", 1)[1].strip()
     async with db.system_session() as session:
         try:
-            return await identity.authenticate(session, token)
+            user_id = await identity.authenticate(session, token)
         except identity.SessionInvalid as exc:
             raise ApiError(401, "FORBIDDEN", str(exc)) from exc
+        if await identity.must_change_password(session, user_id):
+            # the account is on a password an operator handed over; only the route that
+            # lets it choose its own is allowed through
+            if request.url.path not in PASSWORD_CHANGE_ALLOWED:
+                raise ApiError(
+                    403,
+                    "FORBIDDEN",
+                    "this account must change its password first (POST /auth/password)",
+                )
+    return user_id
 
 
 async def user_session(
