@@ -408,20 +408,20 @@ async def delete_question(
     retrieval must stop returning it immediately.
     """
     await outline(session, owner_id, version_id)
-    stem_chunk, answer_chunk, _, _ = await _chunk_ids(session, version_id, number)
 
-    await session.execute(
+    # The chunks are **kept**. Retrieval already excludes any chunk whose question is
+    # soft-deleted (see knowledge_search), so keeping them costs nothing and makes the
+    # undo real: clearing the flag restores the question to search immediately. Deleting
+    # the chunks made "restore" a flag that no longer matched anything.
+    result = await session.execute(
         text(
             "UPDATE knowledge_questions SET deleted_at = now(), updated_at = now() "
             "WHERE document_version_id = :v AND question_no = :n AND deleted_at IS NULL"
         ),
         {"v": version_id, "n": str(number)},
     )
-    for chunk_id in (stem_chunk, answer_chunk):
-        if chunk_id is not None:
-            await session.execute(
-                text("DELETE FROM knowledge_chunks WHERE id = :id"), {"id": chunk_id}
-            )
+    if result.rowcount == 0:
+        raise ReviewNotFound(f"第 {number} 题不存在")
     return {"document_version_id": str(version_id), "question_no": str(number), "deleted": True}
 
 
