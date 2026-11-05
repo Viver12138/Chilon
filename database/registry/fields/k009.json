@@ -327,6 +327,14 @@
           "nullable": true,
           "sensitivity": "internal",
           "desc": "许可证与署名说明：平台语料必须能回答“凭什么可以用”"
+        },
+        {
+          "name": "exam_paper",
+          "type": "varchar",
+          "length": 64,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "卷别（新高考Ⅰ卷/安徽卷/…）；从来源标题解析"
         }
       ],
       "constraints": [

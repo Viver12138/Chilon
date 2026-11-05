@@ -26,6 +26,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.services import ingestion, taxonomy, tex_parse
+from app.services.exam_meta import parse_exam_meta
 from app.services.platform_import import PLATFORM_PRINCIPAL, _category
 
 TEX_MIME = "application/x-latex"
@@ -105,9 +106,9 @@ async def import_paper(
             """
             INSERT INTO knowledge_sources
                 (id, scope, owner_id, category_id, source_type, title, rights_status,
-                 distribution_scope, created_by, rights_note)
+                 distribution_scope, created_by, rights_note, year, exam_paper)
             VALUES (:id, 'platform', NULL, :category, :type, :title, 'licensed',
-                    'classroom', :principal, :note)
+                    'classroom', :principal, :note, :year, :paper)
             """
         ),
         {
@@ -117,6 +118,8 @@ async def import_paper(
             "title": paper.title,
             "principal": PLATFORM_PRINCIPAL,
             "note": ATTRIBUTION,
+            "year": parse_exam_meta(paper.title)[0],
+            "paper": parse_exam_meta(paper.title)[1],
         },
     )
 
