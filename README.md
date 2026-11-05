@@ -133,6 +133,9 @@ pwsh -NoProfile -File database/tests/run_ingestion_test.ps1
 
 # OCR：默认关闭；开启后扫描件可解析，低置信度进 pending_review 不可检索
 pwsh -NoProfile -File database/tests/run_ocr_test.ps1
+
+# 复核闭环：补录缺失题 → 转正 → 可检索
+pwsh -NoProfile -File database/tests/run_review_closure_test.ps1
 ```
 
 ## 配置与模型

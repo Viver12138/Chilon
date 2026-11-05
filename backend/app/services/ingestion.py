@@ -571,6 +571,27 @@ async def ingest(
     if segments is None:
         segments = segment(blocks)
 
+    # Numbering holes must be detected on **both** paths. The structured provider reports
+    # them itself, but a rule-parsed paper (tesseract, cloud, fake) would otherwise be
+    # indexed with questions missing and nothing to show for it.
+    segment_numbers = sorted(
+        {
+            int(item.question_no)
+            for item in segments
+            if item.question_no and str(item.question_no).isdigit()
+        }
+    )
+    if segment_numbers and segment_numbers[0] == 1:
+        derived_gaps = [
+            number
+            for number in range(1, segment_numbers[-1] + 1)
+            if number not in segment_numbers
+        ]
+    else:
+        derived_gaps = []
+    if derived_gaps:
+        ocr_meta["gaps"] = sorted(set(ocr_meta.get("gaps") or []) | set(derived_gaps))
+
     if not segments:
         await _record_run(
             session,
