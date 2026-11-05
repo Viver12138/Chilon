@@ -92,6 +92,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                        s.title,
                        s.source_type,
                        s.year,
+                       s.exam_paper,
                        dv.id AS document_version_id
                 FROM knowledge_chunks c
                 JOIN knowledge_document_versions dv ON dv.id = c.document_version_id
@@ -138,6 +139,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             "source_title": r.title,
             "source_type": r.source_type,
             "year": r.year,
+            "source_paper": r.exam_paper,
             "document_version_id": str(r.document_version_id),
             "locator": r.locator,
             "excerpt": (r.text_content or "")[:400],

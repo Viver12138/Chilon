@@ -134,10 +134,10 @@ async def import_document(
             """
             INSERT INTO knowledge_sources
                 (id, scope, owner_id, category_id, source_type, title, rights_status,
-                 distribution_scope, created_by, rights_note)
+                 distribution_scope, created_by, rights_note, year, exam_paper)
             VALUES
                 (:id, 'platform', NULL, :category, :type, :title, 'licensed',
-                 'classroom', :principal, :note)
+                 'classroom', :principal, :note, :year, :paper)
             """
         ),
         {
@@ -147,6 +147,8 @@ async def import_document(
             "title": title,
             "principal": PLATFORM_PRINCIPAL,
             "note": "operator import; rights to be confirmed before republishing",
+            "year": parse_exam_meta(title)[0],
+            "paper": parse_exam_meta(title)[1],
         },
     )
 
