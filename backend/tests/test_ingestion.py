@@ -51,9 +51,15 @@ PARAGRAPHS = [
     "2. 化简 sin²x + cos²x + tan x·cot x。",
     "3. 在 △ABC 中，a=3，b=4，C=90°，求 c。",
     "4. 求 tan 45° 的值。",
+    "二、填空题",
+    "5. 若 sin x = 1/2，则 x = ______。",
+    "三、解答题",
+    "6. 证明：对任意实数 x，sin²x + cos²x = 1。",
     "参考答案",
     "2. 2",
     "3. c=5",
+    "4. 1",
+    "5. π/6 + 2kπ",
 ]
 
 
@@ -129,9 +135,9 @@ async def main() -> int:
         check(r.status_code == 201, f"upload accepted (got {r.status_code}: {r.text[:160]})")
         body = r.json()
         check(body["lifecycle_status"] == "indexed", f"version indexed (got {body['lifecycle_status']})")
-        check(body["chunks"] == 8, f"5 stem + 3 answer chunks (got {body['chunks']})")
-        check(body["questions"] == 4, f"4 questions (got {body['questions']})")
-        check(body["answers"] == 3, f"3 answers found (got {body['answers']})")
+        check(body["chunks"] == 12, f"7 stem + 5 answer chunks (got {body['chunks']})")
+        check(body["questions"] == 6, f"6 questions (got {body['questions']})")
+        check(body["answers"] == 5, f"5 answers found (got {body['answers']})")
         source_id = uuid.UUID(body["source_id"])
 
         print("2. the chunks and questions are stored with matching locators")
@@ -152,9 +158,9 @@ async def main() -> int:
                     {"v": uuid.UUID(body["document_version_id"])},
                 )
             ).all()
-        check(len(rows) == 8, f"8 chunk rows (got {len(rows)})")
+        check(len(rows) == 12, f"12 chunk rows (got {len(rows)})")
         linked = [r for r in rows if r.q_loc is not None]
-        check(len(linked) == 4, f"4 chunks are linked to a question (got {len(linked)})")
+        check(len(linked) == 6, f"6 chunks are linked to a question (got {len(linked)})")
         check(
             all(r.c_loc == r.q_loc for r in linked),
             "question locators equal their chunk locators",
@@ -199,7 +205,8 @@ async def main() -> int:
         check(by_no["1"].answer_text == "答案：π", f"Q1 inline answer (got {by_no['1'].answer_text!r})")
         check(by_no["2"].answer_text == "2", f"Q2 key answer (got {by_no['2'].answer_text!r})")
         check(by_no["3"].answer_text == "c=5", f"Q3 key answer (got {by_no['3'].answer_text!r})")
-        check(by_no["4"].answer_locator is None, "Q4 has no answer, and says so with NULL")
+        check(by_no["4"].answer_text == "1", f"Q4 key answer (got {by_no['4'].answer_text!r})")
+        check(by_no["6"].answer_locator is None, "Q6 has no answer, and says so with NULL")
 
         async with db.session_for(owner) as session:
             hit_with_answer = await tools_impl.knowledge_search(
@@ -208,6 +215,41 @@ async def main() -> int:
         check(
             any(h.get("answer") == "答案：π" for h in hit_with_answer["hits"]),
             "retrieval carries the paper's answer next to the stem",
+        )
+
+
+        print("3c. the paper's questions are classified, and left NULL when unclear")
+        async with db.session_for(owner) as session:
+            typed = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT question_no, current_paper_question_type
+                        FROM knowledge_questions WHERE document_version_id = :v
+                        ORDER BY ordinal
+                        """
+                    ),
+                    {"v": uuid.UUID(body["document_version_id"])},
+                )
+            ).all()
+        types = {r.question_no: r.current_paper_question_type for r in typed}
+        check(types["1"] == "single_choice", f"Q1 single choice (got {types['1']!r})")
+        check(types["5"] == "fill_blank", f"Q5 fill blank (got {types['5']!r})")
+        check(types["6"] == "free_response", f"Q6 free response (got {types['6']!r})")
+        check(
+            ingestion.classify("一、选择题", "下列说法正确的有：A. 甲 B. 乙") == "multiple_choice",
+            "a multi-select stem beats the generic 选择题 heading",
+        )
+        check(ingestion.classify(None, "一段没有任何线索的文字") is None,
+              "unclassifiable text stays NULL instead of guessing")
+
+        async with db.session_for(owner) as session:
+            hit_typed = await tools_impl.knowledge_search(
+                session, search_ctx(owner, {"topic": "最小正周期", "sources": []})
+            )
+        check(
+            any(h.get("question_type") == "single_choice" for h in hit_typed["hits"]),
+            "retrieval carries the question type next to the stem",
         )
 
         print("4. another teacher cannot see it")
@@ -223,7 +265,7 @@ async def main() -> int:
         print("5. re-ingesting replaces rather than appends")
         async with db.session_for(owner) as session:
             again = await ingestion.ingest_latest(session, owner, source_id)
-        check(again["chunks"] == 8, f"still 8 chunks after re-ingest (got {again['chunks']})")
+        check(again["chunks"] == 12, f"still 12 chunks after re-ingest (got {again['chunks']})")
         async with db.session_for(owner) as session:
             count = (
                 await session.execute(
@@ -231,7 +273,7 @@ async def main() -> int:
                     {"v": uuid.UUID(body["document_version_id"])},
                 )
             ).scalar_one()
-        check(count == 8, f"no duplicated chunks (got {count})")
+        check(count == 12, f"no duplicated chunks (got {count})")
 
         print("6. a PDF is refused with a reason, and the version is marked failed")
         async with httpx.AsyncClient(
