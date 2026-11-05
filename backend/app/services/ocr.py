@@ -433,6 +433,20 @@ _NUMBER_LEAD = __import__("re").compile(r"^\s*(\d{1,3})\s*(?:[.、．)）]|$)")
 _BARE_LEAD = __import__("re").compile(r"^\s*(\d{1,3})(?=\D)")
 
 
+_PAREN_LEAD = __import__("re").compile(r"^\s*[（(]\s*(\d{1,3})\s*[)）]")
+
+
+def paren_number(text: str) -> int | None:
+    """The question number when a paper numbers its questions `（1）` `(2) …`.
+
+    This is a *style*, not a universal rule: in a paper numbered `1.`, the same shape is a
+    sub-question. Callers must decide which paper they are looking at, which is why this
+    is a separate function rather than folded into `leading_number`.
+    """
+    match = _PAREN_LEAD.match(text or "")
+    return int(match.group(1)) if match else None
+
+
 def leading_number(text: str) -> int | None:
     """The question number a stem starts with, if any."""
     match = _NUMBER_LEAD.match(text or "")
@@ -460,10 +474,25 @@ def merge_fragments(questions: list) -> list:
     one — or, if there is no previous one, kept as its own item flagged by its lack of a
     number.
     """
+    # Which numbering does this paper use? The first subject that starts with a number
+    # answers it, and the answer changes what `（2）` means for every subject after it.
+    style = "num"
+    for candidate in questions:
+        if leading_number(candidate.stem) is not None:
+            style = "num"
+            break
+        if paren_number(candidate.stem) is not None:
+            style = "paren"
+            break
+
     merged: list = []
     for question in questions:
         number = leading_number(question.stem)
-        if number is None:
+        if number is None and style == "paren":
+            number = paren_number(question.stem)
+            if number is not None:
+                question.number = question.number or str(number)
+        if number is None and style == "num":
             guessed = bare_number(question.stem)
             expected = (leading_number(merged[-1].stem) or 0) + 1 if merged else 1
             if guessed is not None and guessed == expected:
@@ -473,9 +502,13 @@ def merge_fragments(questions: list) -> list:
         if number is not None:
             # a real question number, but the same number as the previous one means the
             # cutter split one question in two
-            if merged and leading_number(merged[-1].stem) == number:
-                merged[-1].stem = merged[-1].stem + "\n" + question.stem
-                continue
+            if merged:
+                previous_number = leading_number(merged[-1].stem)
+                if previous_number is None and style == "paren":
+                    previous_number = paren_number(merged[-1].stem)
+                if previous_number == number:
+                    merged[-1].stem = merged[-1].stem + "\n" + question.stem
+                    continue
             merged.append(question)
             continue
         if not merged:

@@ -238,6 +238,8 @@ def segment(blocks: list[Block]) -> list[Segment]:
     key_mode = False
     key_answers: dict[str, tuple[int, str]] = {}
     last_number: int | None = None
+    #: which numbering the paper uses; `1.` and `(1)` mean different things
+    number_style: str | None = None
 
     def flush() -> None:
         nonlocal current, answer_blocks, current_no
@@ -280,11 +282,19 @@ def segment(blocks: list[Block]) -> list[Segment]:
         if match:
             num = match.group("num")
             paren = match.group("paren")
-            # `(1)` inside a question is a sub-question of a 解答题, not question 1.
-            # A gaokao paper numbers its questions with `1.` and divides them with
-            # `(1)(2)`; treating both as question starts produced duplicate numbers
-            # and a corpus that could not be stored at all.
+            # `(1)` inside a question is a sub-question of a 解答题, not question 1 —
+            # **but only when the paper numbers with `1.`**. A paper that numbers its
+            # questions `(1) (2) (3)` uses the same shape for questions and for
+            # sub-questions; telling them apart needs the numbering style of the paper,
+            # not the punctuation. Treating every `(n)` as a sub-question merged a whole
+            # Tianjin paper into one question.
             if paren and current_no is not None:
+                if number_style == "paren":
+                    flush()
+                    current_no = paren
+                    current.append(block)
+                    last_number = int(paren)
+                    continue
                 current.append(block)
                 continue
             # numbering that goes backwards is continuation text, not a new question
@@ -294,7 +304,11 @@ def segment(blocks: list[Block]) -> list[Segment]:
             flush()
             current_no = num or paren
             if num:
+                number_style = "num"
                 last_number = int(num)
+            elif paren:
+                number_style = "paren"
+                last_number = int(paren)
             current.append(block)
             continue
         if INLINE_ANSWER.match(block.text):
