@@ -36,6 +36,7 @@ from sqlalchemy import text
 from app.db import session as db
 from app.services import (
     agent,
+    knowledge_review,
     passwords,
     executions,
     executor,
@@ -293,10 +294,13 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None)
                 text(
                     """
                     SELECT s.title, s.source_type, s.rights_status,
-                           v.lifecycle_status,
+                           v.id AS version_id, v.lifecycle_status,
                            (SELECT r.metrics->'review_reasons' FROM knowledge_ingestion_runs r
                             WHERE r.document_version_id = v.id
-                            ORDER BY r.started_at DESC LIMIT 1) AS review_reasons
+                            ORDER BY r.started_at DESC LIMIT 1) AS review_reasons,
+                           (SELECT array_agg(q.question_no ORDER BY q.ordinal)
+                            FROM knowledge_questions q
+                            WHERE q.document_version_id = v.id) AS question_numbers
                     FROM knowledge_sources s
                     LEFT JOIN LATERAL (
                         SELECT dv.id, dv.lifecycle_status FROM knowledge_document_versions dv
@@ -319,10 +323,35 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None)
                 f"<li>{esc(REASON_TEXT.get(code, code))}</li>" for code in reasons
             )
             reason_html = f"<ul class='muted'>{items}</ul>"
+
+        gaps = _gaps_of(row.question_numbers)
+        holes = ""
+        if gaps and row.version_id and status == "pending_review":
+            options = "".join(f"<option value='{n}'>{n}</option>" for n in gaps)
+            holes = (
+                f"<p>缺第 {esc(', '.join(str(n) for n in gaps))} 题</p>"
+                "<form method='post' action='/ui/knowledge/questions' "
+                "style='border-top:1px solid #8883;padding-top:10px;margin-top:10px'>"
+                f"<input type='hidden' name='version_id' value='{esc(row.version_id)}'>"
+                "<p><label>题号<br><select name='number'>"
+                f"{options}</select></label></p>"
+                "<p><label>题干（可含 LaTeX）<br>"
+                "<textarea name='stem' rows='2' required></textarea></label></p>"
+                "<p><label>答案（可选）<br><input name='answer'></label></p>"
+                "<button type='submit'>补上这题</button></form>"
+            )
+        promote = ""
+        if row.version_id and status == "pending_review":
+            promote = (
+                "<form method='post' action='/ui/knowledge/promote' style='margin-top:8px'>"
+                f"<input type='hidden' name='version_id' value='{esc(row.version_id)}'>"
+                "<button class='secondary' type='submit'>确认完整并启用</button></form>"
+            )
         blocks.append(
             f"<div class='card'><p><b>{esc(row.title)}</b> "
             f"<span class='tag'>{esc(status)}</span> "
-            f"<span class='muted'>{esc(row.source_type)}</span></p>{reason_html}</div>"
+            f"<span class='muted'>{esc(row.source_type)}</span></p>"
+            f"{reason_html}{holes}{promote}</div>"
         )
 
     body = (
@@ -360,6 +389,70 @@ async def knowledge_upload(
 
     async with db.session_for(user_id) as session:
         await knowledge_api.store_and_ingest(session, user_id, file, title, source_type)
+    return RedirectResponse("/ui/knowledge", status_code=303)
+
+
+
+def _gaps_of(numbers) -> list[int]:
+    """Holes in the numbering, computed the same way the service does."""
+    parsed = []
+    for value in numbers or []:
+        try:
+            parsed.append(int(str(value).strip()))
+        except (TypeError, ValueError):
+            continue
+    if not parsed:
+        return []
+    high = max(parsed)
+    return [n for n in range(1, high + 1) if n not in parsed] if min(parsed) == 1 else []
+
+
+async def _knowledge_action(chilon_session: str | None):
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return None, RedirectResponse("/ui/login", status_code=303)
+    user_id, _, pending = who
+    if pending:
+        return None, RedirectResponse("/ui/password", status_code=303)
+    return user_id, None
+
+
+@router.post("/ui/knowledge/questions")
+async def knowledge_add_question(
+    version_id: Annotated[str, Form()],
+    number: Annotated[int, Form()],
+    stem: Annotated[str, Form()],
+    answer: Annotated[str | None, Form()] = None,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    user_id, redirect = await _knowledge_action(chilon_session)
+    if redirect:
+        return redirect
+    async with db.session_for(user_id) as session:
+        try:
+            await knowledge_review.add_question(
+                session, user_id, uuid.UUID(version_id),
+                number=number, stem=stem, answer=answer,
+            )
+        except knowledge_review.ReviewError:
+            # the page renders the reason; a failed add must not break the listing
+            pass
+    return RedirectResponse("/ui/knowledge", status_code=303)
+
+
+@router.post("/ui/knowledge/promote")
+async def knowledge_promote(
+    version_id: Annotated[str, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    user_id, redirect = await _knowledge_action(chilon_session)
+    if redirect:
+        return redirect
+    async with db.session_for(user_id) as session:
+        try:
+            await knowledge_review.promote(session, user_id, uuid.UUID(version_id))
+        except knowledge_review.ReviewError:
+            pass
     return RedirectResponse("/ui/knowledge", status_code=303)
 
 
