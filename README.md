@@ -208,3 +208,16 @@ CHILON_OCR_ALIYUN_SUBJECT=Math
 **开启即视为一次数据出境决策**：整页图片会上传到阿里云。开通服务与计费见
 [教育场景识别](https://help.aliyun.com/zh/ocr/product-overview/education-scenario-recognition-1)。
 该接口不支持 PDF，服务会先把每页栅格化为 PNG 再上传。
+
+#### 拿到凭据后的第一步：联调探测
+
+```bash
+export CHILON_OCR_ALIYUN_KEY_ID=...
+export CHILON_OCR_ALIYUN_KEY_SECRET=...
+python tools/aliyun_ocr_smoke.py 试卷.pdf --page 1 --dump /tmp/aliyun.json
+```
+
+它会真实调用一次 `RecognizeEduPaperCut`，打印返回结构与解析出的题目。
+**如果解析器认不出结构，它会带上实际键名报错**——照着输出调整
+`app/services/aliyun_ocr.py` 里的 `TEXT_KEYS` / `OPTION_KEYS` 即可，通常只改键名。
+它不写数据库：先确认 vendor，再跑上传路径。
