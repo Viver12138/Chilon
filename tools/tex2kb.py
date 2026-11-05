@@ -341,6 +341,7 @@ class Converter:
             s = re.sub(pat, rep, s)
 
         # 空白
+        s = s.replace(r"\fillinblank{}", "______")
         s = s.replace(r"\fillinblank", "______")
         s = s.replace("~", " ")
 
