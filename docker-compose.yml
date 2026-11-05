@@ -54,6 +54,9 @@ services:
       # exports and uploads live outside the container: a redeploy must not delete
       # the files a teacher already downloaded
       - chilon-data:/data
+      # drop textbooks and papers here, then run:
+      #   docker compose exec app python tools/import_platform.py --dir /corpus
+      - ./corpus:/corpus:ro
     restart: unless-stopped
 
 volumes:

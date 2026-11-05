@@ -108,15 +108,18 @@ async def main() -> int:
                 print(f"FAIL {path.name}: {exc}", file=sys.stderr)
                 continue
 
+            if result["status"] == "failed":
+                failed += 1
             if result["skipped"]:
                 skipped += 1
                 print(f"skip {path.name}: {result['reason']}")
                 continue
             imported += 1
             reasons = ",".join(result["review_reasons"]) or "-"
+            detail = f" | {result['detail']}" if result.get("detail") else ""
             print(
                 f"ok   {path.name}: {result['questions']} 题, status={result['status']}"
-                f", reasons={reasons}, promoted={result['promoted']}"
+                f", reasons={reasons}, promoted={result['promoted']}{detail}"
             )
     finally:
         await db.dispose()
