@@ -546,13 +546,8 @@ async def ingest(
             "gaps": gaps,
             "analysis_blocks": int(getattr(result, "analysis_blocks", 0) or 0),
         }
-        await _record_run(
-            session,
-            document_version_id,
-            status="succeeded",
-            stage="ocr",
-            metrics=ocr_meta,
-        )
+        # the run is recorded once, at the end, with review reasons included;
+        # recording it here as well doubled every OCR ingest in the audit log
         # a structured provider delivers questions and leaves `blocks` empty; checking
         # only `blocks` reported "no text" for a page that had six questions cut
         if not blocks and not segments:

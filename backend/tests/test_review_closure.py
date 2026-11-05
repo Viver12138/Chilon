@@ -126,30 +126,49 @@ async def main() -> int:
         check(outline["gaps"] == [3], f"gap 3 reported (got {outline['gaps']})")
         check(outline["numbers"] == [1, 2, 4], f"numbers (got {outline['numbers']})")
 
-        print("4. transcribing question 3 closes the hole")
+        print("4. the page shows the hole and offers to fill it")
+        cookies = {}
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
             r = await client.post(
-                f"/knowledge/versions/{version_id}/questions",
-                headers=headers,
-                json={
-                    "number": 3,
+                "/ui/login",
+                data={"username": username, "password": "review_password_1"},
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"UI login (got {r.status_code})")
+            cookies = dict(client.cookies)
+            r = await client.get("/ui/knowledge")
+        check(r.status_code == 200, f"knowledge page renders (got {r.status_code})")
+        check("缺第 3 题" in r.text, "it names the missing question")
+        check("/ui/knowledge/questions" in r.text, "and offers a form to add it")
+        check("/ui/knowledge/promote" in r.text, "and a button to confirm completeness")
+
+        print("5. filling the hole from the page closes it")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
+        ) as client:
+            r = await client.post(
+                "/ui/knowledge/questions",
+                data={
+                    "version_id": version_id,
+                    "number": "3",
                     "stem": "3.已知平面向量 a=(1,2)，b=(x,1)，若 a⊥b，求 x。",
                     "answer": "x=-2",
                 },
+                follow_redirects=False,
             )
-        check(r.status_code == 201, f"question added (got {r.status_code}: {r.text[:120]})")
+        check(r.status_code == 303, f"the form submits (got {r.status_code})")
 
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
             r = await client.get(f"/knowledge/versions/{version_id}", headers=headers)
         outline = r.json()
+        check(outline["numbers"] == [1, 2, 3, 4], f"numbers contiguous (got {outline['numbers']})")
         check(outline["gaps"] == [], f"no gap left (got {outline['gaps']})")
-        check(outline["numbers"] == [1, 2, 3, 4], f"numbers now contiguous (got {outline['numbers']})")
 
-        print("5. the same number cannot be added twice")
+        print("5b. the same number cannot be added twice")
         async with httpx.AsyncClient(
             transport=httpx.ASGITransport(app=app), base_url="http://test"
         ) as client:
@@ -160,17 +179,18 @@ async def main() -> int:
             )
         check(r.status_code == 422, f"duplicate refused (got {r.status_code})")
 
-        print("6. promoting makes it retrievable, and records the decision")
+        print("6. confirming completeness on the page makes it searchable")
         async with httpx.AsyncClient(
-            transport=httpx.ASGITransport(app=app), base_url="http://test"
+            transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
         ) as client:
-            r = await client.post(f"/knowledge/versions/{version_id}/promote", headers=headers)
-        check(r.status_code == 200, f"promoted (got {r.status_code}: {r.text[:120]})")
-        check(r.json()["promoted"] is True, "the response says it was promoted")
+            r = await client.post(
+                "/ui/knowledge/promote", data={"version_id": version_id}, follow_redirects=False
+            )
+        check(r.status_code == 303, f"the button submits (got {r.status_code})")
 
         async with db.session_for(owner) as session:
             after = await tools_impl.knowledge_search(session, search_ctx(owner, "向量"))
-        check(len(after["hits"]) >= 1, f"the transcribed question is findable ({len(after['hits'])} hits)")
+        check(len(after["hits"]) >= 1, f"it is findable now ({len(after['hits'])} hits)")
         check(
             any("a⊥b" in (h.get("excerpt") or "") for h in after["hits"]),
             "the hit is the question the teacher typed",
@@ -186,9 +206,8 @@ async def main() -> int:
                     {"v": uuid.UUID(version_id)},
                 )
             ).all()
-        print("    runs:", [(r.stage, r.status) for r in all_runs])
         run = next((r for r in all_runs if r.stage == "index"), None)
-        check(run is not None, "the promotion is recorded as an index run")
+        check(run is not None, f"the promotion is recorded (stages={[r.stage for r in all_runs]})")
         check(
             run.metrics.get("promoted_by") == "teacher",
             f"and says who decided (got {run.metrics.get('promoted_by')})",
