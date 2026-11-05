@@ -221,3 +221,55 @@ def _ignore_b64(value: str) -> bytes:
 
 
 _ = _ignore_b64
+
+def describe_shape(node: Any, *, depth: int = 0, max_depth: int = 3) -> str:
+    """Describe a JSON payload compactly, so an operator can see what came back.
+
+    This exists because the vendor's response shape is not documented where this code
+    was written. Rather than guess keys, the smoke tool prints this and the reader is
+    adjusted from evidence.
+    """
+    indent = "  " * depth
+    if depth >= max_depth:
+        return f"{indent}…"
+    if isinstance(node, dict):
+        lines = []
+        for key, value in node.items():
+            if isinstance(value, dict):
+                lines.append(f"{indent}{key}: object")
+                lines.append(describe_shape(value, depth=depth + 1, max_depth=max_depth))
+            elif isinstance(value, list):
+                first = value[0] if value else None
+                lines.append(f"{indent}{key}: list[{len(value)}]")
+                if first is not None:
+                    lines.append(describe_shape(first, depth=depth + 1, max_depth=max_depth))
+            elif isinstance(value, str):
+                preview = value[:60].replace("\n", " ")
+                lines.append(f"{indent}{key}: str({len(value)}) {preview!r}")
+            else:
+                lines.append(f"{indent}{key}: {type(value).__name__} {value!r}"[:110])
+        return "\n".join(lines)
+    if isinstance(node, list):
+        if not node:
+            return f"{indent}[]"
+        lines = [f"{indent}list[{len(node)}] of {type(node[0]).__name__}"]
+        lines.append(describe_shape(node[0], depth=depth + 1, max_depth=max_depth))
+        return "\n".join(lines)
+    return f"{indent}{type(node).__name__} {node!r}"[:110]
+
+def decode_data(payload: Any) -> Any:
+    """Unwrap the `Data` field, which the vendor returns as a JSON string.
+
+    Handled here rather than in the provider so the smoke tool and the provider agree
+    about what "the response" is. A payload that is already an object is passed
+    through: the docs show `Data` as a string, but a variant must not break the reader.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    data = payload.get("Data", payload)
+    if isinstance(data, str):
+        try:
+            return json.loads(data)
+        except json.JSONDecodeError:
+            return data
+    return data

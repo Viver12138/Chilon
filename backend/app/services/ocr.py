@@ -307,7 +307,7 @@ class AliyunPaperCutProvider:
                 "OutputOricoord": "false",
             }
             payload = self._call(png, params, page_number)
-            data = payload.get("Data", payload)
+            data = aliyun_ocr.decode_data(payload)
             try:
                 found = aliyun_ocr.extract_questions(data, page=page_number)
             except aliyun_ocr.ShapeUnknown as exc:
