@@ -192,3 +192,19 @@ docker compose up -d --build
 /healthz 只回报进程存活，**不查数据库**：依赖故障不应该让进程看起来也死了，否则编排器会去重启一个本身正常的服务。
 
 导出与上传文件存放在 chilon-data 卷的 /data 下（CHILON_EXPORT_DIR / CHILON_UPLOAD_DIR），**重新部署不会删掉教师已经下载过的文件**。
+
+### 云 OCR（阿里云试卷切题）
+
+默认关闭。开启需要显式提供凭据：
+
+```bash
+CHILON_OCR_PROVIDER=aliyun
+CHILON_OCR_ALIYUN_KEY_ID=...
+CHILON_OCR_ALIYUN_KEY_SECRET=...
+CHILON_OCR_ALIYUN_IMAGE_TYPE=scan     # scan | photo
+CHILON_OCR_ALIYUN_SUBJECT=Math
+```
+
+**开启即视为一次数据出境决策**：整页图片会上传到阿里云。开通服务与计费见
+[教育场景识别](https://help.aliyun.com/zh/ocr/product-overview/education-scenario-recognition-1)。
+该接口不支持 PDF，服务会先把每页栅格化为 PNG 再上传。

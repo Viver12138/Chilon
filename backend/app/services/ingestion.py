@@ -406,6 +406,8 @@ async def ingest(
 
     data = path.read_bytes()
     ocr_meta: dict[str, Any] = {}
+    # set by whichever extraction path ran; None means "not extracted yet"
+    segments: list[Segment] | None = None
     try:
         blocks = paragraphs_for(version.mime_type, data)
     except UnsupportedFormat as exc:
@@ -445,11 +447,40 @@ async def ingest(
             return {"status": "failed", "error": "ocr_failed", "detail": str(problem),
                     "chunks": 0, "questions": 0}
 
-        blocks = []
-        for page in result.pages:
-            for line in (raw.strip() for raw in page.text.splitlines()):
-                if line:
-                    blocks.append(Block(len(blocks), line, page.page_number))
+        # A structured provider already segmented the paper. Re-deriving lines and
+        # running the regex splitter over them would discard the options, the answer
+        # pairing and the page anchors it just produced.
+        structured = list(getattr(result, "questions", []) or [])
+        if structured:
+            segments = []
+            for index, question in enumerate(structured):
+                body = question.as_text()
+                segments.append(
+                    Segment(
+                        ordinal=index,
+                        question_no=str(index + 1),
+                        section=None,
+                        locator={
+                            "page_number": question.page or 1,
+                            "question_index": index,
+                        },
+                        text=body,
+                        answer_text=question.answer or None,
+                        answer_locator=(
+                            {"page_number": question.page or 1, "answer_index": index}
+                            if question.answer
+                            else None
+                        ),
+                        question_type=classify(None, body),
+                    )
+                )
+            blocks = []
+        else:
+            blocks = []
+            for page in result.pages:
+                for line in (raw.strip() for raw in page.text.splitlines()):
+                    if line:
+                        blocks.append(Block(len(blocks), line, page.page_number))
         ocr_meta = {
             "engine": result.engine,
             "engine_version": result.version,
@@ -476,7 +507,8 @@ async def ingest(
             return {"status": "failed", "error": "no_text",
                     "detail": "OCR 没有识别出文字", "chunks": 0, "questions": 0}
 
-    segments = segment(blocks)
+    if segments is None:
+        segments = segment(blocks)
 
     if not segments:
         await _record_run(
