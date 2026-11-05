@@ -33,6 +33,8 @@ from xml.etree import ElementTree
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services import taxonomy
+
 PARSER_VERSION = "chilon-ingest-1"
 PARSE_SCHEMA_VERSION = "1.0"
 
@@ -500,11 +502,11 @@ async def ingest(
                     INSERT INTO knowledge_questions
                         (id, document_version_id, question_no, section_label, ordinal,
                          stem_locator, answer_locator, current_paper_question_type,
-                         segmentation_status, segmentation_source)
+                         current_knowledge_points, segmentation_status, segmentation_source)
                     VALUES
                         (gen_random_uuid(), :v, :no, :section, :ordinal,
                          CAST(:locator AS jsonb), CAST(:answer_locator AS jsonb), :qtype,
-                         'auto', 'rule')
+                         CAST(:points AS text[]), 'auto', 'rule')
                     """
                 ),
                 {
@@ -515,6 +517,7 @@ async def ingest(
                     "locator": json.dumps(item.locator, sort_keys=True),
                     "answer_locator": answer_locator_json,
                     "qtype": item.question_type,
+                    "points": taxonomy.tag(item.text) or None,
                 },
             )
 
