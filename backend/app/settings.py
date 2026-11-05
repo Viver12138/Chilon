@@ -67,10 +67,30 @@ class Settings:
     deepseek_timeout_seconds: int
     deepseek_max_retries: int
     planner: str
+    ocr_provider: str
+    ocr_cloud_endpoint: str
+    ocr_cloud_key: str
+    ocr_languages: str
+    ocr_min_confidence: float
 
     @property
     def llm_configured(self) -> bool:
         return bool(self.deepseek_api_key) and bool(self.deepseek_base_url)
+
+    @property
+    def ocr_configured(self) -> bool:
+        """Whether an OCR provider would actually be able to run.
+
+        `none` is the default and means "refuse scans, say why". Anything else must be
+        able to work, otherwise the operator gets a failure at upload time instead of a
+        configuration mistake at startup.
+        """
+        provider = (self.ocr_provider or "none").strip().lower()
+        if provider == "none":
+            return False
+        if provider == "cloud":
+            return bool(self.ocr_cloud_endpoint) and bool(self.ocr_cloud_key)
+        return True
 
 
 def load() -> Settings:
@@ -84,4 +104,11 @@ def load() -> Settings:
         deepseek_timeout_seconds=get_int("CHILON_DEEPSEEK_TIMEOUT_SECONDS", 60),
         deepseek_max_retries=get_int("CHILON_DEEPSEEK_MAX_RETRIES", 2),
         planner=get("CHILON_PLANNER", "template"),
+        # OCR is off unless an operator turns it on. The cloud provider is a
+        # data-egress decision, so it can never become the default by accident.
+        ocr_provider=get("CHILON_OCR_PROVIDER", "none"),
+        ocr_cloud_endpoint=get("CHILON_OCR_CLOUD_ENDPOINT"),
+        ocr_cloud_key=get("CHILON_OCR_CLOUD_KEY"),
+        ocr_languages=get("CHILON_OCR_LANGUAGES", "chi_sim+eng"),
+        ocr_min_confidence=float(get("CHILON_OCR_MIN_CONFIDENCE", "0.6")),
     )
