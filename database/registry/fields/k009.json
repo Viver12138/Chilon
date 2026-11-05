@@ -789,7 +789,7 @@
           "name": "current_paper_question_type",
           "type": "varchar",
           "length": 32,
-          "nullable": false,
+          "nullable": true,
           "sensitivity": "public",
           "desc": "派生缓存：卷面题型"
         },

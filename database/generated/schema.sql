@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 5ef6eefacd099ba23cb7121525d20488776286a58b69a0a1812ab87a7b96a432
+-- registry_hash: a11414eb6441bb4e113cd82980249c4c7811c55cf7408555ecf9a7eb97f917be
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -1813,7 +1813,7 @@ CREATE TABLE knowledge_questions (
     "score" NUMERIC(5,2),
     "segmentation_status" VARCHAR(16) NOT NULL DEFAULT 'auto',
     "segmentation_source" VARCHAR(16) NOT NULL DEFAULT 'rule',
-    "current_paper_question_type" VARCHAR(32) NOT NULL,
+    "current_paper_question_type" VARCHAR(32),
     "current_knowledge_points" TEXT[],
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
