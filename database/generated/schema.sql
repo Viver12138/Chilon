@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 08c8bb5885e8f9a3f1aa3bed26cf15cf129217dac0ef7475d7eecf5a2ae6f8a1
+-- registry_hash: 910de25ce8b62bfd4e0682efe27b90555f6d58fb5651a3e81241f120991b68ba
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -1723,6 +1723,7 @@ CREATE TABLE knowledge_sources (
     "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
     "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
     "deleted_at" TIMESTAMPTZ,
+    "rights_note" TEXT,
     CONSTRAINT pk_knowledge_sources PRIMARY KEY ("id"),
     CONSTRAINT fk_knowledge_sources_owner_id FOREIGN KEY ("owner_id") REFERENCES users(id) ON DELETE RESTRICT,
     CONSTRAINT fk_knowledge_sources_category_id FOREIGN KEY ("category_id") REFERENCES knowledge_categories(id) ON DELETE RESTRICT,
