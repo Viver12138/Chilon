@@ -237,6 +237,7 @@ def segment(blocks: list[Block]) -> list[Segment]:
     current_no: str | None = None
     key_mode = False
     key_answers: dict[str, tuple[int, str]] = {}
+    last_number: int | None = None
 
     def flush() -> None:
         nonlocal current, answer_blocks, current_no
@@ -277,8 +278,23 @@ def segment(blocks: list[Block]) -> list[Segment]:
             continue
         match = QUESTION_START.match(block.text)
         if match:
+            num = match.group("num")
+            paren = match.group("paren")
+            # `(1)` inside a question is a sub-question of a 解答题, not question 1.
+            # A gaokao paper numbers its questions with `1.` and divides them with
+            # `(1)(2)`; treating both as question starts produced duplicate numbers
+            # and a corpus that could not be stored at all.
+            if paren and current_no is not None:
+                current.append(block)
+                continue
+            # numbering that goes backwards is continuation text, not a new question
+            if num and last_number is not None and int(num) <= last_number:
+                current.append(block)
+                continue
             flush()
-            current_no = match.group("num") or match.group("paren")
+            current_no = num or paren
+            if num:
+                last_number = int(num)
             current.append(block)
             continue
         if INLINE_ANSWER.match(block.text):

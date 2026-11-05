@@ -320,6 +320,13 @@
           "nullable": true,
           "sensitivity": "public",
           "desc": "软删除时间"
+        },
+        {
+          "name": "rights_note",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "internal",
+          "desc": "许可证与署名说明：平台语料必须能回答“凭什么可以用”"
         }
       ],
       "constraints": [
