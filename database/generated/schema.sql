@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 910de25ce8b62bfd4e0682efe27b90555f6d58fb5651a3e81241f120991b68ba
+-- registry_hash: e7cbaf22fcea270e8a3ebd91b209000a779e551d621e3a034e4a5f699e36aec9
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -1729,7 +1729,7 @@ CREATE TABLE knowledge_sources (
     CONSTRAINT fk_knowledge_sources_category_id FOREIGN KEY ("category_id") REFERENCES knowledge_categories(id) ON DELETE RESTRICT,
     CONSTRAINT fk_knowledge_sources_derived_from_source_id FOREIGN KEY ("derived_from_source_id") REFERENCES knowledge_sources(id) ON DELETE RESTRICT,
     CONSTRAINT ck_knowledge_sources_scope_owner CHECK ((scope = 'platform' AND owner_id IS NULL) OR (scope = 'teacher' AND owner_id IS NOT NULL)),
-    CONSTRAINT ck_knowledge_sources_platform_rights CHECK (scope <> 'platform' OR (rights_status = 'licensed' AND distribution_scope = 'classroom')),
+    CONSTRAINT ck_knowledge_sources_platform_rights CHECK (scope <> 'platform' OR (rights_status IN ('licensed','restricted') AND distribution_scope = 'classroom')),
     CONSTRAINT ck_knowledge_sources_rights_status CHECK (rights_status IN ('unverified','teacher_confirmed','licensed','restricted')),
     CONSTRAINT ck_knowledge_sources_distribution_scope CHECK (distribution_scope IN ('private_teacher','classroom','public')),
     CONSTRAINT ck_knowledge_sources_source_type CHECK (source_type IN ('textbook','workbook','gaokao_paper','mock_exam','other'))

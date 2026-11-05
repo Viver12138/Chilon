@@ -338,7 +338,7 @@
         {
           "type": "check",
           "name": "ck_knowledge_sources_platform_rights",
-          "expr": "scope <> 'platform' OR (rights_status = 'licensed' AND distribution_scope = 'classroom')"
+          "expr": "scope <> 'platform' OR (rights_status IN ('licensed','restricted') AND distribution_scope = 'classroom')"
         },
         {
           "type": "check",
