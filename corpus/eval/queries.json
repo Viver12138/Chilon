@@ -1,0 +1,49 @@
+{
+  "note": "教师提问 → 期望命中的对象。expect_any 命中摘要或来源标题即算对；target 是更严格的“必须出现这一条”。",
+  "queries": [
+    {"id": "A01", "category": "主题词", "text": "导数", "expect_any": ["导数"], "target": "x^3 + bx"},
+    {"id": "A02", "category": "主题词", "text": "平面向量", "expect_any": ["向量", "a \\cdot"], "target": "a \\cdot a"},
+    {"id": "A03", "category": "主题词", "text": "立体几何", "expect_any": ["棱锥", "棱柱", "空间直角坐标系"], "target": "空间直角坐标系"},
+    {"id": "A04", "category": "主题词", "text": "概率", "expect_any": ["概率"], "target": "袋中有五张卡片"},
+    {"id": "A05", "category": "主题词", "text": "数列", "expect_any": ["数列"], "target": "前三项的积为8"},
+    {"id": "A06", "category": "主题词", "text": "圆锥曲线", "expect_any": ["椭圆", "双曲线", "抛物线"]},
+    {"id": "A07", "category": "主题词", "text": "三角函数", "expect_any": ["sin", "cos", "三角函数"]},
+    {"id": "A08", "category": "主题词", "text": "集合", "expect_any": ["集合", "交集", "并集"]},
+
+    {"id": "B01", "category": "题型+知识点", "text": "圆锥曲线的选择题", "expect_any": ["椭圆", "双曲线", "抛物线"]},
+    {"id": "B02", "category": "题型+知识点", "text": "导数的解答题", "expect_any": ["导数"]},
+    {"id": "B03", "category": "题型+知识点", "text": "数列的填空题", "expect_any": ["数列"]},
+    {"id": "B04", "category": "题型+知识点", "text": "概率的多选题", "expect_any": ["概率"]},
+    {"id": "B05", "category": "题型+知识点", "text": "立体几何的证明题", "expect_any": ["求证", "棱锥", "棱柱"]},
+    {"id": "B06", "category": "题型+知识点", "text": "三角函数的求值题", "expect_any": ["sin", "cos", "tan"]},
+    {"id": "B07", "category": "题型+知识点", "text": "解析几何的压轴题", "expect_any": ["椭圆", "抛物线", "双曲线"]},
+    {"id": "B08", "category": "题型+知识点", "text": "集合的单选题", "expect_any": ["集合", "交集"]},
+
+    {"id": "C01", "category": "教材概念", "text": "补集的定义", "expect_any": ["补集"], "target": "由全集U中不属于集合A"},
+    {"id": "C02", "category": "教材概念", "text": "数学归纳法", "expect_any": ["数学归纳法"]},
+    {"id": "C03", "category": "教材概念", "text": "正弦定理", "expect_any": ["正弦定理"], "target": "余弦定理及其推论"},
+    {"id": "C04", "category": "教材概念", "text": "余弦定理", "expect_any": ["余弦定理"]},
+    {"id": "C05", "category": "教材概念", "text": "函数的单调性", "expect_any": ["单调"]},
+    {"id": "C06", "category": "教材概念", "text": "等差数列通项公式", "expect_any": ["等差数列"]},
+    {"id": "C07", "category": "教材概念", "text": "二项式定理", "expect_any": ["二项式"]},
+    {"id": "C08", "category": "教材概念", "text": "空间向量", "expect_any": ["空间向量", "空间直角坐标系"]},
+
+    {"id": "D01", "category": "年份+卷别", "text": "2024 新高考Ⅰ卷的解答题", "expect_any": ["2024"]},
+    {"id": "D02", "category": "年份+卷别", "text": "2023 北京卷的题目", "expect_any": ["2023"]},
+    {"id": "D03", "category": "年份+卷别", "text": "2025 上海卷", "expect_any": ["2025"]},
+    {"id": "D04", "category": "年份+卷别", "text": "2024 全国甲卷", "expect_any": ["2024"]},
+    {"id": "D05", "category": "年份+卷别", "text": "2022 新高考Ⅱ卷", "expect_any": ["2022"]},
+    {"id": "D06", "category": "年份+卷别", "text": "2021 全国乙卷", "expect_any": ["2021"]},
+    {"id": "D07", "category": "年份+卷别", "text": "2020 山东卷", "expect_any": ["2020"]},
+    {"id": "D08", "category": "年份+卷别", "text": "2019 全国Ⅰ卷", "expect_any": ["2019"]},
+
+    {"id": "E01", "category": "自然语言要求", "text": "出几道导数压轴题，难度接近高考", "expect_any": ["导数"]},
+    {"id": "E02", "category": "自然语言要求", "text": "找点学生容易错的三角函数题", "expect_any": ["sin", "cos", "三角函数"]},
+    {"id": "E03", "category": "自然语言要求", "text": "来道圆锥曲线的难题", "expect_any": ["椭圆", "双曲线", "抛物线"]},
+    {"id": "E04", "category": "自然语言要求", "text": "简单点的集合题", "expect_any": ["集合"]},
+    {"id": "E05", "category": "自然语言要求", "text": "有没有立体几何的证明题", "expect_any": ["求证", "棱锥", "棱柱"]},
+    {"id": "E06", "category": "自然语言要求", "text": "概率统计的大题", "expect_any": ["概率", "统计"]},
+    {"id": "E07", "category": "自然语言要求", "text": "数列求和的专项练习", "expect_any": ["数列"]},
+    {"id": "E08", "category": "自然语言要求", "text": "函数零点的问题", "expect_any": ["零点", "函数"]}
+  ]
+}

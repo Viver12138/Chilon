@@ -36,12 +36,14 @@ async def is_admin(session) -> bool:
 async def main() -> int:
     parser = argparse.ArgumentParser(description="Import mock papers by OCR")
     parser.add_argument("--dir", default="corpus/mock-exams")
-    parser.add_argument("--limit", type=int, default=5)
+    parser.add_argument("--limit", type=int, default=5, help="0 = all")
     parser.add_argument("--database-url", default=os.environ.get("CHILON_DATABASE_URL"))
     args = parser.parse_args()
 
     folder = Path(args.dir)
-    files = sorted(folder.glob("*试题.pdf"))[: args.limit]
+    files = sorted(folder.glob("*试题.pdf"))
+    if args.limit:
+        files = files[: args.limit]
     if not files:
         print("no 试题 pdf found", file=sys.stderr)
         return 1
@@ -72,7 +74,7 @@ async def main() -> int:
             total_questions += result["questions"]
             print(
                 f"ok   {result['title'][:40]:42} pages={result['pages']} "
-                f"questions={result['questions']} numbers={result['numbers'][:8]}"
+                f"questions={result['questions']} gaps={result['gaps'][:8]}"
             )
     finally:
         await db.dispose()
