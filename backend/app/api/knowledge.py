@@ -300,3 +300,40 @@ async def promote_version(session: SessionDep, user: UserDep, version_id: uuid.U
         raise ApiError(404, "NOT_FOUND", str(exc)) from exc
     except knowledge_review.ReviewError as exc:
         raise ApiError(422, "AST_INVALID", str(exc)) from exc
+
+
+class QuestionPatch(BaseModel):
+    stem: str | None = Field(default=None, max_length=5000)
+    answer: str | None = Field(default=None, max_length=5000)
+
+
+@router.patch("/versions/{version_id}/questions/{number}")
+async def patch_question(
+    session: SessionDep,
+    user: UserDep,
+    version_id: uuid.UUID,
+    number: int,
+    payload: QuestionPatch,
+) -> dict:
+    """Correct a question that was cut or recognised wrongly."""
+    try:
+        return await knowledge_review.update_question(
+            session, user, version_id, number=number, stem=payload.stem, answer=payload.answer
+        )
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc
+    except knowledge_review.ReviewError as exc:
+        raise ApiError(422, "AST_INVALID", str(exc)) from exc
+
+
+@router.delete("/versions/{version_id}/questions/{number}")
+async def remove_question(
+    session: SessionDep, user: UserDep, version_id: uuid.UUID, number: int
+) -> dict:
+    """Delete a question the cutter got wrong, along with its chunks."""
+    try:
+        return await knowledge_review.delete_question(
+            session, user, version_id, number=number
+        )
+    except knowledge_review.ReviewNotFound as exc:
+        raise ApiError(404, "NOT_FOUND", str(exc)) from exc

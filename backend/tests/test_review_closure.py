@@ -220,6 +220,66 @@ async def main() -> int:
             r = await client.post(f"/knowledge/versions/{version_id}/promote", headers=headers)
         check(r.status_code == 200 and r.json()["promoted"] is False, "second promote is a no-op")
 
+
+        print("9. a mis-cut stem can be corrected from the page")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
+        ) as client:
+            r = await client.get(f"/ui/knowledge/{version_id}")
+            check(r.status_code == 200, f"the correction page renders (got {r.status_code})")
+            check("校对题目" in r.text or "第 1 题" in r.text, "it lists the questions")
+            r = await client.post(
+                "/ui/knowledge/questions/update",
+                data={
+                    "version_id": version_id,
+                    "number": "4",
+                    "stem": "4.已知向量 a=(3,4)，求 a 的模长。",
+                    "answer": "5",
+                },
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"the correction submits (got {r.status_code})")
+
+        async with db.session_for(owner) as session:
+            corrected = await tools_impl.knowledge_search(session, search_ctx(owner, "模长"))
+        check(len(corrected["hits"]) >= 1, f"the corrected stem is findable ({len(corrected['hits'])} hits)")
+        check(
+            any("模长" in (h.get("excerpt") or "") for h in corrected["hits"]),
+            "search returns the corrected text, not the old one",
+        )
+        async with db.session_for(owner) as session:
+            old = await tools_impl.knowledge_search(session, search_ctx(owner, "数量积"))
+        check(
+            all("数量积" not in (h.get("excerpt") or "") or "模长" in (h.get("excerpt") or "")
+                for h in old["hits"]),
+            "the old wording no longer matches on its own",
+        )
+
+        print("10. a block that is not a question can be deleted")
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test", cookies=cookies
+        ) as client:
+            r = await client.post(
+                "/ui/knowledge/questions/delete",
+                data={"version_id": version_id, "number": "2"},
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"delete submits (got {r.status_code})")
+
+        async with db.session_for(owner) as session:
+            gone = await tools_impl.knowledge_search(session, search_ctx(owner, "复数"))
+        check(
+            all("复数" not in (h.get("excerpt") or "") for h in gone["hits"]),
+            "the deleted question is no longer returned by search",
+        )
+
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.get(f"/knowledge/versions/{version_id}", headers=headers)
+        outline = r.json()
+        check(2 not in outline["numbers"], f"it is gone from the outline (got {outline['numbers']})")
+
         print("8. another teacher cannot touch this version")
         async with db.system_session() as session:
             other_name = f"rev_other_{uuid.uuid4().hex[:6]}"
