@@ -505,11 +505,13 @@ async def ingest(
                 for line in (raw.strip() for raw in page.text.splitlines()):
                     if line:
                         blocks.append(Block(len(blocks), line, page.page_number))
+        gaps = list(getattr(result, "gaps", []) or [])
         ocr_meta = {
             "engine": result.engine,
             "engine_version": result.version,
             "confidence": round(result.confidence, 3),
             "pages": len(result.pages),
+            "gaps": gaps,
         }
         await _record_run(
             session,
@@ -642,9 +644,11 @@ async def ingest(
             )
 
     settings = config.load()
-    low_confidence = (
-        bool(ocr_meta)
-        and float(ocr_meta.get("confidence") or 0.0) < settings.ocr_min_confidence
+    # a paper whose numbering has holes has probably lost questions in the cut; that
+    # is exactly what `pending_review` is for, and retrieval only reads approved/indexed
+    low_confidence = bool(ocr_meta) and (
+        float(ocr_meta.get("confidence") or 0.0) < settings.ocr_min_confidence
+        or bool(ocr_meta.get("gaps"))
     )
     # A scan that OCR read badly must not enter retrieval silently. `pending_review` is
     # a declared state, and retrieval only reads approved/indexed, so the gate is the

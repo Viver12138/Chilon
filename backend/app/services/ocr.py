@@ -48,6 +48,8 @@ class OcrResult:
     # a structured provider segments the paper itself; when it does, our own regex
     # segmentation would only throw that structure away
     questions: list = field(default_factory=list)
+    # question numbers the paper implies but the vendor did not return
+    gaps: list[int] = field(default_factory=list)
 
     @property
     def text(self) -> str:
@@ -70,8 +72,12 @@ class OcrProvider(Protocol):
 # ── rasterisation ──────────────────────────────────────────────────────────────
 
 
-def render_pages(pdf_bytes: bytes, *, scale: float = 2.0) -> list[bytes]:
+def render_pages(pdf_bytes: bytes, *, scale: float = 3.0) -> list[bytes]:
     """Render PDF pages to PNG bytes.
+
+    `scale=3.0` is not a default chosen by feel: on the 2024 新课标Ⅰ卷 sample, scale 2.0
+    lost question 16 and scale 3.0 recovered it. Higher (4.0) gained nothing and made
+    the vendor's numbering less stable, so 3.0 is the measured compromise.
 
     pypdfium2 is a wheel with no system dependency, which is the reason it is used
     here: an OCR pipeline that needs poppler installed is a pipeline half the
@@ -321,11 +327,15 @@ class AliyunPaperCutProvider:
             confidence_pages.append(
                 PageText(page_number=page_number, text="\n".join(q.as_text() for q in found), confidence=0.9)
             )
+
+        merged = merge_fragments(questions)
+        gaps = missing_numbers(merged)
         return OcrResult(
             pages=confidence_pages,
             engine=self.name,
             version=self.version,
-            questions=questions,
+            questions=merged,
+            gaps=gaps,
         )
 
     def _call(self, png: bytes, params: dict[str, str], page_number: int) -> dict:
@@ -352,6 +362,89 @@ class AliyunPaperCutProvider:
             return response.json()
         except ValueError as exc:
             raise OcrFailed(f"aliyun OCR returned non-JSON: {response.text[:200]}") from exc
+
+
+
+_NUMBER_LEAD = __import__("re").compile(r"^\s*(\d{1,3})\s*(?:[.、．)）]|$)")
+
+
+_BARE_LEAD = __import__("re").compile(r"^\s*(\d{1,3})(?=\D)")
+
+
+def leading_number(text: str) -> int | None:
+    """The question number a stem starts with, if any."""
+    match = _NUMBER_LEAD.match(text or "")
+    return int(match.group(1)) if match else None
+
+
+def bare_number(text: str) -> int | None:
+    """A leading number without the usual separator.
+
+    OCR drops the dot often enough that `2若 …` is question 2, not a fragment. It is
+    only accepted when it continues the sequence — that condition is what separates a
+    real question from the `4` that starts a spilled option line.
+    """
+    match = _BARE_LEAD.match(text or "")
+    return int(match.group(1)) if match else None
+
+
+def merge_fragments(questions: list) -> list:
+    """Attach orphan pieces to the question they belong to.
+
+    A cut is not always clean: an option line spilling onto the next page arrives as its
+    own subject (`ids=['0']`, text starting with `A.`), and a `（2）` sub-answer arrives on
+    its own too. Counted as questions, they inflate the total and pollute retrieval,
+    so a piece that does not start a new numbered question is appended to the previous
+    one — or, if there is no previous one, kept as its own item flagged by its lack of a
+    number.
+    """
+    merged: list = []
+    for question in questions:
+        number = leading_number(question.stem)
+        if number is None:
+            guessed = bare_number(question.stem)
+            expected = (leading_number(merged[-1].stem) or 0) + 1 if merged else 1
+            if guessed is not None and guessed == expected:
+                # `2若 …` — the dot was lost in OCR, but the numbering confirms it
+                number = guessed
+                question.number = question.number or str(guessed)
+        if number is not None:
+            # a real question number, but the same number as the previous one means the
+            # cutter split one question in two
+            if merged and leading_number(merged[-1].stem) == number:
+                merged[-1].stem = merged[-1].stem + "\n" + question.stem
+                continue
+            merged.append(question)
+            continue
+        if merged:
+            merged[-1].stem = merged[-1].stem + "\n" + question.stem
+        else:
+            merged.append(question)
+    return merged
+
+
+def missing_numbers(questions: list) -> list[int]:
+    """Numbers the paper implies but that are absent.
+
+    Only meaningful when numbering looks continuous; a paper whose numbering starts at
+    1 and reaches N with holes almost certainly has questions the cutter missed. That
+    is a *signal for review*, not an error: the teacher decides.
+    """
+    # the same two ways a stem can name its number: with a separator, or bare when OCR
+    # dropped the dot (see merge_fragments)
+    numbers = sorted(
+        {
+            value
+            for value in (
+                leading_number(q.stem) or bare_number(q.stem) for q in questions
+            )
+            if value is not None
+        }
+    )
+    if not numbers or numbers[0] != 1:
+        return []
+    return [n for n in range(1, numbers[-1] + 1) if n not in numbers]
+
 
 
 def build(settings=None) -> OcrProvider | None:
