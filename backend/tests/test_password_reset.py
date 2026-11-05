@@ -170,6 +170,82 @@ async def main() -> int:
             )
             check(r.status_code == 200, "and the new password logs in")
 
+
+        print("8. an operator-set password must be changed before the account works")
+        async with db.system_session() as session:
+            temp_password, _ = await passwords.reset_for_username(session, teacher_name)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.post(
+                "/auth/login", json={"username": teacher_name, "password": temp_password}
+            )
+            check(r.status_code == 200, f"the temporary password logs in (got {r.status_code})")
+            check(
+                r.json().get("must_change_password") is True,
+                f"login says a change is required (got {r.json().get('must_change_password')})",
+            )
+            temp_headers = {"Authorization": f"Bearer {r.json()['token']}"}
+
+            r = await client.get("/tasks", headers=temp_headers)
+            check(r.status_code == 403, f"normal API use is refused (got {r.status_code})")
+            check(
+                "change its password" in r.text,
+                "the refusal explains what to do",
+            )
+            r = await client.get("/auth/me", headers=temp_headers)
+            check(r.status_code == 200, "but /auth/me still works")
+
+            r = await client.post(
+                "/auth/password",
+                headers=temp_headers,
+                json={"current_password": temp_password, "new_password": "chosen_by_teacher_1"},
+            )
+            check(r.status_code == 200, f"the teacher can set their own password (got {r.status_code})")
+
+            r = await client.get("/tasks", headers=temp_headers)
+            check(r.status_code == 200, f"and the account works again (got {r.status_code})")
+
+            r = await client.post(
+                "/auth/login",
+                json={"username": teacher_name, "password": "chosen_by_teacher_1"},
+            )
+            check(r.status_code == 200, "the new password logs in")
+            check(
+                r.json().get("must_change_password") is False,
+                "and the flag is cleared",
+            )
+
+
+        print("9. the web UI is closed too, and its own form clears the flag")
+        async with db.system_session() as session:
+            page_password, _ = await passwords.reset_for_username(session, teacher_name)
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.post(
+                "/ui/login",
+                data={"username": teacher_name, "password": page_password},
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"UI login accepted (got {r.status_code})")
+            r = await client.get("/ui/tasks", follow_redirects=False)
+            check(r.status_code == 303, f"the task page redirects (got {r.status_code})")
+            check(
+                r.headers.get("location") == "/ui/password",
+                f"and it redirects to the password page (got {r.headers.get('location')})",
+            )
+            r = await client.get("/ui/password")
+            check(r.status_code == 200 and "临时密码" in r.text, "the page explains why")
+            r = await client.post(
+                "/ui/password",
+                data={"current_password": page_password, "new_password": "chosen_in_browser_1"},
+                follow_redirects=False,
+            )
+            check(r.status_code == 303, f"the form accepts the change (got {r.status_code})")
+            r = await client.get("/ui/tasks")
+            check(r.status_code == 200, f"the task page opens again (got {r.status_code})")
+
         # The token issued before the last change must be dead, whoever else is live.
         # A raw "how many sessions are open" count would depend on how many logins the
         # earlier scenarios happened to make, and would pass or fail for the wrong

@@ -36,6 +36,7 @@ from sqlalchemy import text
 from app.db import session as db
 from app.services import (
     agent,
+    passwords,
     executions,
     executor,
     export,
@@ -97,7 +98,9 @@ def page(title: str, body: str, *, teacher: str | None = None) -> HTMLResponse:
 # ── auth ───────────────────────────────────────────────────────────────────────
 
 
-async def teacher_from_cookie(token: str | None) -> tuple[uuid.UUID, str] | None:
+async def teacher_from_cookie(
+    token: str | None,
+) -> tuple[uuid.UUID, str, bool] | None:
     if not token:
         return None
     async with db.system_session() as session:
@@ -110,7 +113,8 @@ async def teacher_from_cookie(token: str | None) -> tuple[uuid.UUID, str] | None
                 text("SELECT username FROM users WHERE id = :id"), {"id": user_id}
             )
         ).first()
-    return (user_id, row.username if row else "teacher")
+        pending = await identity.must_change_password(session, user_id)
+    return (user_id, row.username if row else "teacher", pending)
 
 
 def login_page(error: str | None = None) -> HTMLResponse:
@@ -211,12 +215,65 @@ async def post_logout(chilon_session: Annotated[str | None, Cookie()] = None) ->
 # ── tasks ──────────────────────────────────────────────────────────────────────
 
 
+@router.get("/ui/password")
+async def get_password_page(
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    if not chilon_session:
+        return RedirectResponse("/ui/login", status_code=303)
+    body = (
+        "<p class='muted'>这个账号正在使用管理员设置的临时密码，"
+        "请设置一个新密码后继续。</p>"
+        "<div class='card'><form method='post' action='/ui/password'>"
+        "<p><label>当前密码<br>"
+        "<input name='current_password' type='password' required></label></p>"
+        "<p><label>新密码（至少 8 位）<br>"
+        "<input name='new_password' type='password' minlength='8' required></label></p>"
+        "<button type='submit'>设置新密码</button></form></div>"
+    )
+    return page("修改密码", body)
+
+
+@router.post("/ui/password")
+async def post_password(
+    current_password: Annotated[str, Form()],
+    new_password: Annotated[str, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _, _ = who
+    if len(new_password) < 8:
+        return page("修改密码", "<p class='err'>新密码至少 8 位。</p>", teacher=None)
+    async with db.session_for(user_id) as session:
+        try:
+            await passwords.change_own(
+                session, user_id, current_password, new_password, token=chilon_session or ""
+            )
+        except identity.InvalidCredentials:
+            body = (
+                "<p class='err'>当前密码不正确。</p>"
+                "<div class='card'><form method='post' action='/ui/password'>"
+                "<p><label>当前密码<br><input name='current_password' type='password' required></label></p>"
+                "<p><label>新密码（至少 8 位）<br>"
+                "<input name='new_password' type='password' minlength='8' required></label></p>"
+                "<button type='submit'>设置新密码</button></form></div>"
+            )
+            return page("修改密码", body)
+    return RedirectResponse("/ui/tasks", status_code=303)
+
+
 @router.get("/ui/tasks")
 async def list_tasks(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, name = who
+    user_id, name, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     async with db.session_for(user_id) as session:
         rows = (
@@ -264,7 +321,11 @@ async def create_task(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     async with db.session_for(user_id) as session:
         task = await tasks.create_task(session, user_id, title)
@@ -397,7 +458,11 @@ async def task_detail(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, name = who
+    user_id, name, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     detail = await _task_detail(user_id, task_id)
     if detail is None:
@@ -510,7 +575,11 @@ async def ui_plan(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
     async with db.session_for(user_id) as session:
         await agent.propose_plan(
             session, user_id, task_id, requirement, plan_engine=planner.build(None)
@@ -530,7 +599,11 @@ async def ui_approve(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     async with db.session_for(user_id) as session:
         plan = (
@@ -599,7 +672,11 @@ async def ui_publish_request(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     async with db.session_for(user_id) as session:
         material_id = (
@@ -633,7 +710,11 @@ async def ui_export(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
     if profile not in ("teacher", "student"):
         return RedirectResponse(f"/ui/tasks/{task_id}", status_code=303)
 
@@ -663,7 +744,11 @@ async def download_export(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     async with db.session_for(user_id) as session:
         row = (
@@ -702,7 +787,11 @@ async def ui_events(
     who = await teacher_from_cookie(chilon_session)
     if who is None:
         return RedirectResponse("/ui/login", status_code=303)
-    user_id, _ = who
+    user_id, _, pending = who
+    if pending:
+        # a handed-over password must be replaced before anything else is reachable;
+        # the API enforces the same rule, so the UI cannot be the only gate
+        return RedirectResponse("/ui/password", status_code=303)
 
     from app.services import event_stream
 
