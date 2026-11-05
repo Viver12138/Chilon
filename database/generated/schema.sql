@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 9c60efb85e26e796900460a7488b3113cec9a418ac726c7d0a62b559fb6e7128
+-- registry_hash: 08c8bb5885e8f9a3f1aa3bed26cf15cf129217dac0ef7475d7eecf5a2ae6f8a1
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -1770,7 +1770,7 @@ CREATE TABLE knowledge_document_versions (
 ALTER TABLE knowledge_document_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_document_versions FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_document_versions_read ON knowledge_document_versions FOR SELECT USING (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
-CREATE POLICY pol_knowledge_document_versions_write ON knowledge_document_versions FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
+CREATE POLICY pol_knowledge_document_versions_write ON knowledge_document_versions FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_sources s WHERE s.id = source_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_knowledge_document_versions_source ON knowledge_document_versions ("source_id", "version_no");
 CREATE INDEX ix_knowledge_document_versions_status ON knowledge_document_versions ("lifecycle_status");
@@ -1797,7 +1797,7 @@ CREATE TABLE knowledge_chunks (
 ALTER TABLE knowledge_chunks ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_chunks FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_chunks_read ON knowledge_chunks FOR SELECT USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
-CREATE POLICY pol_knowledge_chunks_write ON knowledge_chunks FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
+CREATE POLICY pol_knowledge_chunks_write ON knowledge_chunks FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_knowledge_chunks_version_order ON knowledge_chunks ("document_version_id", "ordinal");
 
@@ -1829,7 +1829,7 @@ CREATE TABLE knowledge_questions (
 ALTER TABLE knowledge_questions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE knowledge_questions FORCE ROW LEVEL SECURITY;
 CREATE POLICY pol_knowledge_questions_read ON knowledge_questions FOR SELECT USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
-CREATE POLICY pol_knowledge_questions_write ON knowledge_questions FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id()))) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND (s.scope = 'platform' OR s.owner_id = public.app_current_user_id())));
+CREATE POLICY pol_knowledge_questions_write ON knowledge_questions FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_document_versions d JOIN knowledge_sources s ON s.id = d.source_id WHERE d.id = document_version_id AND s.scope = 'teacher' AND s.owner_id = public.app_current_user_id()));
 
 CREATE INDEX ix_knowledge_questions_version_order ON knowledge_questions ("document_version_id", "ordinal");
 CREATE INDEX ix_knowledge_questions_paper_type ON knowledge_questions ("current_paper_question_type");
