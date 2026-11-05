@@ -282,7 +282,6 @@ class AliyunPaperCutProvider:
         *,
         image_type: str = "scan",
         subject: str = "Math",
-        action: str = aliyun_ocr.ACTION_CUT,
     ) -> None:
         if not key_id or not key_secret:
             raise OcrUnavailable(
@@ -292,14 +291,8 @@ class AliyunPaperCutProvider:
         self.key_id = key_id
         self.key_secret = key_secret
         self.image_type = image_type if image_type in ("scan", "photo") else "scan"
-        if action not in aliyun_ocr.EDUCATION_ACTIONS:
-            raise OcrUnavailable(
-                f"unknown aliyun action {action!r}; expected one of "
-                f"{sorted(aliyun_ocr.EDUCATION_ACTIONS)}"
-            )
         self.subject = subject
-        self.action = action
-        self.version = f"aliyun:{action}"
+        self.version = f"aliyun:{aliyun_ocr.ACTION_CUT}"
 
     def read(self, pdf_bytes: bytes) -> OcrResult:
         import httpx
@@ -313,20 +306,7 @@ class AliyunPaperCutProvider:
                 "Subject": self.subject,
                 "OutputOricoord": "false",
             }
-            payload = self._call(png, params, page_number, action=self.action)
-
-            if self.action == aliyun_ocr.ACTION_PAGE:
-                # full-page recognition does not segment; it is the fallback for pages a
-                # paper-cut call cannot split (textbook pages, answer sheets)
-                try:
-                    page_text = aliyun_ocr.extract_page_text(payload)
-                except aliyun_ocr.ShapeUnknown as exc:
-                    raise OcrFailed(f"page {page_number}: {exc}") from exc
-                confidence_pages.append(
-                    PageText(page_number=page_number, text=page_text, confidence=0.9)
-                )
-                continue
-
+            payload = self._call(png, params, page_number)
             data = aliyun_ocr.decode_data(payload)
             try:
                 found = aliyun_ocr.extract_questions(data, page=page_number)
@@ -348,15 +328,13 @@ class AliyunPaperCutProvider:
             questions=questions,
         )
 
-    def _call(
-        self, png: bytes, params: dict[str, str], page_number: int, *, action: str | None = None
-    ) -> dict:
+    def _call(self, png: bytes, params: dict[str, str], page_number: int) -> dict:
         import httpx
 
         headers = aliyun_ocr.sign_request(
             access_key_id=self.key_id,
             access_key_secret=self.key_secret,
-            action=action or self.action,
+            action=aliyun_ocr.ACTION_CUT,
             params=params,
             body=png,
             timestamp=aliyun_ocr.now_timestamp(),
@@ -394,7 +372,6 @@ def build(settings=None) -> OcrProvider | None:
             settings.ocr_aliyun_key_secret,
             image_type=settings.ocr_aliyun_image_type,
             subject=settings.ocr_aliyun_subject,
-            action=settings.ocr_aliyun_action,
         )
     raise OcrUnavailable(
         f"unknown OCR provider {provider!r}; expected none|fake|tesseract|cloud|aliyun"

@@ -80,19 +80,6 @@ def main() -> int:
     check(questions[1].answer == "1", "the answer is attached")
     check(questions[0].page == 2, "the page is carried")
 
-    print("6. the three education actions are named, and the fallback has a text reader")
-    check(len(aliyun_ocr.EDUCATION_ACTIONS) == 3, "three actions are catalogued")
-    page_payload = {
-        "Data": json.dumps({"Content": "1. 已知 f(x)=sin(2x+π/3)，求周期。\nA. π  B. 2π"})
-    }
-    page_text = aliyun_ocr.extract_page_text(page_payload)
-    check("sin(2x+π/3)" in page_text, "full-page text is recovered for the fallback")
-    try:
-        aliyun_ocr.extract_page_text({"Data": json.dumps({"Nothing": {"Empty": ""}})})
-        check(False, "an empty page payload produced text")
-    except aliyun_ocr.ShapeUnknown:
-        check(True, "an empty payload is refused rather than returning blank text")
-
 
     print()
     if FAILURES:
