@@ -33,17 +33,26 @@ REGION_CN = {
     "syllabus": "大纲", "new_curriculum": "新课标",
     "national_paper_1": "全国I", "national_paper_2": "全国II", "national_paper_3": "全国III",
     "national_paper_a": "全国甲", "national_paper_b": "全国乙",
+    "new_curriculum_paper_1": "新课标I", "new_curriculum_paper_2": "新课标II",
     "new_gaokao_paper_1": "新高考I", "new_gaokao_paper_2": "新高考II",
 }
 KIND_CN = {"science": "理", "liberal": "文"}
 
 SECTION_TYPE = {
     "单选题": "single_choice",
+    "选择题": "single_choice",
     "多选题": "multi_choice",
     "填空题": "fill_blank",
     "选考题：填空题": "fill_blank",
+    "选做题：填空题": "fill_blank",
+    "附加题：填空题": "fill_blank",
     "解答题": "solution",
     "选考题：解答题": "solution",
+    "选做题：解答题": "solution",
+    "选考题": "solution",
+    "选做题": "solution",
+    "附加题": "solution",
+    "附加题：选择题": "single_choice",
     "附加题：解答题": "solution",
 }
 
@@ -64,7 +73,9 @@ REPLACERS = [
     (r"\\Pr(?![a-zA-Z])", r"P"),
     (r"\\tfrac", r"\\frac"),
     (r"\\quad", "　"),
-    (r"\\bs\s+([A-Za-z])", r"\\mathbf{\1}"),
+    (r"\\bs\s+([A-Za-z0-9])", r"\\mathbf{\1}"),
+    (r"\\bs([0-9])", r"\\mathbf{\1}"),
+    (r"\\textasciitilde(?![A-Za-z])", "~"),
 ]
 
 # 直接删除的排版命令（正则，必须带边界，否则 \par 会吃掉 \parallel 的前缀）
@@ -77,6 +88,12 @@ DROP_CMDS = [
     r"\\problemcenterend(?![A-Za-z])", r"\\noindent(?![A-Za-z])",
     r"\\indent(?![A-Za-z])", r"\\par(?![A-Za-z])", r"\\linewidth(?![A-Za-z])",
     r"\\textwidth(?![A-Za-z])", r"\\paperwidth(?![A-Za-z])",
+    r"\\begingroup(?![A-Za-z])", r"\\endgroup(?![A-Za-z])",
+    r"\\leftskip(?![A-Za-z])", r"\\rightskip(?![A-Za-z])",
+    r"\\parindent(?![A-Za-z])", r"\\dimexpr(?![A-Za-z])",
+    r"\\problembodyindent(?![A-Za-z])", r"\\footnotesize(?![A-Za-z])",
+    r"\\tallpagetrue(?![A-Za-z])", r"\\tallpagefalse(?![A-Za-z])",
+    r"\\hline(?![A-Za-z])", r"\\cline\{[^}]*\}",
 ]
 DROP_WITH_ARG = [
     r"\hspace", r"\vspace", r"\setlength", r"\setcounter", r"\tabcolsep",
@@ -171,6 +188,65 @@ class Converter:
         return args, s[:idx] + s[i:]
 
     # ---------- 主转换 ----------
+    def take_inline_cmd(self, s: str, cmd: str) -> tuple[str, str]:
+        """取出一次 cmd{...}，返回(去掉该命令后的文本, 参数内容)。"""
+        idx = s.find(cmd)
+        if idx < 0:
+            return s, ""
+        i = idx + len(cmd)
+        while i < len(s) and s[i] in " \t\n":
+            i += 1
+        arg, end = self.read_group(s, i)
+        return s[:idx] + s[end:], arg
+
+    def expand_local_macros(self, s: str) -> str:
+        """展开文件内 \\newcommand{\\name}{简单定义} 的调用（不支持带参数的宏）。"""
+        defs = {}
+        for m in re.finditer(r"\\newcommand\{?\\([A-Za-z]+)\}?\s*\{", s):
+            try:
+                body, end = self.read_group(s, m.end() - 1)
+            except (AssertionError, ValueError):
+                continue
+            defs[m.group(1)] = (body, m.start(), end)
+        if not defs:
+            return s
+        for name, (body, start, end) in sorted(defs.items(), key=lambda kv: -kv[1][1]):
+            s = s[:start] + s[end:]
+            s = re.sub(r"\\" + name + r"(?![A-Za-z])", lambda _m, b=body: b, s)
+        return s
+
+    def strip_wrapper(self, s: str, cmd: str, nargs: int, keep: int = -1) -> str:
+        """剥掉纯排版包装命令，保留 keep 指定的参数（默认最后一个）。"""
+        while True:
+            i = s.find(cmd)
+            if i < 0:
+                return s
+            j = i + len(cmd)
+            while True:
+                k = j
+                while k < len(s) and s[k] in " \t\n":
+                    k += 1
+                if k < len(s) and s[k] == "[":
+                    close = s.find("]", k)
+                    if close < 0:
+                        return s
+                    j = close + 1
+                else:
+                    j = k
+                    break
+            args = []
+            try:
+                for _ in range(nargs):
+                    while j < len(s) and s[j] in " \t\n":
+                        j += 1
+                    if j >= len(s) or s[j] != "{":
+                        return s
+                    arg, j = self.read_group(s, j)
+                    args.append(arg)
+            except (AssertionError, ValueError):
+                return s
+            s = s[:i] + (args[keep] if args else "") + s[j:]
+
     def convert(self, body: str) -> str:
         s = body
 
@@ -181,13 +257,24 @@ class Converter:
             (r"\texfigure", 1, "tex"),
             (r"\choicebitmap", 1, "bitmap"),
             (r"\choicetexfigure", 1, "tex"),
+            (r"\bitmapinclude", 1, "bitmap"),
+            (r"\texinclude", 1, "tex"),
+            (r"\solutionfigure", 1, "solution"),
         ):
             while cmd in s:
                 args, s = self.take_cmd_args(s, cmd, nargs)
                 if not args:
                     break
-                self.figures.append({"kind": kind, "path": args[0].strip(), "usage": cmd.lstrip("\\")})
-                s = s + ""
+                if args[0].strip():
+                    self.figures.append({"kind": kind, "path": args[0].strip(), "usage": cmd.lstrip("\\")})
+
+        # 纯排版包装：只保留内容
+        for cmd, nargs in ((r"\examfiguregroup", 2), (r"\makebox", 1), (r"\adjustbox", 2),
+                           (r"\resizebox", 3), (r"\parbox", 2)):
+            s = self.strip_wrapper(s, cmd, nargs)
+
+        # 文件内 \newcommand 定义的简单宏：先用定义体替换调用
+        s = self.expand_local_macros(s)
 
         # 表格
         while r"\begin{tabular}" in s:
@@ -226,6 +313,9 @@ class Converter:
         s = self.replace_cmd_n(
             s, r"\examdisplayarray", 4,
             lambda a: "$$" + a[0] + r"\begin{array}{" + a[1] + "}" + a[2] + r"\end{array}" + a[3] + "$$")
+        s = self.replace_cmd_n(
+            s, r"\examdisplayaligned", 1,
+            lambda a: "$$" + r"\begin{aligned}" + a[0] + r"\end{aligned}" + "$$")
         s = re.sub(r"\\rm(?![A-Za-z])", r"\\mathrm", s)
 
         # 非选项场合的 circlelist（如填空题的 ①②③ 命题）-> 逐行编号文本
@@ -370,6 +460,8 @@ mathrm mathord mathbin mathrel mathop mathopen mathclose mathpunct mathinner
 symbf symbfit symbfup
 boxed bigl bigr bigg Bigl Bigr sim approx equiv not frown Rightarrow
 parallel nparallel longrightarrow Longleftarrow nearrow searrow ell
+sup inf nabla partial propto diamond cong nsubseteq nmid smallsetminus coth
+big Big middle
 FIGURE figure caption
 """.split())
 
@@ -425,6 +517,16 @@ def parse_paper(path: pathlib.Path) -> dict:
             if sm:
                 sol = sm.group(1)
 
+            # 行内 \answer{...} 写法：取出来当答案，从题干里删掉
+            inline_ans = ""
+            if r"\answer{" in body:
+                try:
+                    body, inline_ans = conv.take_inline_cmd(body, r"\answer")
+                except (AssertionError, ValueError):
+                    pass
+                if inline_ans and not ans.strip():
+                    ans = inline_ans
+
             if r"\reuseproblemnumber" in body:
                 num = max(1, num)
             else:
@@ -432,6 +534,7 @@ def parse_paper(path: pathlib.Path) -> dict:
 
             # 选项
             options = []
+            fig_start = len(conv.figures)  # 图形归属从选项就开始计
             cm = re.search(r"\\choices(five)?\s*\{", body)
             circ = re.search(r"\\begin\{circlelist\}", body)
             if cm:
@@ -456,6 +559,10 @@ def parse_paper(path: pathlib.Path) -> dict:
             sol_md = conv.convert(sol) if sol else ""
 
             qid = f"{doc_id}_q{num:02d}"
+            q_figs = conv.figures[fig_start:]
+            for i, f in enumerate(q_figs, 1):
+                f["figure_id"] = f"{qid}_f{i}"
+                f["question_id"] = qid
             questions.append({
                 "question_id": qid,
                 "document_id": doc_id,
@@ -467,6 +574,7 @@ def parse_paper(path: pathlib.Path) -> dict:
                 "options": options,
                 "answer": ans_md,
                 "solution": sol_md,
+                "figures": [f["figure_id"] for f in q_figs],
             })
             pos = after
 
@@ -522,7 +630,7 @@ def schema_question(q: dict, paper: dict) -> dict:
         "options": [{"label": o["label"], "content": o["content"]} for o in q["options"]],
         "answer": {"content": q["answer"], "status": "machine_extracted" if q["answer"] else "pending"},
         "solution": {"content": q["solution"], "status": "machine_extracted" if q["solution"] else "pending"},
-        "figures": [],
+        "figures": q.get("figures", []),
         "knowledge_points": [],
         "methods": [],
         "difficulty": None,
@@ -542,7 +650,7 @@ def write_question_md(path: pathlib.Path, q: dict, label: str, paper: dict) -> N
         f"question_type: {q['question_type']}",
         "score: null",
         "stem_latex: []",
-        "figures: []",
+        "figures: [" + ", ".join(q.get("figures", [])) + "]",
         "knowledge_points: []",
         "methods: []",
         "difficulty: null",
@@ -569,12 +677,13 @@ def write_question_md(path: pathlib.Path, q: dict, label: str, paper: dict) -> N
         body.append("")
     body += ["## 答案", "", q["answer"].strip() or "> 源文件无答案。", "",
              "## 解析", "", q["solution"].strip() or "> 源文件无解析。", ""]
-    figs = [f for f in paper["figures"]] if paper.get("figures") else []
-    if figs:
+    by_id = {f.get("figure_id"): f for f in paper.get("figures", [])}
+    own = [by_id[i] for i in q.get("figures", []) if i in by_id]
+    if own:
         body += ["## 图形引用", "",
-                 "> 源文件图形（`img/` 未随 sparse checkout 取得）：", ""]
-        for f in figs[:6]:
-            body.append(f"- `{f['path']}`")
+                 "> 源文件图形（仓库 `img/` 下已存在，尚未导入 `09_Assets`）：", ""]
+        for f in own:
+            body.append(f"- `{f['path']}`（`{f['figure_id']}`）")
         body.append("")
     body += ["## 校核", "",
              "- [x] 由 LaTeX 源机转（非 OCR）",
@@ -630,7 +739,7 @@ def write_document_md(path: pathlib.Path, paper: dict, meta: dict) -> None:
              "",
              "## 备注", "",
              "- 公式取自 LaTeX 源，未经 OCR，无损",
-             "- 图形在源仓库 `img/` 目录，本地 sparse clone 未包含",
+             "- 图形在源仓库 `img/` 目录（已取得），逐题引用见各题卡 `figures`",
              ""]
     path.write_text("\n".join(fm) + "\n".join(body), encoding="utf-8")
 
