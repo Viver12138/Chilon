@@ -365,6 +365,45 @@ class AliyunPaperCutProvider:
 
 
 
+
+_ANALYSIS_MARK = __import__("re").compile(
+    r"^\s*(?:【解析】|【详解】|【分析】|【小问\s*\d+\s*详解】|【点睛】)"
+)
+_ANSWER_IN_ANALYSIS = __import__("re").compile(
+    r"(?:故答案为|答案为|【答案】|答案)\s*[:：]?\s*([^\n。；]{1,80})"
+)
+_ANALYSIS_ANYWHERE = __import__("re").compile(r"【解析】|【详解】|【分析】")
+
+
+_ANSWER_LEAD = __import__("re").compile(r"^\s*(?:故答案为|答案为|【答案】|答案\s*[:：])")
+
+
+def looks_like_analysis(text: str) -> bool:
+    """Whether a fragment is 解析 rather than a continuation of the question.
+
+    `【详解】` is the obvious case. `故答案为 …` is the other one: the analysis statement
+    that carries the answer, usually without any marker at all — treating it as a
+    continuation is how a stem ends up quoting its own solution.
+    """
+    head = (text or "").lstrip()[:24]
+    if _ANALYSIS_MARK.match(head) or _ANALYSIS_ANYWHERE.search(head):
+        return True
+    return bool(_ANSWER_LEAD.match(head))
+
+
+def answer_from_analysis(text: str) -> str | None:
+    """Pull the stated answer out of 解析 prose.
+
+    The 解析版 states answers inside the analysis ("故答案为 A"), so an analysis block is
+    also the only place a scanned paper carries its answers.
+    """
+    match = _ANSWER_IN_ANALYSIS.search(text or "")
+    if not match:
+        return None
+    value = match.group(1).strip(" ：:，,。;；")
+    return value or None
+
+
 _NUMBER_LEAD = __import__("re").compile(r"^\s*(\d{1,3})\s*(?:[.、．)）]|$)")
 
 
@@ -416,10 +455,32 @@ def merge_fragments(questions: list) -> list:
                 continue
             merged.append(question)
             continue
-        if merged:
-            merged[-1].stem = merged[-1].stem + "\n" + question.stem
-        else:
+        if not merged:
             merged.append(question)
+            continue
+        previous = merged[-1]
+        if looks_like_analysis(question.stem) or looks_like_analysis(previous.stem[-0:]):
+            # 解析 belongs beside the question, and it is where the answer lives
+            existing = getattr(previous, "analysis", "")
+            setattr(previous, "analysis", (existing + "\n" + question.stem).strip())
+            if not previous.answer:
+                previous.answer = answer_from_analysis(question.stem)
+            continue
+        previous.stem = previous.stem + "\n" + question.stem
+
+    # a question whose stem itself carried the analysis (single-block cuts)
+    for question in merged:
+        if not getattr(question, "analysis", "") and _ANALYSIS_ANYWHERE.search(question.stem):
+            stem_part, _, analysis_part = _ANALYSIS_ANYWHERE.split(question.stem, maxsplit=1)
+            if analysis_part:
+                setattr(
+                    question,
+                    "analysis",
+                    (_ANALYSIS_ANYWHERE.search(question.stem).group(0) + analysis_part).strip(),
+                )
+                question.stem = stem_part.strip()
+                if not question.answer:
+                    question.answer = answer_from_analysis(getattr(question, "analysis", ""))
     return merged
 
 

@@ -189,6 +189,7 @@ async def main() -> int:
                 self.answer = None
                 self.page = 1
                 self.box = None
+                self.analysis = ""
 
             def as_text(self):
                 return self.stem
