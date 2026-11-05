@@ -180,6 +180,44 @@ async def main() -> int:
         os.environ.pop("CHILON_OCR_PROVIDER", None)
         await db.dispose()
 
+        print("6b. fragments merge into their question, and holes are reported")
+        class _Q:
+            def __init__(self, stem, number=None):
+                self.stem = stem
+                self.number = number
+                self.options = []
+                self.answer = None
+                self.page = 1
+                self.box = None
+
+            def as_text(self):
+                return self.stem
+
+        merged = ocr.merge_fragments(
+            [
+                _Q("1.已知集合"),
+                _Q("2若复数"),          # OCR dropped the dot
+                _Q("A.(-∞，0]  B.[-1，0]"),  # a spilled option line
+                _Q("4.题目四"),
+                _Q("4.第二页碎片"),      # the cutter split one question twice
+            ]
+        )
+        check(len(merged) == 3, f"fragments merged to 3 questions (got {len(merged)})")
+        check(
+            "A.(-∞，0]" in merged[1].stem,
+            "the spilled option line was appended to question 2, not counted as a question",
+        )
+        check(
+            merged[2].stem.count("题目四") == 1 and "第二页碎片" in merged[2].stem,
+            "a repeated number merges instead of creating a duplicate",
+        )
+        check(ocr.missing_numbers(merged) == [3], "the hole at 3 is reported")
+        check(
+            ocr.missing_numbers([_Q("1.a"), _Q("2.b")]) == [],
+            "a complete sequence reports no holes",
+        )
+
+
     print()
     if FAILURES:
         print(f"FAILED: {len(FAILURES)} assertion(s)")
