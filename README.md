@@ -203,6 +203,7 @@ CHILON_OCR_ALIYUN_KEY_ID=...
 CHILON_OCR_ALIYUN_KEY_SECRET=...
 CHILON_OCR_ALIYUN_IMAGE_TYPE=scan     # scan | photo
 CHILON_OCR_ALIYUN_SUBJECT=Math
+CHILON_OCR_ALIYUN_ACTION=RecognizeEduPaperCut   # 见下
 ```
 
 **开启即视为一次数据出境决策**：整页图片会上传到阿里云。开通服务与计费见
@@ -221,3 +222,12 @@ python tools/aliyun_ocr_smoke.py 试卷.pdf --page 1 --dump /tmp/aliyun.json
 **如果解析器认不出结构，它会带上实际键名报错**——照着输出调整
 `app/services/aliyun_ocr.py` 里的 `TEXT_KEYS` / `OPTION_KEYS` 即可，通常只改键名。
 它不写数据库：先确认 vendor，再跑上传路径。
+三种教育接口，用同一个 provider 切换：
+
+| `CHILON_OCR_ALIYUN_ACTION` | 作用 | 用途 |
+| --- | --- | --- |
+| `RecognizeEduPaperCut`（默认） | 按题切分，返回题干/选项/答案 | 试卷主路径 |
+| `RecognizeEduPaperOcr` | 整页文字与公式，不切题 | 切不出题的页（教材、答案页）兜底 |
+| `RecognizeEduPaperStructed` | 切题 + 标题/主题等版面标签 | 暂缓，待真实样本 |
+
+联调时用 `--action` 指定要探测哪一个。
