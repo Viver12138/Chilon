@@ -347,11 +347,16 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None)
                 f"<input type='hidden' name='version_id' value='{esc(row.version_id)}'>"
                 "<button class='secondary' type='submit'>确认完整并启用</button></form>"
             )
+        detail = (
+            f"<p><a href='/ui/knowledge/{esc(row.version_id)}'>校对题目 →</a></p>"
+            if row.version_id
+            else ""
+        )
         blocks.append(
             f"<div class='card'><p><b>{esc(row.title)}</b> "
             f"<span class='tag'>{esc(status)}</span> "
             f"<span class='muted'>{esc(row.source_type)}</span></p>"
-            f"{reason_html}{holes}{promote}</div>"
+            f"{reason_html}{holes}{promote}{detail}</div>"
         )
 
     body = (
@@ -454,6 +459,119 @@ async def knowledge_promote(
         except knowledge_review.ReviewError:
             pass
     return RedirectResponse("/ui/knowledge", status_code=303)
+
+
+
+@router.get("/ui/knowledge/{version_id}")
+async def knowledge_questions(
+    version_id: uuid.UUID,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    """Every question in one version, with the two corrections that actually happen:
+    fixing a stem the cutter read wrong, and deleting a block that is not a question."""
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+
+    async with db.session_for(user_id) as session:
+        rows = (
+            await session.execute(
+                text(
+                    """
+                    SELECT q.question_no, q.segmentation_source, c.text_content
+                    FROM knowledge_questions q
+                    LEFT JOIN knowledge_chunks c
+                           ON c.document_version_id = q.document_version_id
+                          AND c.locator = q.stem_locator
+                    WHERE q.document_version_id = :v
+                    ORDER BY q.ordinal
+                    """
+                ),
+                {"v": version_id},
+            )
+        ).all()
+
+    cards = []
+    for row in rows:
+        body_text = (row.text_content or "").strip()
+        preview = body_text[:120] + ("…" if len(body_text) > 120 else "")
+        source = "教师录入" if row.segmentation_source == "teacher" else "自动切分"
+        cards.append(
+            "<div class='card'>"
+            f"<p><b>第 {esc(row.question_no)} 题</b> <span class='muted'>{esc(source)}</span></p>"
+            f"<p class='muted'>{esc(preview)}</p>"
+            "<form method='post' action='/ui/knowledge/questions/update'>"
+            f"<input type='hidden' name='version_id' value='{esc(version_id)}'>"
+            f"<input type='hidden' name='number' value='{esc(row.question_no)}'>"
+            "<p><label>改题干<br>"
+            f"<textarea name='stem' rows='2'>{esc(body_text)}</textarea></label></p>"
+            "<p><label>改答案（留空则不动）<br><input name='answer'></label></p>"
+            "<button class='secondary' type='submit'>保存修改</button></form>"
+            "<form method='post' action='/ui/knowledge/questions/delete' style='margin-top:6px'>"
+            f"<input type='hidden' name='version_id' value='{esc(version_id)}'>"
+            f"<input type='hidden' name='number' value='{esc(row.question_no)}'>"
+            "<button class='secondary' type='submit'>删除这道</button></form></div>"
+        )
+
+    body = (
+        f"<p class='muted'><a href='/ui/knowledge'>← 返回知识库</a></p>"
+        + (''.join(cards) if cards else "<p class='muted'>这个版本还没有题目。</p>")
+    )
+    return page("校对题目", body, teacher=name)
+
+
+async def _ui_question_action(chilon_session: str | None):
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return None, RedirectResponse("/ui/login", status_code=303)
+    user_id, _, pending = who
+    if pending:
+        return None, RedirectResponse("/ui/password", status_code=303)
+    return user_id, None
+
+
+@router.post("/ui/knowledge/questions/update")
+async def ui_update_question(
+    version_id: Annotated[str, Form()],
+    number: Annotated[int, Form()],
+    stem: Annotated[str, Form()],
+    answer: Annotated[str | None, Form()] = None,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    user_id, redirect = await _ui_question_action(chilon_session)
+    if redirect:
+        return redirect
+    async with db.session_for(user_id) as session:
+        try:
+            await knowledge_review.update_question(
+                session, user_id, uuid.UUID(version_id),
+                number=number, stem=stem, answer=answer,
+            )
+        except knowledge_review.ReviewError:
+            pass
+    return RedirectResponse(f"/ui/knowledge/{version_id}", status_code=303)
+
+
+@router.post("/ui/knowledge/questions/delete")
+async def ui_delete_question(
+    version_id: Annotated[str, Form()],
+    number: Annotated[int, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    user_id, redirect = await _ui_question_action(chilon_session)
+    if redirect:
+        return redirect
+    async with db.session_for(user_id) as session:
+        try:
+            await knowledge_review.delete_question(
+                session, user_id, uuid.UUID(version_id), number=number
+            )
+        except knowledge_review.ReviewError:
+            pass
+    return RedirectResponse(f"/ui/knowledge/{version_id}", status_code=303)
 
 
 @router.get("/ui/tasks")

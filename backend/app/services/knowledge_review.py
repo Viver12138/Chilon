@@ -262,3 +262,159 @@ async def promote(
         "questions": state["questions"],
         "open_gaps_at_promotion": state["gaps"],
     }
+
+async def _chunk_ids(
+    session: AsyncSession, version_id: uuid.UUID, number: int
+) -> tuple[uuid.UUID | None, uuid.UUID | None, dict | None, dict | None]:
+    """Locate the stem chunk and the answer chunk of one question."""
+    row = (
+        await session.execute(
+            text(
+                """
+                SELECT stem_locator, answer_locator FROM knowledge_questions
+                WHERE document_version_id = :v AND question_no = :n
+                """
+            ),
+            {"v": version_id, "n": str(number)},
+        )
+    ).first()
+    if row is None:
+        raise ReviewNotFound(f"第 {number} 题不存在")
+
+    async def one(locator):
+        if not locator:
+            return None
+        return (
+            await session.execute(
+                text(
+                    "SELECT id FROM knowledge_chunks WHERE document_version_id = :v "
+                    "AND locator = CAST(:l AS jsonb)"
+                ),
+                {"v": version_id, "l": json.dumps(locator, sort_keys=True)},
+            )
+        ).scalar()
+
+    return (
+        await one(row.stem_locator),
+        await one(row.answer_locator),
+        row.stem_locator,
+        row.answer_locator,
+    )
+
+
+async def update_question(
+    session: AsyncSession,
+    owner_id: uuid.UUID,
+    version_id: uuid.UUID,
+    *,
+    number: int,
+    stem: str | None = None,
+    answer: str | None = None,
+) -> dict[str, Any]:
+    """Correct a question that was cut or recognised wrongly.
+
+    The **chunk** is updated, not just the question row: retrieval reads chunks, so a
+    correction that only touched `knowledge_questions` would leave search returning the
+    old text while the page showed the new one.
+    """
+    await outline(session, owner_id, version_id)
+    stem_chunk, answer_chunk, stem_locator, answer_locator = await _chunk_ids(
+        session, version_id, number
+    )
+
+    new_stem = (stem or "").strip()
+    if new_stem:
+        if stem_chunk is None:
+            raise ReviewError("这一题没有对应的文本块，无法修改")
+        await session.execute(
+            text(
+                "UPDATE knowledge_chunks SET text_content = :body, text_hash = :hash WHERE id = :id"
+            ),
+            {"body": new_stem, "hash": _hash(new_stem), "id": stem_chunk},
+        )
+        await session.execute(
+            text(
+                """
+                UPDATE knowledge_questions
+                SET current_paper_question_type = :qtype,
+                    current_knowledge_points = CAST(:points AS text[]),
+                    segmentation_status = 'corrected', segmentation_source = 'teacher',
+                    updated_at = now()
+                WHERE document_version_id = :v AND question_no = :n
+                """
+            ),
+            {
+                "qtype": ingestion.classify(None, new_stem),
+                "points": taxonomy.tag(new_stem) or None,
+                "v": version_id,
+                "n": str(number),
+            },
+        )
+
+    answer_text = (answer or "").strip()
+    if answer_text:
+        if answer_chunk is not None:
+            await session.execute(
+                text(
+                    "UPDATE knowledge_chunks SET text_content = :body, text_hash = :hash WHERE id = :id"
+                ),
+                {"body": answer_text, "hash": _hash(answer_text), "id": answer_chunk},
+            )
+        else:
+            locator = _manual_locator(number, answer=True)
+            await session.execute(
+                text(
+                    """
+                    INSERT INTO knowledge_chunks
+                        (id, document_version_id, chunk_key, ordinal, text_content, text_hash,
+                         locator, content_kind, parser_version, parse_schema_version)
+                    VALUES (gen_random_uuid(), :v, :key, :ordinal, :body, :hash,
+                            CAST(:locator AS jsonb), 'text', 'manual', '1.0')
+                    """
+                ),
+                {
+                    "v": version_id,
+                    "key": f"ma{number:05d}",
+                    "ordinal": 100000 + number + 10000,
+                    "body": answer_text,
+                    "hash": _hash(answer_text),
+                    "locator": json.dumps(locator, sort_keys=True),
+                },
+            )
+            await session.execute(
+                text(
+                    "UPDATE knowledge_questions SET answer_locator = CAST(:l AS jsonb), "
+                    "updated_at = now() WHERE document_version_id = :v AND question_no = :n"
+                ),
+                {
+                    "l": json.dumps(locator, sort_keys=True),
+                    "v": version_id,
+                    "n": str(number),
+                },
+            )
+
+    return {"document_version_id": str(version_id), "question_no": str(number), "updated": True}
+
+
+async def delete_question(
+    session: AsyncSession, owner_id: uuid.UUID, version_id: uuid.UUID, *, number: int
+) -> dict[str, Any]:
+    """Remove a question the cutter got wrong, together with its chunks.
+
+    Deleting the question but leaving the chunk would keep it discoverable in search —
+    a "deleted" question that still answers queries is worse than one that was never
+    removed.
+    """
+    await outline(session, owner_id, version_id)
+    stem_chunk, answer_chunk, _, _ = await _chunk_ids(session, version_id, number)
+
+    await session.execute(
+        text("DELETE FROM knowledge_questions WHERE document_version_id = :v AND question_no = :n"),
+        {"v": version_id, "n": str(number)},
+    )
+    for chunk_id in (stem_chunk, answer_chunk):
+        if chunk_id is not None:
+            await session.execute(
+                text("DELETE FROM knowledge_chunks WHERE id = :id"), {"id": chunk_id}
+            )
+    return {"document_version_id": str(version_id), "question_no": str(number), "deleted": True}
