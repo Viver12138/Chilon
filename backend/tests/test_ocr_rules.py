@@ -18,7 +18,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(ROOT))
 
-from app.services import mock_import, ocr  # noqa: E402
+from app.services import ocr  # noqa: E402
 
 FAILURES: list[str] = []
 
@@ -69,25 +69,13 @@ def main() -> int:
     check(ocr.merge_fragments([]) == [], "empty list in, empty list out")
     check(ocr.merge_fragments([Q("（1）唯一一题")]) != [], "a single question survives")
 
-    print("5. whole-page text is sliced at question boundaries")
-    page = "某页开头说明。1.已知集合 A，求交集。（A）{1}（B）{2}2.已知向量 a，求模长。"
-    blocks, next_index = mock_import.blocks_from_page_text(page, 0)
-    check(len(blocks) == 2, f"two blocks (got {len(blocks)})")
-    check(blocks[0].text.startswith("1."), "the first block starts at question 1")
-    check(blocks[1].text.startswith("2."), "the second starts at question 2")
-    check(next_index == 2, f"index advances (got {next_index})")
-
-    print("6. a page with no question start stays one block")
-    blocks, _ = mock_import.blocks_from_page_text("只有一段说明文字，没有问题号。", 7)
-    check(len(blocks) == 1 and blocks[0].index == 7, "kept whole, index carried")
-
     print()
     if FAILURES:
         print(f"FAILED: {len(FAILURES)} assertion(s)")
         for failure in FAILURES:
             print(f"  - {failure}")
         return 1
-    print("PASS: numbering styles and page slicing behave as specified")
+    print("PASS: numbering styles behave as specified")
     return 0
 
 

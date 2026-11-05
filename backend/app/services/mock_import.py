@@ -1,29 +1,26 @@
-"""Import OCR'd mock papers as questions.
+"""Import OCR'd mock papers as questions, using the paper-cut action only.
 
 A mock paper is a question paper, so — unlike a textbook — its value is the 题, cut into
-retrievable items. Two routes exist because the vendor offers two shapes:
+retrievable items. The cut action returns one block per question, and `ingestion.ingest`
+already handles the rest: fragment merging, gap detection, question typing and the
+`pending_review` decision.
 
-* ``cut``   — ``RecognizeEduPaperCut`` returns one block per question. This is the route
-              the scanned Gaokao papers already use (``ingestion.ingest``): fragment
-              merging, gap detection, question typing and the ``pending_review`` decision
-              all come with it.
-* ``whole`` — ``RecognizeEduPaperOcr`` returns the whole page as one string. Paragraph
-              segmentation then sees one block and finds one question (26 pages produced
-              8 questions that way), so the page is sliced at question boundaries first.
+A whole-page route (`RecognizeEduPaperOcr` plus slicing at question boundaries) was
+written, unit-tested and then **removed**: it was never measured against a real call, and
+unproven code kept in the tree gets used. Only the measured route stays.
 
-``whole`` has **not been measured against a real call yet** — the OCR service expired
-before the comparison ran. ``cut`` is the default for that reason.
+Measured quality (5 papers, 26 pages): **63 questions**, i.e. 10, 11, 13, 14 and 15 per
+paper against roughly 19 — 4 to 9 are still missed. That is the vendor's cutting, the same
+limit the scanned Gaokao papers hit.
 
 Provenance: these come from a community file space, not a licensed provider. They are
-stored as ``restricted`` with a note saying so: "the user does not care where it came
-from" is a decision about risk, not a statement about rights.
+stored as `restricted` with a note saying so: "the user does not care where it came from"
+is a decision about risk, not a statement about rights.
 """
 
 from __future__ import annotations
 
 import hashlib
-import json
-import re
 import uuid
 from pathlib import Path
 from typing import Any
@@ -31,48 +28,13 @@ from typing import Any
 from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.services import ingestion, knowledge_review, taxonomy
-from app.services import ocr as ocr_service
-from app.services import textbook_import
+from app.services import ingestion, knowledge_review
 from app.services.platform_import import PLATFORM_PRINCIPAL, _category
-
-PARSER_VERSION = "mock-ocr-1"
-SCHEMA_VERSION = "1.0"
 
 ATTRIBUTION = (
     "笔袋（gaojiua.com）共享空间「官方资料总库/优质模拟」的用户上传文件；"
     "来源与授权状态未能核实，仅作内部教研使用，不得再分发"
 )
-
-#: a question starts when a number follows a sentence end (or the page start). Matching
-#: any digit would split inside formulas such as `f(2).`
-_NUM_START = re.compile(r"(?:(?<=[。；;！？?!）)】\]}])|\A)\s*(\d{1,3})\s*[.、．]")
-_PAREN_START = re.compile(r"(?:(?<=[。；;！？?!）)】\]}])|\A)\s*[（(]\s*(\d{1,3})\s*[)）]")
-
-
-def _hash(value: str) -> str:
-    return hashlib.sha256(value.encode("utf-8")).hexdigest()
-
-
-def blocks_from_page_text(text: str, start_index: int) -> tuple[list[ingestion.Block], int]:
-    """Slice a page's continuous OCR text at question boundaries."""
-    text = (text or "").strip()
-    if not text:
-        return [], start_index
-    pattern = _NUM_START if _NUM_START.search(text) else _PAREN_START
-    starts = [match.start() for match in pattern.finditer(text)]
-    if not starts:
-        return [ingestion.Block(index=start_index, text=text)], start_index + 1
-
-    blocks: list[ingestion.Block] = []
-    index = start_index
-    for position, start in enumerate(starts):
-        end = starts[position + 1] if position + 1 < len(starts) else len(text)
-        piece = text[start:end].strip()
-        if piece:
-            blocks.append(ingestion.Block(index=index, text=piece))
-            index += 1
-    return blocks, index
 
 
 async def already_imported(session: AsyncSession, checksum: str) -> uuid.UUID | None:
@@ -90,144 +52,14 @@ async def already_imported(session: AsyncSession, checksum: str) -> uuid.UUID | 
     ).scalar()
 
 
-async def _persist_segments(
-    session: AsyncSession, version_id: uuid.UUID, segments: list[ingestion.Segment]
-) -> dict[str, Any]:
-    """Write segments as chunks, and the numbered ones as questions."""
-    chunks: list[dict[str, Any]] = []
-    rows: list[dict[str, Any]] = []
-    for item in segments:
-        locator: dict[str, Any] = {"ocr": "whole-page", "segment": item.ordinal}
-        if item.locator and "paragraph_start" in item.locator:
-            locator["block_start"] = item.locator["paragraph_start"]
-        chunks.append(
-            {
-                "id": uuid.uuid4(),
-                "key": f"s{item.ordinal:04d}",
-                "ordinal": item.ordinal,
-                "body": item.text,
-                "hash": _hash(item.text),
-                "locator": json.dumps(locator, sort_keys=True),
-            }
-        )
-        if item.question_no:
-            points = taxonomy.tag(item.text)
-            rows.append(
-                {
-                    "id": uuid.uuid4(),
-                    "no": str(item.question_no),
-                    "ordinal": item.ordinal,
-                    "stem_locator": json.dumps(locator, sort_keys=True),
-                    "qtype": item.question_type or ingestion.classify(item.section, item.text),
-                    "points": points or None,
-                }
-            )
-
-    if chunks:
-        await session.execute(
-            text(
-                """
-                INSERT INTO knowledge_chunks
-                    (id, document_version_id, chunk_key, ordinal, text_content, text_hash,
-                     locator, content_kind, parser_version, parse_schema_version)
-                VALUES (:id, :v, :key, :ordinal, :body, :hash, CAST(:locator AS jsonb),
-                        'text', :parser, :schema)
-                """
-            ),
-            [
-                {**chunk, "v": version_id, "parser": PARSER_VERSION, "schema": SCHEMA_VERSION}
-                for chunk in chunks
-            ],
-        )
-    if rows:
-        await session.execute(
-            text(
-                """
-                INSERT INTO knowledge_questions
-                    (id, document_version_id, question_no, section_label, ordinal,
-                     stem_locator, answer_locator, current_paper_question_type,
-                     current_knowledge_points, segmentation_status, segmentation_source)
-                VALUES (:id, :v, :no, NULL, :ordinal, CAST(:stem_locator AS jsonb), NULL,
-                        :qtype, CAST(:points AS text[]), 'accepted', 'rule')
-                """
-            ),
-            [{**row, "v": version_id} for row in rows],
-        )
-    return {"chunks": len(chunks), "questions": len(rows)}
-
-
-async def _record_run(
-    session: AsyncSession, version_id: uuid.UUID, *, action: str, metrics: dict[str, Any]
-) -> None:
-    await session.execute(
-        text(
-            """
-            INSERT INTO knowledge_ingestion_runs
-                (id, document_version_id, stage, status, tool_version, started_at,
-                 finished_at, metrics)
-            VALUES (gen_random_uuid(), :v, 'ocr', 'succeeded', :tool, now(), now(),
-                    CAST(:metrics AS jsonb))
-            """
-        ),
-        {
-            "v": version_id,
-            "tool": PARSER_VERSION,
-            "metrics": json.dumps(
-                {"engine": "aliyun", "action": action, **metrics}, ensure_ascii=False
-            ),
-        },
-    )
-
-
-async def _ingest_whole(
-    session: AsyncSession, version_id: uuid.UUID, raw: bytes, max_pages: int
-) -> dict[str, Any]:
-    images = ocr_service.render_pages(raw)
-    if max_pages:
-        images = images[:max_pages]
-
-    blocks: list[ingestion.Block] = []
-    index = 0
-    for page_number, image in enumerate(images, 1):
-        body = textbook_import.call_whole_page(image)
-        page_blocks, index = blocks_from_page_text(body, index)
-        for block in page_blocks:
-            block.page = page_number
-        blocks.extend(page_blocks)
-
-    segments = ingestion.segment(blocks)
-    written = await _persist_segments(session, version_id, segments)
-    await _record_run(
-        session,
-        version_id,
-        action="RecognizeEduPaperOcr",
-        metrics={"pages": len(images), **written},
-    )
-    await session.execute(
-        text(
-            "UPDATE knowledge_document_versions SET lifecycle_status = 'indexed', "
-            "indexed_at = now() WHERE id = :v"
-        ),
-        {"v": version_id},
-    )
-    return {
-        "status": "indexed",
-        "questions": written["questions"],
-        "chunks": written["chunks"],
-        "ocr": {"pages": len(images)},
-    }
-
-
 async def import_mock_paper(
     session: AsyncSession,
     *,
     path: Path,
     title: str,
-    max_pages: int = 0,
     accept: bool = True,
-    route: str = "cut",
 ) -> dict[str, Any]:
-    """Import one mock paper. `route` selects the OCR shape; see the module docstring."""
+    """Import one mock paper through the same OCR path the scanned Gaokao papers use."""
     raw = path.read_bytes()
     checksum = hashlib.sha256(raw).hexdigest()
     existing = await already_imported(session, checksum)
@@ -282,12 +114,11 @@ async def import_mock_paper(
         },
     )
 
-    if route == "whole":
-        parsed = await _ingest_whole(session, version_id, raw, max_pages)
-    else:
-        parsed = await ingestion.ingest(session, PLATFORM_PRINCIPAL, version_id)
-        if accept and parsed.get("status") == "pending_review":
-            await knowledge_review.promote(session, PLATFORM_PRINCIPAL, version_id)
+    parsed = await ingestion.ingest(session, PLATFORM_PRINCIPAL, version_id)
+    promoted = False
+    if accept and parsed.get("status") == "pending_review":
+        await knowledge_review.promote(session, PLATFORM_PRINCIPAL, version_id)
+        promoted = True
 
     return {
         "skipped": False,
@@ -296,7 +127,7 @@ async def import_mock_paper(
         "title": title,
         "pages": (parsed.get("ocr") or {}).get("pages", 0),
         "questions": parsed.get("questions", 0),
-        "segments": parsed.get("chunks", parsed.get("questions", 0)),
-        "numbers": (parsed.get("ocr") or {}).get("gaps", []),
         "status": parsed.get("status"),
+        "promoted": promoted,
+        "gaps": (parsed.get("ocr") or {}).get("gaps", []),
     }
