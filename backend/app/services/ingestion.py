@@ -57,6 +57,17 @@ KEY_ENTRY = re.compile(r"^\s*(?P<no>\d{1,3})\s*[.、．]\s*(?P<ans>\S.*?)\s*$")
 # an answer stated inside the question
 INLINE_ANSWER = re.compile(r"^\s*(?:【答案】|【解析】|【解答】|答案\s*[:：]|解析\s*[:：]|答\s*[:：])")
 
+# options, as a paper prints them: A. / A、 / A）
+OPTION = re.compile(r"(?:^|\s)[A-D]\s*[.、．)）]\s*\S")
+BLANK = re.compile(r"_{3,}|＿{2,}|[（(]\s{2,}[)）]|（\s*）|\(\s*\)")
+MULTI_HINT = re.compile(r"多选|至少有一项|有多项符合|正确的有|不正确的有")
+SECTION_SINGLE = re.compile(r"选择")
+SECTION_MULTI = re.compile(r"多选|多项选择")
+SECTION_FILL = re.compile(r"填空")
+SECTION_FREE = re.compile(r"解答|计算|证明|综合")
+
+QUESTION_TYPES = ("single_choice", "multiple_choice", "fill_blank", "free_response")
+
 
 class IngestionError(Exception):
     pass
@@ -112,6 +123,37 @@ def paragraphs_for(mime: str, data: bytes) -> list[Block]:
     raise UnsupportedFormat(f"unsupported mime type {mime!r}")
 
 
+# ── classification ─────────────────────────────────────────────────────────────
+
+
+def classify(section: str | None, text: str) -> str | None:
+    """Decide the paper question type, or return None when it cannot be decided.
+
+    The section heading is the strongest signal a paper gives ("一、选择题" is a
+    promise about every question under it), so it is tried first; content is the
+    fallback. **When neither is conclusive the answer is None**, not a default: an
+    invented type would flow into scoring and formatting decisions that nobody
+    checked.
+    """
+    label = section or ""
+    if SECTION_MULTI.search(label):
+        return "multiple_choice"
+    if SECTION_FILL.search(label):
+        return "fill_blank"
+    if SECTION_FREE.search(label):
+        return "free_response"
+    if SECTION_SINGLE.search(label):
+        # a section named 选择题 can still contain multi-select items; the stem's own
+        # wording is more specific than the section heading, so it wins here
+        return "multiple_choice" if MULTI_HINT.search(text) else "single_choice"
+
+    if len(OPTION.findall(text)) >= 2:
+        return "multiple_choice" if MULTI_HINT.search(text) else "single_choice"
+    if BLANK.search(text):
+        return "fill_blank"
+    return None
+
+
 # ── segmentation ───────────────────────────────────────────────────────────────
 
 
@@ -124,6 +166,7 @@ class Segment:
     text: str
     answer_locator: dict[str, Any] | None = None
     answer_text: str | None = None
+    question_type: str | None = None
 
 
 def segment(blocks: list[Block]) -> list[Segment]:
@@ -174,6 +217,7 @@ def segment(blocks: list[Block]) -> list[Segment]:
                         else None
                     ),
                     answer_text=answer or None,
+                    question_type=classify(section, stem) if current_no else None,
                 )
             )
         current = []
@@ -418,10 +462,11 @@ async def ingest(
                     """
                     INSERT INTO knowledge_questions
                         (id, document_version_id, question_no, section_label, ordinal,
-                         stem_locator, answer_locator, segmentation_status, segmentation_source)
+                         stem_locator, answer_locator, current_paper_question_type,
+                         segmentation_status, segmentation_source)
                     VALUES
                         (gen_random_uuid(), :v, :no, :section, :ordinal,
-                         CAST(:locator AS jsonb), CAST(:answer_locator AS jsonb),
+                         CAST(:locator AS jsonb), CAST(:answer_locator AS jsonb), :qtype,
                          'auto', 'rule')
                     """
                 ),
@@ -432,6 +477,7 @@ async def ingest(
                     "ordinal": item.ordinal,
                     "locator": json.dumps(item.locator, sort_keys=True),
                     "answer_locator": answer_locator_json,
+                    "qtype": item.question_type,
                 },
             )
 
