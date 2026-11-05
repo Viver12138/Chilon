@@ -55,7 +55,11 @@ ANSWER_KEY_HEADING = re.compile(r"^\s*(?:参考答案|答案与解析|答案|解
 KEY_ENTRY = re.compile(r"^\s*(?P<no>\d{1,3})\s*[.、．]\s*(?P<ans>\S.*?)\s*$")
 
 # an answer stated inside the question
-INLINE_ANSWER = re.compile(r"^\s*(?:【答案】|【解析】|【解答】|答案\s*[:：]|解析\s*[:：]|答\s*[:：])")
+INLINE_ANSWER = re.compile(
+    r"^\s*(?:【答案】|【解析】|【解答】|答案\s*[:：]|解析\s*[:：]|答\s*[:：]"
+    r"|Answer\s*[:：]|Ans\s*[:：]|Solution\s*[:：])",
+    re.IGNORECASE,
+)
 
 # options, as a paper prints them: A. / A、 / A）
 OPTION = re.compile(r"(?:^|\s)[A-D]\s*[.、．)）]\s*\S")
@@ -81,6 +85,7 @@ class UnsupportedFormat(IngestionError):
 class Block:
     index: int
     text: str
+    page: int | None = None
 
 
 # ── extraction ─────────────────────────────────────────────────────────────────
@@ -112,14 +117,46 @@ def extract_docx_paragraphs(data: bytes) -> list[Block]:
     return blocks
 
 
+def extract_pdf_blocks(data: bytes) -> list[Block]:
+    """Read a PDF's text layer, one block per non-empty line.
+
+    Scanned papers have no text layer. Returning an empty list would look like "a
+    parseable document with nothing in it", so that case is refused with the reason and
+    the alternative — OCR is not implemented, and pretending otherwise would let a
+    teacher upload a scan and silently get an empty knowledge base.
+    """
+    from pypdf import PdfReader
+
+    try:
+        reader = PdfReader(BytesIO(data))
+    except Exception as exc:  # noqa: BLE001 - pypdf raises several unrelated types
+        raise UnsupportedFormat(
+            f"无法读取的 PDF（{exc}）；请上传可复制文字的 PDF 或 .docx"
+        ) from exc
+
+    blocks: list[Block] = []
+    for page_number, page in enumerate(reader.pages, 1):
+        try:
+            text = page.extract_text() or ""
+        except Exception:  # noqa: BLE001 - one broken page must not lose the rest
+            text = ""
+        for line in (raw.strip() for raw in text.splitlines()):
+            if line:
+                blocks.append(Block(len(blocks), line, page_number))
+
+    if not blocks:
+        raise UnsupportedFormat(
+            "这个 PDF 没有文字层（可能是扫描件或拍照件），需要 OCR 才能解析；"
+            "请上传可复制文字的 PDF，或先把文件另存为 .docx"
+        )
+    return blocks
+
+
 def paragraphs_for(mime: str, data: bytes) -> list[Block]:
     if mime == DOCX_MIME:
         return extract_docx_paragraphs(data)
     if mime == PDF_MIME:
-        raise UnsupportedFormat(
-            "PDF 解析需要额外的文本抽取库，当前只支持 DOCX；"
-            "请上传 .docx，或先把 PDF 另存为 docx"
-        )
+        return extract_pdf_blocks(data)
     raise UnsupportedFormat(f"unsupported mime type {mime!r}")
 
 
@@ -203,19 +240,9 @@ def segment(blocks: list[Block]) -> list[Segment]:
                     ordinal=len(segments),
                     question_no=current_no,
                     section=section,
-                    locator={
-                        "paragraph_start": current[0].index,
-                        "paragraph_end": current[-1].index,
-                    },
+                    locator=locator_for(current),
                     text=stem,
-                    answer_locator=(
-                        {
-                            "paragraph_start": answer_blocks[0].index,
-                            "paragraph_end": answer_blocks[-1].index,
-                        }
-                        if answer_blocks
-                        else None
-                    ),
+                    answer_locator=locator_for(answer_blocks) if answer_blocks else None,
                     answer_text=answer or None,
                     question_type=classify(section, stem) if current_no else None,
                 )
@@ -261,6 +288,16 @@ def segment(blocks: list[Block]) -> list[Segment]:
             item.answer_text = value
             item.answer_locator = {"paragraph_start": index, "paragraph_end": index}
     return segments
+
+
+def locator_for(blocks: list[Block]) -> dict[str, Any]:
+    location: dict[str, Any] = {
+        "paragraph_start": blocks[0].index,
+        "paragraph_end": blocks[-1].index,
+    }
+    if blocks[0].page is not None:
+        location["page_number"] = blocks[0].page
+    return location
 
 
 def text_hash(value: str) -> str:

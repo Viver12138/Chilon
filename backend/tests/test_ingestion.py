@@ -27,6 +27,7 @@ from app.db import session as db  # noqa: E402
 from app.main import app  # noqa: E402
 from app.services import identity, ingestion  # noqa: E402
 from app.tools import impl as tools_impl  # noqa: E402
+from tests.pdf_fixture import minimal_pdf  # noqa: E402
 from tests.support import provision_runtime_role  # noqa: E402
 
 FAILURES: list[str] = []
@@ -252,6 +253,73 @@ async def main() -> int:
             "retrieval carries the question type next to the stem",
         )
 
+
+        print("7. a PDF with a text layer is parsed, and its locators carry the page")
+        pdf_bytes = minimal_pdf(
+            [
+                "2023 Mock Paper Mathematics",
+                "1. Find the period of f(x)=sin(2x).",
+                "A. pi  B. 2pi  C. pi/2",
+                "Answer: pi",
+                "2. Simplify sin^2 x + cos^2 x.",
+            ]
+        )
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.post(
+                "/knowledge/sources",
+                headers=headers,
+                files={"file": ("mock.pdf", pdf_bytes, "application/pdf")},
+                data={"title": "2023 模拟卷", "source_type": "mock_exam"},
+            )
+        check(r.status_code == 201, f"PDF upload accepted (got {r.status_code})")
+        pdf_body = r.json()
+        check(pdf_body["lifecycle_status"] == "indexed", f"PDF parsed (got {pdf_body['lifecycle_status']})")
+        check(pdf_body["questions"] == 2, f"two PDF questions (got {pdf_body['questions']})")
+        check(pdf_body["answers"] == 1, f"one PDF answer (got {pdf_body['answers']})")
+
+        async with db.session_for(owner) as session:
+            pdf_rows = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT q.question_no, q.current_paper_question_type, q.stem_locator,
+                               q.answer_locator
+                        FROM knowledge_questions q
+                        WHERE q.document_version_id = :v ORDER BY q.ordinal
+                        """
+                    ),
+                    {"v": uuid.UUID(pdf_body["document_version_id"])},
+                )
+            ).all()
+        check(len(pdf_rows) == 2, f"two question rows (got {len(pdf_rows)})")
+        check(pdf_rows[0].stem_locator.get("page_number") == 1, "the locator names the page")
+        check(
+            pdf_rows[0].current_paper_question_type == "single_choice",
+            f"PDF Q1 is single choice (got {pdf_rows[0].current_paper_question_type!r})",
+        )
+        check(pdf_rows[0].answer_locator is not None, "the PDF's inline answer was found")
+        check(pdf_rows[1].answer_locator is None, "the unanswered PDF question stays NULL")
+
+        print("8. a PDF with no text layer is refused, not stored as empty success")
+        scanned = minimal_pdf([])  # valid PDF, no text at all
+        async with httpx.AsyncClient(
+            transport=httpx.ASGITransport(app=app), base_url="http://test"
+        ) as client:
+            r = await client.post(
+                "/knowledge/sources",
+                headers=headers,
+                files={"file": ("scan.pdf", scanned, "application/pdf")},
+                data={"title": "扫描件", "source_type": "other"},
+            )
+        scanned_body = r.json()
+        check(scanned_body["lifecycle_status"] == "failed", f"scan refused (got {scanned_body['lifecycle_status']})")
+        check(
+            "OCR" in (scanned_body["parse_detail"] or ""),
+            f"the reason mentions OCR (got {scanned_body['parse_detail']!r})",
+        )
+
         print("4. another teacher cannot see it")
         async with db.system_session() as session:
             other_name = f"ing_other_{uuid.uuid4().hex[:6]}"
@@ -289,7 +357,7 @@ async def main() -> int:
         pdf_body = r.json()
         check(pdf_body["lifecycle_status"] == "failed", f"parse failed (got {pdf_body['lifecycle_status']})")
         check(pdf_body["parse_error"] == "unsupported_format", "the reason is unsupported_format")
-        check("DOCX" in (pdf_body["parse_detail"] or ""), "the message names what to do instead")
+        check((pdf_body["parse_detail"] or "").lower().count(".docx") > 0, "the message names what to do instead")
 
         async with db.session_for(owner) as session:
             run = (
