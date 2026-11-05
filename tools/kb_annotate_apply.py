@@ -33,7 +33,17 @@ def main() -> int:
         if len(parts) < 5:
             bad.append(ln)
             continue
-        qid, prim, sec, conf, why = parts[0].strip(), parts[1].strip(), parts[2].strip(), parts[3].strip(), "|".join(parts[4:]).strip()
+        qid, prim, sec, conf, why = parts[0].strip(), parts[1].strip(), parts[2].strip(), parts[3].strip(), parts[4].strip()
+        # 可选第 6 字段：小问级映射，格式 1:kp_a,kp_b;2:kp_c
+        by_part = []
+        if len(parts) >= 6 and re.match(r"^\d+:", parts[5].strip()):
+            why = "|".join(parts[4:len(parts) - 1]).strip()
+            for chunk in parts[-1].strip().split(";"):
+                if not chunk.strip():
+                    continue
+                n, _, kps = chunk.partition(":")
+                by_part.append({"part": f"({n.strip()})",
+                                "kp": [k.strip() for k in kps.split(",") if k.strip()]})
         try:
             conf_val = float(conf) if conf else 0.0
         except ValueError:
@@ -54,6 +64,7 @@ def main() -> int:
                 "status": "needs_review",
                 "rationale": why,
                 "reviewed_by": None,
+                **({"kp_by_part": by_part} if by_part else {}),
             },
         })
 
