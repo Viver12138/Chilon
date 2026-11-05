@@ -368,6 +368,38 @@ async def _record_run(
 
 
 
+
+# Reasons a version is held for review. Each one implies a different action by the
+# teacher, which is the point: "needs review" alone returns the judgement to them.
+REVIEW_NUMBERING_GAPS = "numbering_gaps"
+REVIEW_LOW_CONFIDENCE = "low_confidence"
+REVIEW_ANALYSIS_VERSION = "analysis_version"
+
+
+def review_reasons(
+    *,
+    gaps: list[int],
+    confidence: float,
+    min_confidence: float,
+    analysis_blocks: int,
+    questions: int,
+) -> list[str]:
+    """Why this version should be reviewed, in the order the teacher should care.
+
+    Pure on purpose: the ranking is a judgement worth testing without a database or a
+    vendor call.
+    """
+    reasons: list[str] = []
+    if gaps:
+        reasons.append(REVIEW_NUMBERING_GAPS)
+    if analysis_blocks and questions and analysis_blocks >= max(2, questions // 2):
+        # most questions carry 解析 → this is an analysis version, not a question paper
+        reasons.append(REVIEW_ANALYSIS_VERSION)
+    if confidence and confidence < min_confidence:
+        reasons.append(REVIEW_LOW_CONFIDENCE)
+    return reasons
+
+
 async def _mark_failed(session: AsyncSession, version_id: uuid.UUID) -> None:
     """Record the failure on the version itself.
 
@@ -512,6 +544,7 @@ async def ingest(
             "confidence": round(result.confidence, 3),
             "pages": len(result.pages),
             "gaps": gaps,
+            "analysis_blocks": int(getattr(result, "analysis_blocks", 0) or 0),
         }
         await _record_run(
             session,
@@ -644,12 +677,20 @@ async def ingest(
             )
 
     settings = config.load()
-    # a paper whose numbering has holes has probably lost questions in the cut; that
-    # is exactly what `pending_review` is for, and retrieval only reads approved/indexed
-    low_confidence = bool(ocr_meta) and (
-        float(ocr_meta.get("confidence") or 0.0) < settings.ocr_min_confidence
-        or bool(ocr_meta.get("gaps"))
+    # The reasons drive the state, not the other way round: a version is held because
+    # something specific is wrong, and that reason is what the teacher needs to see.
+    reasons = (
+        review_reasons(
+            gaps=list(ocr_meta.get("gaps") or []),
+            confidence=float(ocr_meta.get("confidence") or 0.0),
+            min_confidence=settings.ocr_min_confidence,
+            analysis_blocks=int(ocr_meta.get("analysis_blocks") or 0),
+            questions=question_count,
+        )
+        if ocr_meta
+        else []
     )
+    low_confidence = bool(reasons)
     # A scan that OCR read badly must not enter retrieval silently. `pending_review` is
     # a declared state, and retrieval only reads approved/indexed, so the gate is the
     # existing vocabulary rather than a new flag.
@@ -682,11 +723,18 @@ async def ingest(
         "answers": answer_count,
         "characters": sum(len(s.text) for s in segments),
     }
-    await _record_run(session, document_version_id, status="succeeded", metrics=metrics)
+    await _record_run(
+        session,
+        document_version_id,
+        status="succeeded",
+        stage="ocr" if ocr_meta else "parse",
+        metrics={**metrics, "review_reasons": reasons},
+    )
 
     return {
         "status": lifecycle,
         "needs_review": low_confidence,
+        "review_reasons": reasons,
         "ocr": ocr_meta or None,
         "document_version_id": str(document_version_id),
         "chunks": len(segments) + answer_count,

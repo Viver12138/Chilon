@@ -123,6 +123,31 @@ async def main() -> int:
             check("学生版" in student_text, "the student file labels itself")
             check("答案" not in student_text or "学生版" in student_text, "student file has no answer label")
 
+            print("7a. an upload that needs review says why")
+            # a scan with a numbering hole: the reason must reach the page, verbatim
+            from app.services import ingestion as ingestion_service
+
+            reasons = ingestion_service.review_reasons(
+                gaps=[9], confidence=0.9, min_confidence=0.6,
+                analysis_blocks=0, questions=16,
+            )
+            check(reasons == ["numbering_gaps"], f"gap reason computed (got {reasons})")
+            reasons = ingestion_service.review_reasons(
+                gaps=[], confidence=0.9, min_confidence=0.6,
+                analysis_blocks=9, questions=14,
+            )
+            check(reasons == ["analysis_version"], f"analysis version detected (got {reasons})")
+            reasons = ingestion_service.review_reasons(
+                gaps=[], confidence=0.2, min_confidence=0.6,
+                analysis_blocks=0, questions=5,
+            )
+            check(reasons == ["low_confidence"], f"low confidence detected (got {reasons})")
+
+            r = await client.get("/ui/knowledge")
+            check(r.status_code == 200, f"the knowledge page renders (got {r.status_code})")
+            check("上传试卷" in r.text, "it offers an upload form")
+
+
             print("7. signing out closes the door")
             r = await client.post("/ui/logout", follow_redirects=False)
             check(r.status_code == 303, "logout redirects")

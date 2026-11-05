@@ -66,14 +66,19 @@ async def _category_for(session, owner_id: uuid.UUID) -> uuid.UUID:
     ).scalar_one()
 
 
-@router.post("/sources", status_code=201)
-async def upload_source(
-    session: SessionDep,
-    user: UserDep,
-    file: Annotated[UploadFile, File()],
-    title: Annotated[str, Form(min_length=1, max_length=500)],
-    source_type: Annotated[str, Form()] = "other",
+async def store_and_ingest(
+    session,
+    user: uuid.UUID,
+    file: UploadFile,
+    title: str,
+    source_type: str,
 ) -> dict:
+    """Validate, store and parse one upload.
+
+    Shared by the API route and the UI page on purpose: two copies of a pipeline whose
+    exit conditions (validation, lifecycle, review reasons) decide what a teacher sees
+    would eventually disagree.
+    """
     if file.content_type not in ALLOWED_MIME:
         raise ApiError(
             422,
@@ -160,21 +165,54 @@ async def upload_source(
         "questions": parsed.get("questions", 0),
         "answers": parsed.get("answers", 0),
         "needs_review": parsed.get("needs_review", False),
+        "review_reasons": parsed.get("review_reasons", []),
         "ocr": parsed.get("ocr"),
         "parse_error": parsed.get("error"),
         "parse_detail": parsed.get("detail"),
     }
 
 
+@router.post("/sources", status_code=201)
+async def upload_source(
+    session: SessionDep,
+    user: UserDep,
+    file: Annotated[UploadFile, File()],
+    title: Annotated[str, Form(min_length=1, max_length=500)],
+    source_type: Annotated[str, Form()] = "other",
+) -> dict:
+    return await store_and_ingest(session, user, file, title, source_type)
+
+
 @router.get("/sources")
 async def list_sources(session: SessionDep, user: UserDep) -> dict:
+    """List sources with their newest version's state and the reason for it.
+
+    The reason matters more than the state: "待复核" alone tells a teacher nothing about
+    whether to re-upload a scan, add missing questions, or upload the 原卷 instead.
+    """
     rows = (
         await session.execute(
             text(
                 """
                 SELECT s.id, s.scope, s.title, s.source_type, s.rights_status,
-                       (SELECT count(*) FROM knowledge_document_versions v WHERE v.source_id = s.id) AS versions
+                       (SELECT count(*) FROM knowledge_document_versions v WHERE v.source_id = s.id) AS versions,
+                       v.lifecycle_status,
+                       v.parse_error,
+                       v.review_reasons
                 FROM knowledge_sources s
+                LEFT JOIN LATERAL (
+                    SELECT dv.lifecycle_status, dv.id,
+                           (SELECT r.error_code FROM knowledge_ingestion_runs r
+                            WHERE r.document_version_id = dv.id AND r.status = 'failed'
+                            ORDER BY r.started_at DESC LIMIT 1) AS parse_error,
+                           (SELECT r.metrics->'review_reasons' FROM knowledge_ingestion_runs r
+                            WHERE r.document_version_id = dv.id
+                            ORDER BY r.started_at DESC LIMIT 1) AS review_reasons
+                    FROM knowledge_document_versions dv
+                    WHERE dv.source_id = s.id
+                    ORDER BY dv.version_no DESC
+                    LIMIT 1
+                ) v ON true
                 WHERE s.deleted_at IS NULL
                 ORDER BY s.created_at DESC
                 LIMIT 200
@@ -191,6 +229,9 @@ async def list_sources(session: SessionDep, user: UserDep) -> dict:
                 "source_type": r.source_type,
                 "rights_status": r.rights_status,
                 "versions": int(r.versions),
+                "lifecycle_status": r.lifecycle_status,
+                "review_reasons": list(r.review_reasons or []),
+                "parse_error": r.parse_error,
             }
             for r in rows
         ]
