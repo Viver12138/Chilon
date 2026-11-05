@@ -25,7 +25,7 @@ from sqlalchemy import text  # noqa: E402
 
 from app.db import session as db  # noqa: E402
 from app.main import app  # noqa: E402
-from app.services import identity, ingestion  # noqa: E402
+from app.services import identity, ingestion, taxonomy  # noqa: E402
 from app.tools import impl as tools_impl  # noqa: E402
 from tests.pdf_fixture import minimal_pdf  # noqa: E402
 from tests.support import provision_runtime_role  # noqa: E402
@@ -318,6 +318,54 @@ async def main() -> int:
         check(
             "OCR" in (scanned_body["parse_detail"] or ""),
             f"the reason mentions OCR (got {scanned_body['parse_detail']!r})",
+        )
+
+
+        print("3d. questions carry knowledge points, and retrieval uses them")
+        async with db.session_for(owner) as session:
+            points = (
+                await session.execute(
+                    text(
+                        """
+                        SELECT question_no, current_knowledge_points
+                        FROM knowledge_questions WHERE document_version_id = :v
+                        ORDER BY ordinal
+                        """
+                    ),
+                    {"v": uuid.UUID(body["document_version_id"])},
+                )
+            ).all()
+        by_no_points = {r.question_no: list(r.current_knowledge_points or []) for r in points}
+        check("三角函数" in by_no_points["1"], f"Q1 tagged 三角函数 (got {by_no_points['1']})")
+        check("解三角形" in by_no_points["3"], f"Q3 tagged 解三角形 (got {by_no_points['3']})")
+        check(
+            "导数及其应用" not in by_no_points["1"],
+            f"broader points are suppressed when a specific one matches (got {by_no_points['1']})",
+        )
+        check(
+            taxonomy.tag("一段没有任何线索的文字") == [],
+            "text with no evidence gets no point, rather than a default",
+        )
+        check(
+            taxonomy.tag("化简 sin²x+cos²x")[0] == "三角恒等变换",
+            "the more specific point comes first",
+        )
+
+        # Q3's stem never says 勾股定理; it is found only because the topic is mapped to
+        # a knowledge point the question carries. That is the whole value of the tag.
+        async with db.session_for(owner) as session:
+            by_point = await tools_impl.knowledge_search(
+                session, search_ctx(owner, {"topic": "勾股定理", "sources": []})
+            )
+        hit_nos = {h.get("question_no") for h in by_point["hits"]}
+        check("3" in hit_nos, f"a synonym finds the tagged question (got {hit_nos})")
+        check(
+            all("勾股定理" not in (h.get("excerpt") or "") for h in by_point["hits"]),
+            "the match came from the tag, not from the literal words",
+        )
+        check(
+            any("解三角形" in (h.get("knowledge_points") or []) for h in by_point["hits"]),
+            "the hit reports why it matched",
         )
 
         print("4. another teacher cannot see it")

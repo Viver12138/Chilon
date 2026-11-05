@@ -28,6 +28,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import settings as config
+from app.services import taxonomy
 
 
 class ToolFailed(Exception):
@@ -62,7 +63,14 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
     if not topic:
         raise ToolFailed("requirement has no topic to search for")
 
-    params: dict[str, Any] = {"pattern": f"%{topic}%", "limit": limit}
+    # derive knowledge points from the topic with the same taxonomy the parser used,
+    # so "勾股定理" finds a 解三角形 question whose stem never says 勾股定理
+    topic_points = taxonomy.tag(topic)
+    params: dict[str, Any] = {
+        "pattern": f"%{topic}%",
+        "limit": limit,
+        "topic_points": topic_points,
+    }
     source_filter = ""
     if sources:
         source_filter = "AND s.source_type = ANY(:sources)"
@@ -78,6 +86,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                        q.id AS question_id,
                        q.question_no,
                        q.current_paper_question_type AS question_type,
+                       q.current_knowledge_points AS knowledge_points,
                        ac.text_content AS answer_text,
                        s.id AS source_id,
                        s.title,
@@ -96,7 +105,10 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                        ON ac.document_version_id = dv.id
                       AND ac.locator = q.answer_locator
                 WHERE dv.lifecycle_status IN ('approved', 'indexed')
-                  AND c.text_content ILIKE :pattern
+                  AND (
+                        c.text_content ILIKE :pattern
+                        OR (q.current_knowledge_points && CAST(:topic_points AS text[]))
+                      )
                   {source_filter}
                 ORDER BY s.source_type, c.ordinal
                 LIMIT :limit
@@ -112,6 +124,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             "question_id": str(r.question_id) if r.question_id else None,
             "question_no": r.question_no,
             "question_type": r.question_type,
+            "knowledge_points": list(r.knowledge_points or []),
             "answer": r.answer_text,
             "source_id": str(r.source_id),
             "source_title": r.title,
