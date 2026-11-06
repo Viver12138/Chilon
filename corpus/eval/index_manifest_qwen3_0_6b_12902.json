@@ -3,21 +3,22 @@
   "created_at": "2026-11-06T16:05:54+08:00",
   "git_commit": "381d90443dac",
   "build_mode": "3 parallel shards",
-  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log. 2026-11-06 mock 修复后增量更新：points 12902→12967（mock 931→996，124 更新 + 65 split 新增重嵌入；gaokao/textbook 11971 点未动；无 orphan 删除）。",
+  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log. 2026-11-06 mock 修复后增量更新：points 12902→12967（mock 931→996，124 更新 + 65 split 新增重嵌入；gaokao/textbook 11971 点未动；无 orphan 删除）。 2026-11-06 OCR 回填后增量更新：points 12967→12973（mock 996→1002，11 更新 + 6 新 OCR chunk 重嵌入；6 条旧 payload 刷新；gaokao/textbook 11971 点未动；无删除）。",
   "database": {
     "host": "127.0.0.1:55495",
     "name": "chilon",
     "sources": 346,
-    "chunks": 12967,
+    "chunks": 12973,
     "questions": 6981,
     "chunks_embedded": 1894,
     "limit": null,
-    "mock_chunks": 996,
-    "mock_chunks_before_repair": 931
+    "mock_chunks": 1002,
+    "mock_chunks_before_repair": 931,
+    "mock_chunks_before_ocr_backfill": 996
   },
   "collection": {
     "name": "chilon_chunks_qwen3_embedding_0_6b_v1",
-    "points": 12967,
+    "points": 12973,
     "dim": 1024,
     "distance": "cosine",
     "qdrant_url": "http://127.0.0.1:6333",
@@ -176,5 +177,63 @@
     ],
     "report": "var/retrieval/mock_incremental_update_2026-11-06.json"
   },
-  "file_name_note": "文件名为历史名称（建立时 12902 points）；2026-11-06 模拟题修复增量后实测 points=12967（mock 996，gaokao/textbook 11971）。"
+  "file_name_note": "文件名为历史名称（建立时 12902 points）；2026-11-06 mock 修复 + OCR 回填两次增量后实测 points=12973（mock 1002，gaokao/textbook 11971）。",
+  "incremental_update_ocr": {
+    "updated_at": "2026-11-06T18:04:39+08:00",
+    "reason": "OCR backfill (task-28): 11 in-place chunk text updates + 6 new OCR chunks; 6 question locators moved; only changed/new mock chunks re-embedded",
+    "source_backup": "var/ocr_mock/backup_ocr_2026-11-06.json",
+    "changes": {
+      "chunk_updates": 11,
+      "chunk_inserts": 6,
+      "reembedded": 17,
+      "plan_text_mismatch": 0
+    },
+    "mock_points_before": 996,
+    "mock_points_after": 1002,
+    "total_points_before": 12967,
+    "total_points_after": 12973,
+    "non_mock_points_before": 11971,
+    "non_mock_points_after": 11971,
+    "non_mock_points_untouched": true,
+    "orphan_mock_points": 0,
+    "payload_refresh": {
+      "refreshed": 6,
+      "remaining_question_id_mismatch": 0
+    },
+    "embedding": {
+      "model": "Qwen/Qwen3-Embedding-0.6B",
+      "dim": 1024,
+      "max_length": 512,
+      "batch_size": 4,
+      "load_seconds": 10.91,
+      "embed_seconds": 15.56,
+      "tokens": 2413,
+      "chunks_per_second": 1.09,
+      "tokens_per_second": 155.1,
+      "upsert_seconds": 0.07,
+      "total_seconds": 27.5,
+      "rss_before_mb": 111.6,
+      "rss_after_model_mb": 2742.6,
+      "peak_rss_mb": 3006.5
+    },
+    "spot_checks": [
+      {
+        "kind": "update",
+        "chunk_id": "cb6638e6-fee3-4649-b18d-fb74fd8fce1a",
+        "chunk_key": "q03_012",
+        "query_fragment": "13.已知 △ABC 的面积为",
+        "text_rank": 2,
+        "vector_rank": 2
+      },
+      {
+        "kind": "ocr_new",
+        "chunk_id": "202faed9-f711-5436-9d4e-0b41f971699d",
+        "chunk_key": "q02_005_ocr39",
+        "query_fragment": "(6)把函数 y=f(x) 图象上所有点的横坐标伸长到原来的2倍",
+        "text_rank": 1,
+        "vector_rank": 1
+      }
+    ],
+    "report": "var/retrieval/ocr_incremental_update_2026-11-06.json"
+  }
 }
