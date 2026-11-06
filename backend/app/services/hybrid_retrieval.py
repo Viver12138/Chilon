@@ -561,11 +561,14 @@ LEFT JOIN knowledge_questions q
 """
 
 
-DEFAULT_KP_VOCAB = r"C:\Users\Viver\Desktop\高中数学\10_Indexes\知识点词表.md"
+_REPO_ROOT = Path(__file__).resolve().parents[3]
+DEFAULT_KP_VOCAB = os.environ.get("CHILON_KP_VOCAB") or str(
+    _REPO_ROOT / "corpus" / "eval" / "kp_vocab.md"
+)
 
 
 def load_kp_name_map(path: str | Path | None = None) -> dict[str, str]:
-    """Parse ``kp_id -> Chinese name`` from the vault vocabulary table (read-only).
+    """Parse ``kp_id -> Chinese name`` from the vocabulary table copy in the repo (read-only).
 
     The prototype must not depend on ``knowledge_questions.current_knowledge_points``
     (its representation changed during the annotation import).  Knowledge points are

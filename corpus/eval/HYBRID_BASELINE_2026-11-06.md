@@ -49,7 +49,7 @@
 | payload | `chunk_id / question_id / source_id / source_type / title / year / paper / question_no / question_type / knowledge_points / locator` |
 | payload indexes | `source_type` (keyword)、`paper` (keyword)、`question_type` (keyword)、`year` (integer) |
 | embedding 输入 | V1.2 §9.3：「资料类型 / 年份 / 试卷 / 题号 / 题型 / 知识点 + 正文」，不拼接答案与大量无关元数据 |
-| 知识点的数据口径 | **读 `knowledge_annotations`（active：`superseded_by IS NULL`，kp_primary + kp_secondary），不读 `knowledge_questions.current_knowledge_points`**；kp_id→中文名用 vault 词表（120 条）映射 |
+| 知识点的数据口径 | **读 `knowledge_annotations`（active：`superseded_by IS NULL`，kp_primary + kp_secondary），不读 `knowledge_questions.current_knowledge_points`**；kp_id→中文名用仓库内词表副本 `corpus/eval/kp_vocab.md`（120 条）映射 |
 | manifest | `var/retrieval/index_manifest.json` |
 
 ### 3.1 建索引吞吐与内存（V1.2 §17 要求的实测）
@@ -231,6 +231,8 @@ Reranker 是绝对瓶颈；15 条评测因此耗时约 21 分钟。若生产默�
 - `strict` 仍然 0 条：本版仍不能回答“是不是找到了教师指定的那一道/那一条”；93.3% 是 lenient 口径。
 
 ## 11. 复现
+
+> 知识点中文名默认从仓库内 `corpus/eval/kp_vocab.md` 读取（可用环境变量 `CHILON_KP_VOCAB` 覆盖），不依赖 vault 路径。
 
 ```powershell
 # 1) Qdrant
