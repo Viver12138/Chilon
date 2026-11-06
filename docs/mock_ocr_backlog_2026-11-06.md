@@ -12,6 +12,7 @@ updated: 2026-11-06
 >
 > 执行统计：23 份 PDF / 29 个主 PDF-页对 / **73 次页面级 API 调用**（scan 29 + ±1 页 17 + photo 27）/
 > API 纯耗时 141.9s / 0 次调用失败；recovered 33（天津整套 11/11、语义残缺 2/2、单题 20/26）。
+> 第二轮（同一接口）：6 题扩全页 scan+photo，34 次 API、0 失败、**recovered 0/6**，仍 unresolved（未换其他 OCR，见下文）。
 > 本文件由 `var/mock_annotations/ocr_needed_final.md` 整理入仓（2026-11-06），原始响应与批量报告在 `var/`（不提交）。
 
 ## 汇总
@@ -79,6 +80,14 @@ updated: 2026-11-06
 | `mock_6b9b1918-b575-4f6b-897b-f83bea23bb43_q08` | 2025年江西省八所重点中学二模联考（4.7开考） | 8 | 2 | 未返回题号 8（本页 9/10/4） |
 | `mock_8900819b-446c-42d5-9a38-511ffd2c7089_q11` | 2025年河南省天一小高考高三（下）第三次考试(4.8开考) | 11 | 3 | 未返回题号 11（本页 12–16） |
 
+## 第二轮重试（同一接口，0/6 recovered）
+
+- 范围：6 题 unresolved 实际对应 **5 份 PDF / 18 页**（江西十校 q08/q13 共用 1 份 PDF）。
+- 调用：**34 次 API**（每页 scan 18 次 + 未命中后同接口 photo 16 次），**0 失败**，API 累计约 70.4s（`retry2_calls.json` 逐条计时）。
+- 结果：**0/6 recovered**，6 题仍 unresolved（vendor 未返回匹配题号）。
+- 约束：**未换任何其他 OCR**；按套内 ±1 号候选与相邻题号冲突，**未采用上下文硬配**，避免臆造文本。
+- 数据影响：PG / 卡片 / Qdrant **0 变更**；索引仍 12973，15 条基线 93.3% 不变。
+
 ---
 
-> 明细 JSON：`ocr_needed_final.json`；OCR 原始响应：`var/ocr_mock/raw/`；批量报告：`var/ocr_mock/ocr_batch_report.md`。
+> 明细 JSON：`ocr_needed_final.json`（含 `retry2_summary`）；OCR 原始响应：`var/ocr_mock/raw/`、`var/ocr_mock/retry2_raw/`；批量报告：`var/ocr_mock/ocr_batch_report.md`、`var/ocr_mock/retry2_report.md`。
