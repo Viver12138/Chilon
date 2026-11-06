@@ -21,7 +21,7 @@
 ## 这个仓库里有什么
 
 ```text
-Chilon_Project_Design_Master_Document.md   设计与契约基线（131 个章节、AD 记录 D.1–D.96）
+Chilon_Project_Design_Master_Document.md   设计与契约基线（132 个章节、AD 记录 D.1–D.97）
 docs/                                       教师版说明、V1.2 知识库技术设计（知识库层权威）、KB 同步契约
 docs/mock_ocr_backlog_2026-11-06.md         模拟题 39 题 OCR 需求清单（只统计，未调用）
 design/                                     设计分册 D1–D6、K09 字段设计、走查包、校验器
@@ -188,7 +188,7 @@ python backend/tests/check_llm.py
 - **标注已进 PG，但仍是“双表示”迁移态**：6050 题导入 `knowledge_annotations` 8007 条 active（primary 6045）；`current_knowledge_points` 仍是旧工作台的中文模块名缓存（4748/6050 非空），不是新事实源。迁移完成前 hybrid 检索只读 `knowledge_annotations`；旧基线 Recall@8 26.7% 已复现，同步契约见 `docs/KB_SYNC_CONTRACT.md`（D.88）。
 - **检索质量：混合原型 93.3%，但还不是产品效果**：15 条真人问题、混合检索（pg_trgm + Qdrant + RRF，无 rerank）Recall@8 **93.3%（14/15）**、MRR 0.836、空结果 0%；旧引擎 26.7% 仅作历史对照。样本只有 15 条、判定为 lenient 片段匹配、无 strict target；reranker 无 Recall 增益且 CPU 约 82.7s/query，未默认启用。**93.3% 不是产品最终效果**，详见 `corpus/eval/HYBRID_BASELINE_2026-11-06.md`（D.89）；旧 55%/0.451/32% 不可比、不可引用。问题集仍缺 11–15、类别不全，待补采后重测。
 - **受限资料已投影但没审完**：模拟题 67 套/931 题 + 教材 5 册/1797 块已从 PG 单向投影到 vault（`restricted`/`classroom`，仅内部审校，1005 个文件），但**答案/解析未入库**（题卡只指向同目录答案 PDF）、教材 OCR 待审且**无章节结构**、311 题 `question_type` 为空、legacy 中文模块名标“未核验”；高考卡 6324 张投影前后 0 改动。模拟题题干已本地修复 894/931；**39 题已全部有题干（33 阿里云试卷切题 OCR + 6 人工转录，每题来源可追溯）**（清单 `docs/mock_ocr_backlog_2026-11-06.md`；桌面临时文件夹已在校验 sha256 后删除，审计副本在 `var/`）；索引 12973 不变（mock 1002 / linked 931），15 条基线 93.3% 不变。工具 `tools/project_restricted_corpus.py`、`tools/kb_mock_*.py`、`tools/ocr_mock_backlog.py` 与 `tools/kb_manual_mock_import.py`，规则见 `docs/KB_SYNC_CONTRACT.md`（D.90–D.94）。
-- **模拟题标注：93 题已教师抽检修正，838 题仍模型**：931/931 有标注（primary **912**、空 **19**）；其中 93 题按教师判定修正（模块一致 **81.7%**（76/93）、考点 exact **54.8%**（51/93）、含 secondary 59.1%；42 题修正；teacher 93 / model 838；secondary 209）；93 张 teacher 卡 kp 恰为教师考点（93/93），931 卡 + 67 set note 与高考卡 sha256 未变。**93 题是样本、838 题模型未抽检，整体仍 `needs_review`**；未调 OCR、Qdrant 12973 与 15 条基线 93.3% 均不变（D.96）。
+- **模拟题标注：931/931 全部有 primary，197 题经教师复核**：teacher **197**（93 随机抽样 + 104 高风险定向）/ model **734**；secondary **154**、空 primary **0**。一致率：93 题抽样 模块 81.7%/考点 54.8%；104 题定向 模块 45.2%/考点 13.5%（高风险子集，两组不可混用）。卡片 931/931 非空、931 卡 + 67 set note 与高考卡 sha256 未变；**734 条 model 标注仍未抽检，整体仍 `needs_review`**；未调 OCR、Qdrant 12973 与 15 条基线 93.3% 均不变（D.97）。
 - **答案解析仍有缺口**：修复错位后 4311/6050（71.3%）有答案，其余约三成是语料本身缺答案，不是解析漏读（D.84）。
 - **草稿编辑还没有界面**：对话改、直接改目前只在服务端留有版本记录，界面上还不能改草稿。
 - **`created_by` 一类字段暂无外键**：它们常由系统 Worker 写入，而 Worker 不是用户。需要先设计"系统主体"概念。
