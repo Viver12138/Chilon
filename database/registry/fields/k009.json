@@ -1774,6 +1774,189 @@
           "with_check": "EXISTS (SELECT 1 FROM material_versions p WHERE p.id = material_version_id AND p.owner_id = public.app_current_user_id())"
         }
       ]
+    },
+    {
+      "name": "textbook_block_annotations",
+      "purpose": "教材块级标注；teacher/model 双状态，唯一 active 版本",
+      "owner_scoped": false,
+      "fields": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "nullable": false,
+          "primary_key": true,
+          "sensitivity": "public",
+          "desc": "主键"
+        },
+        {
+          "name": "chunk_id",
+          "type": "uuid",
+          "nullable": false,
+          "fk": {
+            "table": "knowledge_chunks",
+            "on_delete": "CASCADE"
+          },
+          "sensitivity": "public",
+          "desc": "教材块"
+        },
+        {
+          "name": "block_id",
+          "type": "varchar",
+          "length": 80,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "教材块稳定 ID（TB-B..）"
+        },
+        {
+          "name": "kp_primary",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "主考点 kp_id；空表示未归属"
+        },
+        {
+          "name": "kp_secondary",
+          "type": "jsonb",
+          "nullable": false,
+          "default": "'[]'::jsonb",
+          "sensitivity": "public",
+          "desc": "兼考点 kp_id 数组（0-2）"
+        },
+        {
+          "name": "module_id",
+          "type": "varchar",
+          "length": 40,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "模块 ID，如 kp_01_set_logic"
+        },
+        {
+          "name": "status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "mapped/non_content/vocab_gap"
+        },
+        {
+          "name": "classification_source",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "rule/model/teacher"
+        },
+        {
+          "name": "confidence",
+          "type": "numeric",
+          "precision": 4,
+          "scale": 3,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "0-1，教师=1"
+        },
+        {
+          "name": "model_version",
+          "type": "varchar",
+          "length": 120,
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "模型版本（model 必填）"
+        },
+        {
+          "name": "review_status",
+          "type": "varchar",
+          "length": 16,
+          "nullable": false,
+          "sensitivity": "public",
+          "desc": "draft/needs_review/reviewed/rejected"
+        },
+        {
+          "name": "rationale",
+          "type": "text",
+          "nullable": true,
+          "sensitivity": "public",
+          "desc": "一句话理由/教师备注"
+        },
+        {
+          "name": "superseded_by",
+          "type": "uuid",
+          "nullable": true,
+          "fk": {
+            "table": "textbook_block_annotations",
+            "on_delete": "RESTRICT"
+          },
+          "sensitivity": "public",
+          "desc": "被新标注取代"
+        },
+        {
+          "name": "created_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "创建时间"
+        },
+        {
+          "name": "updated_at",
+          "type": "timestamptz",
+          "nullable": false,
+          "default": "now()",
+          "sensitivity": "public",
+          "desc": "更新时间"
+        }
+      ],
+      "constraints": [
+        {
+          "type": "check",
+          "name": "ck_textbook_block_annotations_status",
+          "expr": "status IN ('mapped','non_content','vocab_gap')"
+        },
+        {
+          "type": "check",
+          "name": "ck_textbook_block_annotations_source",
+          "expr": "classification_source IN ('rule','model','teacher')"
+        },
+        {
+          "type": "check",
+          "name": "ck_textbook_block_annotations_review",
+          "expr": "review_status IN ('draft','needs_review','reviewed','rejected')"
+        },
+        {
+          "type": "check",
+          "name": "ck_textbook_block_annotations_conf",
+          "expr": "confidence IS NULL OR (confidence >= 0 AND confidence <= 1)"
+        },
+        {
+          "type": "check",
+          "name": "ck_textbook_block_annotations_model_version",
+          "expr": "classification_source <> 'model' OR model_version IS NOT NULL"
+        }
+      ],
+      "indexes": [
+        {
+          "name": "ix_textbook_block_annotations_active",
+          "columns": [
+            "chunk_id"
+          ],
+          "where": "superseded_by IS NULL",
+          "unique": true
+        },
+        {
+          "name": "ix_textbook_block_annotations_review",
+          "columns": [
+            "review_status"
+          ]
+        }
+      ],
+      "policies": [
+        {
+          "name": "pol_textbook_block_annotations_owner",
+          "command": "ALL",
+          "using": "EXISTS (SELECT 1 FROM knowledge_chunks JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_chunks.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_chunks.id = chunk_id AND knowledge_sources.owner_id = public.app_current_user_id())",
+          "with_check": "EXISTS (SELECT 1 FROM knowledge_chunks JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_chunks.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_chunks.id = chunk_id AND knowledge_sources.owner_id = public.app_current_user_id())"
+        }
+      ]
     }
   ],
   "table_order": [
@@ -1789,6 +1972,7 @@
     "knowledge_indexing_jobs",
     "knowledge_retrieval_runs",
     "knowledge_retrieval_results",
-    "material_knowledge_citations"
+    "material_knowledge_citations",
+    "textbook_block_annotations"
   ]
 }

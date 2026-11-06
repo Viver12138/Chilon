@@ -2,7 +2,7 @@
 
 > **文档类型**：项目总体设计与实施路线图\
 > **整理日期**：2026-11-03\
-> **最后更新**：2026-11-06（新增 D.79–D.103：语料、抽检、检索基线、V1.2 定位、标注入库、混合检索、受限资料投影、模拟题修复、OCR、人工补录、全量标注、教师抽检、定向复核、教材映射 pilot/v2/v3、20% 复核与全量质量估计）\
+> **最后更新**：2026-11-06（新增 D.79–D.104：语料、抽检、检索基线、V1.2 定位、标注入库、混合检索、受限资料投影、模拟题修复、OCR、人工补录、全量标注、教师抽检、定向复核、教材映射 pilot/v2/v3、20% 复核、全量质量估计与教材块 PG draft）\
 > **状态**：设计汇总稿（Living Design Document）\
 > **用途**：作为 Chilon 后续产品设计、工程实施、Schema
 > Registry、API、前端和测试工作的统一基线。
@@ -163,6 +163,7 @@
   - [D.101 2026-11-06 教材全量映射：1797 块，primary 1704（94.8%）](#d101-2026-11-06-教材全量映射1797-块primary-1704948)
   - [D.102 2026-11-06 教材复核样本扩到 20%：360 块](#d102-2026-11-06-教材复核样本扩到-20360-块)
   - [D.103 2026-11-06 360 块复核与全量质量估计：加权 96.0% / 80.5%](#d103-2026-11-06-360-块复核与全量质量估计加权-960--805)
+  - [D.104 2026-11-06 教材块标注表与 PG draft：1797 块入库（teacher 360）](#d104-2026-11-06-教材块标注表与-pg-draft1797-块入库teacher-360)
 
 [//]: # (toc:end)
 
@@ -8116,6 +8117,71 @@ non_content       33
 ### 一个判断
 
 加权 96.0% 说明**模块层已经够用**，80.5% 说明**考点还有两成要人**。现在最有价值的不是继续抽更多样本，而是把这 74 条错误里可规则的（章末/跨节/栏目）先修掉，再让 PG 以“双状态”接收——**模型给候选、教师给判定，两者都留痕。**
+
+**流水线：17 项静态检查全过。**
+
+----------------------------------------
+
+------------------------------------------------------------------------
+
+
+## D.104 2026-11-06 教材块标注表与 PG draft：1797 块入库（teacher 360）
+
+D.103 的结论是“可进 PG draft/schema”。这一轮把教材块标注表按 registry-first 流程建好，并把 1797 条候选映射写入 PG。**这是 draft：teacher 360 是已复核，其余 1437 仍是模型候选。**
+
+### 表设计：chunk 级 + 双状态
+
+`textbook_block_annotations`：
+
+```text
+id                     UUID PK（uuid5(chunk_id) 稳定生成）
+chunk_id               UUID FK knowledge_chunks ON DELETE CASCADE
+block_id               VARCHAR(80)  教材块稳定 ID（TB-B1-…）
+kp_primary             TEXT         主考点；non_content/vocab_gap 为空
+kp_secondary           JSONB        兼考点数组，默认 []
+module_id              VARCHAR(40)  模块 ID
+status                 mapped / non_content / vocab_gap
+classification_source  rule / model / teacher
+confidence             NUMERIC(4,3) 0–1；teacher 固定 1.0
+model_version          model 必填
+review_status          draft / needs_review / reviewed / rejected
+rationale              TEXT         模型理由/教师备注摘要
+superseded_by          UUID 自 FK；NULL = active
+created_at/updated_at  TIMESTAMPTZ
+```
+
+- **唯一 active**：`CREATE UNIQUE INDEX ... ON (chunk_id) WHERE superseded_by IS NULL`；同 chunk 只一条 active；
+- **RLS**：`ENABLE` + `FORCE ROW LEVEL SECURITY`，policy 经 `chunk → document_version → source.owner_id` 复用知识库 owner 边界；
+- 索引：PK、active 唯一 partial、`review_status`。
+
+### Registry / migration
+
+- registry-first：`database/registry/fields/k009.json` 新增表定义（字段/check/index/RLS policy），`schema.json` 的 `tables` + `table_order` 加入新表；
+- generator 重新生成 `database/generated/schema.sql`、`manifest.json`（generated 表 81 → **82**）；
+- `backend/migrations/versions/0002_textbook_block_annotations.py` 由 `gen_migration.py` 生成（revision 0002，down 0001_baseline）；
+- 当前库由既有 schema 初始化，本轮只从 generated DDL 抽取本表语句执行，不跑全量 `alembic upgrade`，避免重复建既有表。
+
+### 写入结果
+
+| 项 | 结果 |
+| --- | --- |
+| active 行数 | **1797 / 唯一 chunk 1797** |
+| teacher / model | **360 / 1437** |
+| status | mapped **1711**、non_content **52**、vocab_gap **34** |
+| dry-run | missing 0 / duplicate 0 |
+| 幂等 | 重跑 **0 变更**（逐字段比较后跳过） |
+| 回滚 | `--rollback` 删 1797 行后重 apply 恢复；`--rollback --drop` 可删表 |
+| RLS | enable/force = True/True；policy `pol_textbook_block_annotations_owner`（ALL） |
+| 既有数据 | `knowledge_annotations` **9092 未变**；未动 mock/gaokao |
+| check_all | **17/17** |
+
+- 写入映射：teacher 行 `classification_source=teacher`、`review_status=reviewed`（教师空白→non_content）；model 行 `needs_review`（空 primary 且非 non_content → vocab_gap）；`model_version=textbook-map-v3-2026-11-06`。
+
+### 边界与下一步
+
+- **这是 draft 数据**：1704 个模型 primary 不是 gold；360 条教师判定已生效；
+- 下一步：① 对 D.103 的 59+15 条错误补规则；② 剩余 1517 块按风险/10% 补核；③ 接 Obsidian 双链（块级 kp 链接），并决定 model 标签何时转正式；
+- 未调 OCR；未写 vault。
 
 **流水线：17 项静态检查全过。**
 

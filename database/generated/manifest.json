@@ -1,14 +1,14 @@
 {
   "generator_version": "0.1.0",
   "registry_version": "0.1.0",
-  "registry_hash": "42bf0c06f4b1d0cc90e34693fdb985c324275875a903917c54e93c9d8858fd88",
-  "schema_hash": "64d1148828e02bad93dbc1e98fd7d44e91519b2cf5b7a11cf494278c1047c6af",
+  "registry_hash": "ddedad08055f1cdc54401c13cbcbe1ff198b47aabdadfbc0100f929a2091ffaa",
+  "schema_hash": "8bc1385a692afcb0aaae946c24ba3f8d18ed24c5e20482c5ec380c95ab47c22b",
   "variant": "core",
-  "tables": 81,
-  "fields": 806,
-  "indexes": 88,
-  "policies": 87,
-  "min_foreign_keys": 145,
+  "tables": 82,
+  "fields": 821,
+  "indexes": 90,
+  "policies": 88,
+  "min_foreign_keys": 147,
   "included_tables": [
     "users",
     "user_credentials",
@@ -90,7 +90,8 @@
     "knowledge_indexing_jobs",
     "knowledge_retrieval_runs",
     "knowledge_retrieval_results",
-    "material_knowledge_citations"
+    "material_knowledge_citations",
+    "textbook_block_annotations"
   ],
   "skipped_tables": [
     "knowledge_question_embeddings"
