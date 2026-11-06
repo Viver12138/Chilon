@@ -1,0 +1,42 @@
+{
+  "version": "teacher-questions/v1",
+  "note": "模拟候选问题集：用于演示问题集工装、跑通评测流水线、给教师看“我们需要什么样的提问”。全部由 Agent 拟定，未经任何真人教师确认，expect 未在语料中核验。严禁作为检索质量基线引用；真实基线必须来自 origin=teacher 且 expect_verified=true 的问题集。",
+  "provenance": {
+    "status": "simulated",
+    "real_teacher_confirmed": false,
+    "collected_by": "Agent（retrieval-eval）",
+    "collected_at": "2026-11-06",
+    "note": "模拟候选：依据 D.83 已知失败类型与教师常见问法拟定。默认被 tools/eval_retrieval.py 排除，只有显式 --include-untrusted 才纳入，且报告标记 trustworthy_baseline=false。"
+  },
+  "queries": [
+    {"id": "SIM-A-01", "category": "主题词", "text": "导数", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": ["导数"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-A-02", "category": "主题词", "text": "数列和不等式怎么结合考", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["数列", "不等式"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-A-03", "category": "主题词", "text": "立体几何", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["棱锥", "棱柱", "空间直角坐标系"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-A-04", "category": "主题词", "text": "概率统计", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["概率", "统计"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-A-05", "category": "主题词", "text": "解析几何里的定点问题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["定点"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+
+    {"id": "SIM-B-01", "category": "题型+知识点", "text": "来五道圆锥曲线的选择题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["椭圆", "双曲线", "抛物线"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-B-02", "category": "题型+知识点", "text": "导数的解答题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["导数"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-B-03", "category": "题型+知识点", "text": "数列的填空题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["数列"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-B-04", "category": "题型+知识点", "text": "立体几何的证明题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["求证", "证明"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-B-05", "category": "题型+知识点", "text": "三角函数的求值题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["sin", "cos", "tan"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+
+    {"id": "SIM-C-01", "category": "教材概念", "text": "补集的定义是什么", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["补集"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-C-02", "category": "教材概念", "text": "正弦定理和余弦定理有什么区别", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["正弦定理", "余弦定理"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-C-03", "category": "教材概念", "text": "函数单调性怎么判断", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["单调"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-C-04", "category": "教材概念", "text": "等差数列的通项公式", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["等差数列"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-C-05", "category": "教材概念", "text": "二项式定理的展开式", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": ["二项式"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+
+    {"id": "SIM-D-01", "category": "年份+卷别", "text": "把 2024 年新课标Ⅰ卷的题调出来", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [{"all": [{"field": "year", "equals": "2024"}, {"field": "paper", "contains": "新课标Ⅰ卷"}]}], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验；卷名以语料实际 title 为准"},
+    {"id": "SIM-D-02", "category": "年份+卷别", "text": "2023 年北京卷", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [{"all": [{"field": "year", "equals": "2023"}, {"field": "paper", "contains": "北京"}]}], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-D-03", "category": "年份+卷别", "text": "2025 年上海卷的填空题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [{"all": [{"field": "year", "equals": "2025"}, {"field": "paper", "contains": "上海"}]}], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-D-04", "category": "年份+卷别", "text": "2022 年新高考Ⅱ卷", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [{"all": [{"field": "year", "equals": "2022"}, {"field": "paper", "contains": "Ⅱ"}]}], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-D-05", "category": "年份+卷别", "text": "2024 年的模拟卷", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [{"all": [{"field": "year", "equals": "2024"}, {"field": "source_type", "equals": "mock_exam"}]}], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+
+    {"id": "SIM-E-01", "category": "自然语言要求", "text": "出几道导数压轴题，难度接近高考", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["导数"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-E-02", "category": "自然语言要求", "text": "找点学生容易错的三角函数题", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["sin", "cos", "三角函数"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-E-03", "category": "自然语言要求", "text": "有没有适合课堂小测的集合题，简单一点", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["集合"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-E-04", "category": "自然语言要求", "text": "数列求和的专项练习，要十道", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["数列", "求和"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"},
+    {"id": "SIM-E-05", "category": "自然语言要求", "text": "帮我找两道概率的大题，要带解析的", "origin": "simulated_candidate", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": ["概率"], "strict": null}, "expect_verified": false, "notes": "模拟候选，未经真人确认与语料核验"}
+  ]
+}

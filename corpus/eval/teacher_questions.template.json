@@ -1,0 +1,74 @@
+{
+  "version": "teacher-questions/v1",
+  "template": true,
+  "note": "真实教师检索问题收集模板（30 个空槽位，五类各 6 条）。这是收集表单，不是可评测问题集：text 为空表示待填。填好后另存为 corpus/eval/teacher_questions.json 再用 tools/eval_retrieval.py 评测。",
+  "instructions": [
+    "找一位真实高中数学教师，请他在不知道检索实现的前提下，口述/手写他真正会向平台提出的检索需求。逐字记录，不要改写成“系统友好”的措辞。",
+    "一条只表达一个检索意图；一句话里有多个要求就拆成多条。",
+    "填写 contributor（年级/教龄/是否用过系统）与 collected_at（YYYY-MM-DD）。",
+    "期望字段由另一位核验人（不是提问教师）在语料库里用 SQL 确认对象确实存在后填写：expect.any 至少一条；需要“就是那一道/那一条”时再填 expect.strict。",
+    "核验后把 expect_verified 改为 true。未核验的条目会让整份报告被标记为不可信基线。",
+    "整份目标 20–40 条、五类各 4–8 条。本模板按 30 条给位，可按实际收集情况增删。",
+    "模拟候选（teacher_questions.candidates.json）只用于演练工装，origin 必须保持 simulated_candidate，不得改写成 teacher。"
+  ],
+  "collection_protocol": {
+    "who": "至少 1 位真实高中数学教师（建议 2–3 位，覆盖高三/高一与不同教龄）",
+    "what": "教师原话检索需求，不是产品经理改写的关键词",
+    "how": [
+      "1. 访谈 30–40 分钟：请教师完成 3 个真实备课场景，边做边说“我想找……”。",
+      "2. 记录原话，标记场景（备课/组卷/讲评/找教材依据）和想要的产物（题目/教材段落/知识点）。",
+      "3. 另一位核验人用 SQL 在 knowledge_chunks / knowledge_questions 里确认每个期望对象存在，填入 expect。",
+      "4. 两位参与者一起复核：问题措辞是否仍是教师原话、期望是否指向真实对象。",
+      "5. 冻结版本：填写 provenance 与版本号，之后改动要记录原因。"
+    ],
+    "not_allowed": [
+      "把开发者自拟措辞改名成 teacher；",
+      "把模拟候选当作真人数据；",
+      "在没有核验语料的情况下把 expect_verified 设为 true；",
+      "只收集“系统能答对”的问题（选择性抽样会把基线抬高）。"
+    ]
+  },
+  "provenance": {
+    "status": "template",
+    "real_teacher_confirmed": false,
+    "collected_by": "",
+    "collected_at": "",
+    "note": "空白模板：任何人填写后都必须显式更新 provenance，模拟数据不得标 real_teacher。"
+  },
+  "queries": [
+    {"id": "Q-A-01", "category": "主题词", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教师只念一个主题词，例如“导数”“立体几何”。"},
+    {"id": "Q-A-02", "category": "主题词", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "两个知识点连说，例如“数列和不等式怎么结合”。"},
+    {"id": "Q-A-03", "category": "主题词", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教材章节名，例如“直线与圆”“空间向量与立体几何”。"},
+    {"id": "Q-A-04", "category": "主题词", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "容易混淆的一对概念，例如“正弦定理和余弦定理的区别”。"},
+    {"id": "Q-A-05", "category": "主题词", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "高考高频主题，例如“圆锥曲线”“概率统计”。"},
+    {"id": "Q-A-06", "category": "主题词", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "any", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "学生提问口吻的主题，例如“函数零点到底怎么找”。"},
+
+    {"id": "Q-B-01", "category": "题型+知识点", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "选择题 + 一个知识点，例如“圆锥曲线的选择题”。"},
+    {"id": "Q-B-02", "category": "题型+知识点", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "解答题 + 一个知识点，例如“导数的解答题”。"},
+    {"id": "Q-B-03", "category": "题型+知识点", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "填空题 + 一个知识点，例如“数列的填空题”。"},
+    {"id": "Q-B-04", "category": "题型+知识点", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "多选题 + 一个知识点，例如“概率的多选题”。"},
+    {"id": "Q-B-05", "category": "题型+知识点", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "证明题 + 一个知识点，例如“立体几何的证明题”。"},
+    {"id": "Q-B-06", "category": "题型+知识点", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "压轴题 + 一个知识点，例如“解析几何的压轴题”。"},
+
+    {"id": "Q-C-01", "category": "教材概念", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教材里的某个定义，例如“补集的定义”。"},
+    {"id": "Q-C-02", "category": "教材概念", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教材里的某个定理，例如“正弦定理”。"},
+    {"id": "Q-C-03", "category": "教材概念", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教材里的某个公式，例如“等差数列的通项公式”。"},
+    {"id": "Q-C-04", "category": "教材概念", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教材里的某个推论或性质，例如“余弦定理及其推论”。"},
+    {"id": "Q-C-05", "category": "教材概念", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "概念的适用条件，例如“古典概型的适用条件”。"},
+    {"id": "Q-C-06", "category": "教材概念", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教师关心的教材口径差异（注明教材版本），例如“人教A版里函数单调性的定义”。"},
+
+    {"id": "Q-D-01", "category": "年份+卷别", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "指定年份 + 卷别，例如“2024 新课标Ⅰ卷的题”。期望用 year/paper 的 all 组。"},
+    {"id": "Q-D-02", "category": "年份+卷别", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "指定年份 + 某地区卷，例如“2023 北京卷”。"},
+    {"id": "Q-D-03", "category": "年份+卷别", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "某年份区间，例如“近三年新高考卷”。若语料只支持单年，拆成多条。"},
+    {"id": "Q-D-04", "category": "年份+卷别", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "指定卷别 + 题型，例如“上海卷的填空题”。"},
+    {"id": "Q-D-05", "category": "年份+卷别", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "年份 + 模拟卷，例如“2024 年的模拟卷”。可用 source_type=mock_exam 的 all 组。"},
+    {"id": "Q-D-06", "category": "年份+卷别", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "某年压轴题，例如“2022 新高考Ⅱ卷的最后一道大题”。"},
+
+    {"id": "Q-E-01", "category": "自然语言要求", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "难度要求，例如“出几道导数压轴题，难度接近高考”。"},
+    {"id": "Q-E-02", "category": "自然语言要求", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "易错/学生薄弱，例如“找点学生容易错的三角函数题”。"},
+    {"id": "Q-E-03", "category": "自然语言要求", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "数量要求，例如“数列求和的专项练习，要十道”。"},
+    {"id": "Q-E-04", "category": "自然语言要求", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "教学用途，例如“适合课堂小测的集合题，简单一点”。"},
+    {"id": "Q-E-05", "category": "自然语言要求", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "chunk", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "来源限制，例如“只要教材原文，不要题目”。期望可用 source_type 约束。"},
+    {"id": "Q-E-06", "category": "自然语言要求", "text": "", "origin": "teacher", "contributor": "", "collected_at": "", "object_type": "question", "expect": {"any": [], "strict": null}, "expect_verified": false, "notes": "", "fill_hint": "改编/变式要求，例如“把这道题改得简单一点，考同一个知识点”。"}
+  ]
+}

@@ -1,0 +1,174 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chilon.local/schemas/teacher_questions.schema.json",
+  "title": "Chilon 真实教师问题集（teacher-questions/v1）",
+  "description": "检索评测问题集的结构定义。口径见 corpus/eval/README_retrieval.md。注意：本 schema 只约束结构；text 是否填写、expect 是否可判定、是否已核验由 tools/eval_retrieval.py --check-input 做完整性校验。",
+  "type": "object",
+  "required": ["version", "provenance", "queries"],
+  "properties": {
+    "version": {
+      "const": "teacher-questions/v1"
+    },
+    "note": {
+      "type": "string",
+      "description": "本文件说明"
+    },
+    "template": {
+      "type": "boolean",
+      "description": "true 表示这是空白收集模板，不是可评测问题集"
+    },
+    "instructions": {
+      "type": "array",
+      "items": { "type": "string" },
+      "description": "收集模板里的填写说明"
+    },
+    "collection_protocol": {
+      "type": "object",
+      "description": "收集流程（可选）",
+      "additionalProperties": true
+    },
+    "provenance": {
+      "type": "object",
+      "required": ["status", "real_teacher_confirmed"],
+      "properties": {
+        "status": {
+          "enum": ["real_teacher", "simulated", "template", "developer_authored_legacy", "unknown"],
+          "description": "real_teacher 才允许产出可信基线"
+        },
+        "real_teacher_confirmed": {
+          "type": "boolean",
+          "description": "问题是否由真人教师提供并确认过"
+        },
+        "collected_by": { "type": "string" },
+        "collected_at": { "type": "string" },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": true
+    },
+    "queries": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 40,
+      "description": "目标 20–40 条，五类各 4–8 条",
+      "items": { "$ref": "#/$defs/query" }
+    }
+  },
+  "additionalProperties": true,
+  "$defs": {
+    "clause": {
+      "description": "命中子句。字符串是 {field:text, contains:字符串} 的简写。any 数组内是 OR；子句内部的 all 是 AND（用于年份+卷别这类复合条件）。",
+      "oneOf": [
+        { "type": "string", "minLength": 1 },
+        { "$ref": "#/$defs/simple_clause" },
+        { "$ref": "#/$defs/all_clause" }
+      ]
+    },
+    "simple_clause": {
+      "type": "object",
+      "properties": {
+        "field": {
+          "enum": ["text", "excerpt", "title", "knowledge_points", "year", "paper", "source_type"],
+          "default": "text",
+          "description": "text = 块摘要 + 来源标题；其余为对应命中字段"
+        },
+        "contains": {
+          "type": "string",
+          "minLength": 1,
+          "description": "子串匹配（区分大小写，必须与语料原文一致）"
+        },
+        "equals": {
+          "type": "string",
+          "description": "精确相等；knowledge_points 时为标签成员判断"
+        },
+        "object": {
+          "enum": ["any", "chunk", "question", "paragraph"],
+          "default": "any",
+          "description": "对象约束：question = 题目块（question_id 非空）；paragraph = 正文块（question_id 为空）；chunk/any = 任意块"
+        },
+        "note": { "type": "string" }
+      },
+      "oneOf": [
+        { "required": ["contains"] },
+        { "required": ["equals"] }
+      ],
+      "additionalProperties": false
+    },
+    "all_clause": {
+      "type": "object",
+      "required": ["all"],
+      "properties": {
+        "all": {
+          "type": "array",
+          "minItems": 2,
+          "items": { "$ref": "#/$defs/clause" }
+        },
+        "note": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "expect": {
+      "type": "object",
+      "required": ["any"],
+      "properties": {
+        "any": {
+          "type": "array",
+          "description": "lenient 口径：任一子句命中即算相关命中。评测时至少要有 1 条。",
+          "items": { "$ref": "#/$defs/clause" }
+        },
+        "strict": {
+          "description": "strict 口径：必须命中的那一个具体对象（如某道原题、某条教材定义）。null 表示该条不参与 strict 指标。",
+          "oneOf": [
+            { "type": "null" },
+            { "$ref": "#/$defs/clause" }
+          ]
+        }
+      },
+      "additionalProperties": false
+    },
+    "query": {
+      "type": "object",
+      "required": ["id", "category", "text", "origin", "expect", "expect_verified"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "pattern": "^[A-Za-z0-9_-]+$",
+          "description": "全文件唯一，例如 Q-A-01 / SIM-B-03"
+        },
+        "category": {
+          "enum": ["主题词", "题型+知识点", "教材概念", "年份+卷别", "自然语言要求"]
+        },
+        "text": {
+          "type": "string",
+          "description": "教师原话（逐字记录）。模板位为空字符串，评测前必须填写。"
+        },
+        "origin": {
+          "enum": ["teacher", "simulated_candidate"],
+          "description": "teacher 才进入默认评分；simulated_candidate 必须写 notes 说明未经真人确认"
+        },
+        "contributor": {
+          "type": "string",
+          "description": "教师背景，例如 高三数学/教龄 3 年/未用过系统"
+        },
+        "collected_at": {
+          "type": "string",
+          "description": "收集日期 YYYY-MM-DD"
+        },
+        "object_type": {
+          "enum": ["any", "question", "chunk", "knowledge_point"],
+          "description": "这条问题想要的对象：题目 / 块 / 知识点。用于覆盖率统计；实际判定由 expect.object 决定。"
+        },
+        "expect": { "$ref": "#/$defs/expect" },
+        "expect_verified": {
+          "type": "boolean",
+          "description": "期望是否已在语料中用 SQL 核验过。false 的条目会让报告标记为不可信基线。"
+        },
+        "notes": { "type": "string" },
+        "fill_hint": {
+          "type": "string",
+          "description": "仅模板使用：这一槽位该填什么"
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}
