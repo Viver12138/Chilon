@@ -80,6 +80,29 @@ status: sample-pending-review
   `mapped` 层按册/置信分层接近比例抽样，可用于估计 mapped 块的准确率，但**不能直接外推全量**。
 - pilot 100 块的逐块教师标签仍未入库（历史欠账），本表将其排除，不重复占用教师时间。
 
+## 6. 含 pilot 回采版本（`--include-pilot`）
+
+为补回 pilot 100 块**缺失的逐块教师标签**，同一抽样工具支持 `--include-pilot`，生成第二张表：
+
+| 项 | 值 |
+| --- | --- |
+| 文件 | `review_sheets/samples/教材映射复核_v4_剩余1437块_20pct_含pilot_2026-11-06.xlsx` |
+| 抽样池 | 1437（不剔除 pilot 100） |
+| 样本 | 288 行 = 1437×20%；其中 **pilot 块 26 行**（重新采集） |
+| 风险构成 | normal 213 / low_conf 44 / non_content 23 / vocab_gap 8 |
+| 分册 | 必修一 101 / 必修二 76 / 选必一 40 / 选必二 25 / 选必三 43 |
+| 校验 | 288 唯一 block_id、与 teacher 360 零重叠、教师列空、17/120 下拉、按册页排序 |
+
+两套表**互不覆盖**：默认表（288 行、完全避开 pilot）与含 pilot 表（含 26 行 pilot 回采）。
+若教师时间有限，建议先填默认 288 行；pilot 回采表可作为补充，或与默认表合并填写（避免同一 block 两处填）。
+
+生成命令：
+
+```powershell
+python tools/kb_textbook_sample_review.py --include-pilot   # 含 pilot 回采表
+python tools/kb_textbook_sample_review.py                   # 默认表（剔除 pilot）
+```
+
 ---
 
 > 工具：`tools/kb_textbook_sample_review.py`（`--stage sample|xlsx|all`，可换 `--percent`/`--seed`）；
