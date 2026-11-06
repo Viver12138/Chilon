@@ -17,7 +17,7 @@
 | 录入文件 | `corpus/eval/teacher_questions.json` |
 | 逐字校验 | 用脚本把源文件每条编号行与 JSON `text` 逐字比对：**15/15 一致**；缺号 `[11,12,13,14,15]` |
 | 口径文档 | `corpus/eval/README_retrieval.md`（本次未修改口径） |
-| Git | 未 commit（按任务要求） |
+| Git | 已在 `5acc790` 提交 |
 
 ### 分类规则
 
