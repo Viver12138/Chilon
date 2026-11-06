@@ -1,6 +1,6 @@
 {
   "version": "teacher-questions/v1",
-  "note": "真人教师提问录入版（2026-11-06）。原始文件：C:\\Users\\Viver\\Desktop\\真人提问.txt，共 15 条，编号 1–10、16–20；原文缺 11–15，未补造。原话逐字保留，未改写成系统友好措辞。provenance.status=real_teacher 仅表示“问题由用户提供的真人提问”，不代表身份/教龄已登记，也不代表期望已做 SQL 核验。",
+  "note": "真人教师提问录入版（2026-11-06）。原始文件：C:\\Users\\Viver\\Desktop\\真人提问.txt，共 15 条，编号 1–10、16–20；原文缺 11–15，未补造。原话逐字保留，未改写成系统友好措辞。2026-11-06 已完成对真实知识库的 SQL 核验（expect_verified 全部 true）；核验与替换依据见 corpus/eval/BASELINE_2026-11-06.md §3。",
   "source_file": "C:\\Users\\Viver\\Desktop\\真人提问.txt",
   "category_rule": "按主导检索信号归类：显式年份/年份段/卷别 → 年份+卷别；题型+知识点组合且无年份/卷别约束 → 题型+知识点；数量/来源/难度/用途/分类/教学设计 → 自然语言要求。",
   "provenance": {
@@ -12,7 +12,17 @@
     "source_total": 15,
     "missing_numbers": [11, 12, 13, 14, 15],
     "teacher_identity_recorded": false,
-    "note": "用户提供的真人教师提问：15 条（编号 1–10、16–20），原文件缺 11–15，未补造。教师身份/教龄未记录。expect 片段已对照 vault 题卡（04_Exams，6324 张）核对存在，但数据库当前不可用，未做 SQL 复核；expect_verified 一律 false，待 DB 恢复后复核。"
+    "verified_at": "2026-11-06",
+    "verification_target": "knowledge_chunks.text_content（DB chilon-pg-corpus：346 sources / 12902 chunks / 6981 questions）",
+    "verification_method": "对每条 expect.any 片段用 SQL ILIKE 统计 knowledge_chunks 命中数；题干块=能 JOIN knowledge_questions 的块（answers/教材块另计）；不存在或只在解析/教材块出现的片段按同主题替换为题干块中确实存在的片段。评测判定只看命中的 excerpt（前 400 字符）+ 来源标题，因此同时记录片段是否落在题干块前 400 字符内。",
+    "replacements": [
+      {"id": "Q02", "old": "线面角", "new": "平面所成的角", "evidence": "线面角在 knowledge_chunks 全库 0 命中；平面所成的角 题干块 2 题（前 400 字符内 2）"},
+      {"id": "Q05", "old": "条件概率", "new": "相互独立", "evidence": "条件概率 题干块 0 题（仅教材块 23）；相互独立 题干块 59 题（前 400 字符内 50）"},
+      {"id": "Q05", "old": "全概率公式", "new": "相互独立", "evidence": "全概率公式 题干块 0 题（仅教材/解析块 11）；并入相互独立"},
+      {"id": "Q16", "old": "错位相减", "new": "前n项和", "evidence": "错位相减 题干块 0 题（仅教材块 1）；前n项和 题干块 20 题（前 400 字符内 16）"},
+      {"id": "Q16", "old": "裂项相消", "new": "前n项和", "evidence": "裂项相消 全库 0 命中；前n项和 题干块 20 题"}
+    ],
+    "note": "用户提供的真人教师提问：15 条（编号 1–10、16–20），原文件缺 11–15，未补造。教师身份/教龄未记录。2026-11-06 已在 DB（346 sources / 12902 chunks / 6981 questions）上用 SQL 核验全部 expect.any：5 个片段按同主题替换（见 replacements），其余保留。expect_verified 全部 true，可用于可信基线；缺口与限制见 COLLECTION_2026-11-06.md。"
   },
   "queries": [
     {
@@ -27,8 +37,8 @@
         "any": ["极值", "零点", "单调性"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 1。expect 片段已对照 vault 题卡核对存在（极值 185 处、零点 637 处、单调性 128 处，题卡全文统计）；DB 不可用，expect_verified 保持 false，待恢复后用 SQL 复核。导数的几何意义原词在题卡仅 1 处且位于解析段，故未作为期望片段。"
+      "expect_verified": true,
+      "notes": "原文件编号 1。SQL 核验（2026-11-06）：极值 题干块 82 题、零点 150 题、单调性 74 题，均多数落在前 400 字符内，可判定。“导数的几何意义”在 DB 全库仅 1 块（解析/教材块）故未作为期望片段。"
     },
     {
       "id": "Q02",
@@ -39,11 +49,11 @@
       "collected_at": "2026-11-06",
       "object_type": "question",
       "expect": {
-        "any": ["二面角", "空间向量", "线面角"],
+        "any": ["二面角", "空间向量", "平面所成的角"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 2。expect 片段已对照 vault 题卡核对存在（二面角 248 处、空间向量 2 处、线面角 2 处，其中线面角仅在解析段出现）；DB 不可用，expect_verified 保持 false，待恢复后用 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 2。SQL 核验（2026-11-06）：二面角 题干块 132 题、空间向量 2 题；“线面角”全库 0 命中，替换为同主题的“平面所成的角”（题干块 2 题），见 provenance.replacements。"
     },
     {
       "id": "Q03",
@@ -57,8 +67,8 @@
         "any": ["弦长", "定点", "定值"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 3。expect 片段已对照 vault 题卡核对存在（弦长 94 处、定点 87 处、定值 48 处）；DB 不可用，expect_verified 保持 false，待恢复后用 SQL 复核。题中椭圆/双曲线/抛物线也普遍出现，但以弦长/定点/定值更贴近该请求的重点。"
+      "expect_verified": true,
+      "notes": "原文件编号 3。SQL 核验（2026-11-06）：弦长 题干块 29 题、定点 61 题、定值 36 题，均存在；多数落在前 400 字符内。"
     },
     {
       "id": "Q04",
@@ -72,8 +82,8 @@
         "any": ["等差数列", "等比数列", "通项公式"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 4。expect 片段已对照 vault 题卡核对存在（等差数列 514 处、等比数列 491 处、通项公式 185 处）；DB 不可用，expect_verified 保持 false，待恢复后用 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 4。SQL 核验（2026-11-06）：等差数列 题干块 273 题、等比数列 242 题、通项公式 156 题，均存在。"
     },
     {
       "id": "Q05",
@@ -84,11 +94,11 @@
       "collected_at": "2026-11-06",
       "object_type": "question",
       "expect": {
-        "any": ["条件概率", "全概率公式", "独立性检验", "回归方程"],
+        "any": ["相互独立", "独立性检验", "回归方程"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 5。expect 片段已对照 vault 题卡核对存在（条件概率 20 处、全概率公式 2 处、独立性检验 4 处、回归方程 49 处）；教师原话为“回归分析”，题卡未检出该词，改用同主题的“回归方程”，待 SQL 复核时确认语料是否含回归分析原文。DB 不可用，expect_verified 保持 false。"
+      "expect_verified": true,
+      "notes": "原文件编号 5。SQL 核验（2026-11-06）：条件概率、全概率公式在题干块 0 题（仅教材/解析块），替换为同主题“相互独立”（题干块 59 题）；独立性检验 11 题、回归方程 20 题。教师原话“回归分析”全库 8 块（题干块仅 1），故用“回归方程”代表该主题。见 provenance.replacements。"
     },
     {
       "id": "Q06",
@@ -102,8 +112,8 @@
         "any": ["正弦定理", "余弦定理", "三角"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 6。expect 片段已对照 vault 题卡核对存在（正弦定理 206 处、余弦定理 209 处、三角 1351 处）；“三角恒等变换”“解三角形”原词在题卡未检出，故未作为期望片段。卷别/年份约束未写成 expect 子句（DB 元数据不可验证），待 DB 恢复后补 year/paper 子句并用 SQL 复核；expect_verified 保持 false。"
+      "expect_verified": true,
+      "notes": "原文件编号 6。SQL 核验（2026-11-06）：正弦定理 题干块 9 题、余弦定理 15 题、三角 261 题；“三角恒等变换”“解三角形”原词在 DB 分块中未命中，故未作为期望片段。年份/卷别约束（近五年新高考I卷 → year 2021–2024 + exam_paper 新高考I卷）在 sources 元数据中存在，但检索实现不解析该意图，未写成 expect 子句。"
     },
     {
       "id": "Q07",
@@ -117,8 +127,8 @@
         "any": ["单调性", "奇偶性", "性质"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 7。expect 片段已对照 vault 题卡核对存在（单调性 128 处、奇偶性 13 处、性质 207 处）；难度分层与年份段要求暂未写成 expect 子句（难度/年份元数据不可验证），待 DB 恢复后补；expect_verified 保持 false。"
+      "expect_verified": true,
+      "notes": "原文件编号 7。SQL 核验（2026-11-06）：单调性 题干块 74 题、奇偶性 6 题、性质 25 题，均存在。题型（选择题）与年份（近三年）/难度元数据未写成 expect 子句；检索实现不解析这些意图。"
     },
     {
       "id": "Q08",
@@ -132,8 +142,8 @@
         "any": ["递推", "数列求和"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 8。expect 片段已对照 vault 题卡核对存在（递推 83 处、数列求和 11 处）；这两个词多出现在解析段、题干段较少，待 SQL 复核确认 chunk 文本覆盖情况。expect_verified 保持 false。"
+      "expect_verified": true,
+      "notes": "原文件编号 8。SQL 核验（2026-11-06）：递推 题干块 10 题、数列求和 题干块仅 1 题（解析/教材块 1 题之外），后者较脆弱，保留原词以便如实测量；年份段约束未写成 expect 子句。"
     },
     {
       "id": "Q09",
@@ -147,8 +157,8 @@
         "any": ["联立", "韦达定理", "弦长"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 9。expect 片段已对照 vault 题卡核对存在（联立 224 处、韦达定理 72 处、弦长 94 处）；“弦长公式”“联立方程”以“弦长”“联立”形式出现。DB 不可用，expect_verified 保持 false，待 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 9。SQL 核验（2026-11-06）：联立 题干块 12 题（仅 4 题在前 400 字符内）、韦达定理 5 题（2 题可见）、弦长 29 题；均存在，可见性差异记入基线限制。"
     },
     {
       "id": "Q10",
@@ -162,8 +172,8 @@
         "any": ["零点", "零点个数", "零点存在性"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 10。expect 片段已对照 vault 题卡核对存在（零点 637 处、零点个数 24 处、零点存在性 7 处）；零点存在性仅在解析段出现，待 SQL 复核。DB 不可用，expect_verified 保持 false。"
+      "expect_verified": true,
+      "notes": "原文件编号 10。SQL 核验（2026-11-06）：零点 题干块 150 题、零点个数 20 题、零点存在性 1 题（且不在该题干块前 400 字符内，判定可能受 excerpt 截断影响，保留原词不替换）。年份段约束未写成 expect 子句。"
     },
     {
       "id": "Q16",
@@ -174,11 +184,11 @@
       "collected_at": "2026-11-06",
       "object_type": "any",
       "expect": {
-        "any": ["错位相减", "裂项相消", "数列求和"],
+        "any": ["数列求和", "前n项和"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 16。教学设计请求，检索只是第一步（后续还要生成教学方案）；“分组求和法”在题卡未检出，故未作为期望片段。expect 片段已对照 vault 题卡核对存在（错位相减 3 处、裂项相消 2 处、数列求和 11 处，均在解析段）；DB 不可用，expect_verified 保持 false，待 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 16。教学设计请求，检索只是第一步。SQL 核验（2026-11-06）：错位相减 题干块 0 题（仅教材块 1）、裂项相消 全库 0 命中，均替换为同主题“前n项和”（题干块 20 题，16 题前 400 字符内）；数列求和题干块 1 题。分组求和法全库 0 命中。见 provenance.replacements。"
     },
     {
       "id": "Q17",
@@ -192,8 +202,8 @@
         "any": ["单调性", "导数"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 17。教学设计请求，检索只是第一步；“定义法”“导数法”原词在题卡未检出，故用单调性/导数作为期望片段（单调性 128 处、导数 178 处）。DB 不可用，expect_verified 保持 false，待 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 17。教学设计请求，检索只是第一步。SQL 核验（2026-11-06）：单调性 题干块 74 题、导数 17 题，均存在；“定义法/导数法”原词在 DB 分块中未命中，故未采用。"
     },
     {
       "id": "Q18",
@@ -207,8 +217,8 @@
         "any": ["椭圆", "双曲线", "抛物线"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 18。教学设计/整理请求，检索只是第一步；“二级结论”原词在题卡未检出，改用圆锥曲线的三个具体对象椭圆（1449 处）、双曲线（747 处）、抛物线（680 处）作为期望片段。DB 不可用，expect_verified 保持 false，待 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 18。教学设计/整理请求，检索只是第一步。SQL 核验（2026-11-06）：椭圆 题干块 308 题、双曲线 261 题、抛物线 231 题；“二级结论”在 DB 分块中未命中，故用圆锥曲线三个具体对象。"
     },
     {
       "id": "Q19",
@@ -222,8 +232,8 @@
         "any": ["三角函数", "正弦", "余弦"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 19。教学设计请求，检索只是第一步。expect 片段已对照 vault 题卡核对存在（三角函数 12 处、正弦 432 处、余弦 401 处）；“七天复习计划”是生成类要求，题目检索只提供素材。DB 不可用，expect_verified 保持 false，待 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 19。教学设计请求，检索只是第一步。SQL 核验（2026-11-06）：三角函数 题干块 10 题、正弦 119 题、余弦 129 题，均存在；“七天复习计划”是生成类要求，检索只提供素材。"
     },
     {
       "id": "Q20",
@@ -237,8 +247,8 @@
         "any": ["恒成立", "不等式", "参数"],
         "strict": null
       },
-      "expect_verified": false,
-      "notes": "原文件编号 20。教学设计请求，检索只是第一步；“含参数”“不等式证明”原词在题卡未检出，改用恒成立（205 处）、不等式（732 处）、参数（489 处）作为期望片段。DB 不可用，expect_verified 保持 false，待 SQL 复核。"
+      "expect_verified": true,
+      "notes": "原文件编号 20。教学设计请求，检索只是第一步。SQL 核验（2026-11-06）：恒成立 题干块 88 题、不等式 187 题、参数 109 题，均存在；“含参数/不等式证明”原词未命中，故用上述片段。"
     }
   ]
 }
