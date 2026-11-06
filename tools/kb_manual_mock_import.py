@@ -7,6 +7,14 @@
 - apply：备份后只更新这 6 题的 linked chunk 文本；无 chunk/空文本时新建 chunk（provenance repair=manual）；
 - rollback：从 backup_manual_2026-11-06.json 回滚；
 - 不写 knowledge_annotations、不动高考/legacy；不调 OCR、不 commit。
+
+用法（.venv；这里用正斜杠，避免 docstring 转义）：
+    ./.venv/Scripts/python.exe tools/kb_manual_mock_import.py --stage parse `
+        --source var/manual_transcription/待录入_已录入.md   # 或设置 CHILON_MANUAL_SOURCE
+    ./.venv/Scripts/python.exe tools/kb_manual_mock_import.py --stage apply
+    ./.venv/Scripts/python.exe tools/kb_manual_mock_import.py --stage rollback [--dry-run]
+
+parse 不使用默认个人路径：--source 与环境变量都没有时按 argparse 用法错误退出（exit 2）。
 """
 from __future__ import annotations
 
@@ -28,7 +36,6 @@ PARSED = OUT / 'parsed_6.json'
 BACKUP = OUT / 'backup_manual_2026-11-06.json'
 REPORT = OUT / 'manual_import_report.md'
 NEEDED = APPROOT / 'var' / 'mock_annotations' / 'ocr_needed_final.json'
-SRC = pathlib.Path(r'C:\Users\Viver\Desktop\模拟题人工补录_2026-11-06\待录入.md')
 AUDIT = OUT / '待录入_已录入.md'
 CONTAINER = 'chilon-pg-corpus'
 DB_HOST, DB_PORT, DB_NAME, DB_USER = '127.0.0.1', 55495, 'chilon', 'postgres'
@@ -75,10 +82,10 @@ def convert_math(text: str) -> str:
     return text
 
 
-def parse_manual():
-    if not SRC.exists():
-        die(f'找不到人工补录文件 {SRC}')
-    raw = SRC.read_text(encoding='utf-8')
+def parse_manual(source: pathlib.Path):
+    if not source.exists():
+        die(f'找不到人工补录文件 {source}')
+    raw = source.read_text(encoding='utf-8')
     parts = re.split(r'(?m)^##\s+(\d+)\.\s+(.+?)\s*$', raw)
     # parts: [front, num, heading, body, num, heading, body...]
     items = []
@@ -145,12 +152,13 @@ def parse_manual():
     fill_n = sum(1 for x in items if x['checks']['q13_complete'] and x['qid'].endswith('_q13'))
     if len(items) != 6:
         errors.append(f'解析到 {len(items)} 题，应为 6')
-    payload = {'source': str(SRC), 'source_sha256': sha256(raw), 'total': len(items),
+    payload = {'source': str(source), 'source_sha256': sha256(raw), 'total': len(items),
                'choice_with_options': choice_n, 'fill_complete': fill_n,
                'errors': errors, 'items': items}
     OUT.mkdir(parents=True, exist_ok=True)
     PARSED.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding='utf-8')
-    shutil.copyfile(SRC, AUDIT)
+    if source.resolve() != AUDIT.resolve():  # 源就是审计副本时不必自拷贝
+        shutil.copyfile(source, AUDIT)
     print(f'[parse] {len(items)} 题；choice_options={choice_n}；q13_complete={fill_n}；errors={len(errors)}')
     if errors:
         for e in errors:
@@ -421,11 +429,15 @@ def write_report(parsed, extra=None):
 def main(argv=None):
     ap = argparse.ArgumentParser(description='人工补录 6 题入库（不调 OCR）')
     ap.add_argument('--stage', choices=['parse', 'apply', 'rollback'], default='parse')
+    ap.add_argument('--source', default=os.environ.get('CHILON_MANUAL_SOURCE'),
+                    help='人工补录 Markdown 路径（parse 必需；默认读 CHILON_MANUAL_SOURCE）')
     ap.add_argument('--dry-run', action='store_true')
     ap.add_argument('--force-backup', action='store_true')
     args = ap.parse_args(argv)
     if args.stage == 'parse':
-        return parse_manual()
+        if not args.source:
+            ap.error('必须提供 --source 或 CHILON_MANUAL_SOURCE')
+        return parse_manual(pathlib.Path(args.source))
     if args.stage == 'rollback':
         return stage_rollback(args)
     return stage_apply(args)
