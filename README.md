@@ -1,6 +1,6 @@
 # Chilon
 
-面向高中数学教师（高考）的 AI 教学工作台。本仓库目前处于**设计与契约冻结、工程骨架就绪**阶段，尚未包含业务流程代码。
+面向高中数学教师（高考）的 AI 教学工作台。设计与契约已冻结；核心业务闭环（需求 → 方案审批 → 执行 → 发布 → 导出）、数据库、服务端教师界面与知识库摄入/检索均已有实现与对应测试。**尚未做真实教师验收**，检索质量与知识库标注仍是已知欠账（见文末）。
 
 ![contracts](https://github.com/Viver12138/Chilon/actions/workflows/check.yml/badge.svg)
 
@@ -12,7 +12,7 @@
 ## 这个仓库里有什么
 
 ```text
-Chilon_Project_Design_Master_Document.md   设计与契约基线（65 个章节、AD 记录 D.1–D.30）
+Chilon_Project_Design_Master_Document.md   设计与契约基线（119 个章节、AD 记录 D.1–D.84）
 design/                                     设计分册 D1–D6、K09 字段设计、走查包、校验器
 schemas/                                    机器可读契约（状态机、动作、接口、导航、测试矩阵）
 database/registry/                          表结构权威：6 个模块、82 张表
@@ -20,7 +20,7 @@ database/generator/                         校验器与确定性 DDL 生成器
 database/generated/                         生成产物（勿手改）
 database/tests/                             容器冒烟、迁移闭环、覆盖校验
 backend/                                    Alembic 基线 + 应用骨架
-tools/check_all.py                          14 项检查的唯一入口
+tools/check_all.py                          17 项检查的唯一入口
 ```
 
 ## 核心原则
@@ -169,21 +169,25 @@ python backend/tests/check_llm.py
 ## 已知欠账
 
 - **场景 B/C/D 未做教师走查**，只有场景 A 有一次真实教师验证。D3 冻结时保留了 `unverified` 清单，而不是宣称已验证。
+- **知识库标注与抽检不是真人验收**：6050 道高考真题的考点标注已全部处理（primary 6045，5 道判无归属），第三轮抽检模块一致 97%（修正后 99%）——但填写方是 AI 按教师角色模拟，不是真人教师。检索基线 Recall@8 55%、strict target 0/7（D.83）。
+- **答案解析仍有缺口**：修复错位后 4311/6050（71.3%）有答案，其余约三成是语料本身缺答案，不是解析漏读（D.84）。
+- **草稿编辑还没有界面**：对话改、直接改目前只在服务端留有版本记录，界面上还不能改草稿。
 - **`created_by` 一类字段暂无外键**：它们常由系统 Worker 写入，而 Worker 不是用户。需要先设计"系统主体"概念。
 - **`0001_baseline` 仍是可重建基线**：一旦有环境部署过就必须冻结，之后只能新增 revision。
+
 ## 用 docker compose 跑起来
 
-`ash
+```bash
 cp .env.example .env          # 填入 CHILON_DB_PASSWORD（本地开发可用默认值）
 docker compose up -d --build
-`
+```
 
 打开 http://127.0.0.1:8000/ 注册一个账号，然后写一句话、批准方案、下载教师版和学生版。
 
 容器启动时会依次做三件事，**每次启动都做，不只是第一次**：
 
 1. 等数据库可连接（用 psycopg 探测，不用 pg_isready——它不在这个镜像里）；
-2. lembic upgrade head（已是当前版本时是无操作）；
+2. alembic upgrade head（已是当前版本时是无操作）；
 3. 应用 database/seed/platform_tools.sql（ON CONFLICT DO NOTHING，幂等）。
 
 任何一步失败，服务器都不会启动——不会留下一个半死不活的进程。
