@@ -241,15 +241,26 @@ def fetch_data(conn):
                q.id::text, q.question_no, q.current_paper_question_type,
                coalesce(q.current_knowledge_points, '{}'),
                (c.locator->>'page_number')::int, (c.locator->>'question_index')::int,
-               c.id::text
-        FROM knowledge_chunks c
-        JOIN knowledge_document_versions dv ON dv.id = c.document_version_id
+               c.id::text,
+               coalesce(ap.value, ''),
+               coalesce(asec.value, '[]')
+        FROM knowledge_questions q
+        JOIN knowledge_document_versions dv ON dv.id = q.document_version_id
         JOIN knowledge_sources s ON s.id = dv.source_id
-        LEFT JOIN knowledge_questions q
-               ON q.document_version_id = c.document_version_id AND q.stem_locator = c.locator
+        JOIN knowledge_chunks c ON c.document_version_id = q.document_version_id
+             AND c.locator = q.stem_locator
+        LEFT JOIN LATERAL (
+            SELECT value FROM knowledge_annotations a
+            WHERE a.question_id = q.id AND a.annotation_type='kp_primary'
+              AND a.superseded_by IS NULL ORDER BY a.created_at DESC LIMIT 1
+        ) ap ON true
+        LEFT JOIN LATERAL (
+            SELECT value FROM knowledge_annotations a
+            WHERE a.question_id = q.id AND a.annotation_type='kp_secondary'
+              AND a.superseded_by IS NULL ORDER BY a.created_at DESC LIMIT 1
+        ) asec ON true
         WHERE s.source_type = 'mock_exam'
-        ORDER BY s.title, (c.locator->>'page_number')::int,
-                 (c.locator->>'question_index')::int, c.ordinal
+        ORDER BY s.title, q.question_no::int
     """)
     tb_sources = q("""
         SELECT s.id::text, s.title, s.year, s.rights_status, s.distribution_scope, dv.id::text
@@ -304,8 +315,16 @@ def build_mock(sources, rows, pdf_index, now: str):
             raise RuntimeError(f'{title}: 有 chunk 未匹配到 knowledge_questions（投影需要题号/题型）')
         # 卡片
         cards = []
-        for (sid2, chunk_key, ordinal, locator, text, qid, qno, qtype, kps,
-             page, qidx, chunk_id) in items:
+        for row in items:
+            sid2, chunk_key, ordinal, locator, text, qid, qno, qtype, kps, \
+                page, qidx, chunk_id = row[:12]
+            ann_primary = row[12] if len(row) > 12 else ''
+            ann_secondary = row[13] if len(row) > 13 else '[]'
+            try:
+                sec_list = json.loads(ann_secondary) if isinstance(ann_secondary, str) else (ann_secondary or [])
+            except Exception:  # noqa: BLE001
+                sec_list = []
+            kp_links = ([ann_primary] if ann_primary else []) + [x for x in sec_list if x]
             no = int(qno)
             qid_mock = f'mock_{sid}_q{no:02d}'
             card_stem = f'{card_stem_base}-q{no:02d}'
@@ -320,7 +339,7 @@ def build_mock(sources, rows, pdf_index, now: str):
                 ('question_no', no),
                 ('page', int(pages) if pages is not None else None),
                 ('question_type', qtype),
-                ('knowledge_points', None),  # 特殊处理：空数组
+                ('knowledge_points', kp_links),  # 特殊处理：列表
                 ('legacy_knowledge_points', None),
                 ('legacy_knowledge_points_status', '未核验（tex taxonomy 旧模块名）'),
                 ('rights_status', rights),
@@ -337,7 +356,12 @@ def build_mock(sources, rows, pdf_index, now: str):
             fm = ['---']
             for k, v in fields:
                 if k == 'knowledge_points':
-                    fm.append('knowledge_points: []')
+                    if v:
+                        fm.append('knowledge_points:')
+                        for kp in v:
+                            fm.append(f'  - {kp}')
+                    else:
+                        fm.append('knowledge_points: []')
                 elif k == 'legacy_knowledge_points':
                     fm.append(yaml_list_block('legacy_knowledge_points', list(kps)))
                 elif k == 'quality':
@@ -355,6 +379,15 @@ def build_mock(sources, rows, pdf_index, now: str):
                 '## 题目',
                 '',
                 md_body(text),
+                '',
+                '## 知识点',
+                '',
+            ]
+            if kp_links:
+                body.extend(f'- [[{kp}]]' for kp in kp_links)
+            else:
+                body.append('（未标注：模型未给出合适词条）')
+            body += [
                 '',
                 '## 答案/解析',
                 '',
