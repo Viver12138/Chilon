@@ -9,4 +9,7 @@ database/generated/*.tmp
 
 # 导出产物与运行时数据
 var/
+
+# 抽查表 / 填写后的复查表（教师填写物，含个人信息与受限内容，不入库）
+review_sheets/
 .env.ci-sim
