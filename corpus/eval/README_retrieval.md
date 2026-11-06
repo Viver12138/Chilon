@@ -4,6 +4,7 @@
 > 容器 `chilon-pg-corpus`（宿主 `127.0.0.1:55495`）实测 346 sources / 12902 chunks / 6981 questions；
 > 15 条真人问题经 SQL 核验后 `expect_verified` 15/15=true，结果 Recall@8 26.7% / MRR 0.180 / 空结果 13.3%，
 > 详见 [`BASELINE_2026-11-06.md`](BASELINE_2026-11-06.md)。本文件继续定义口径与工装；解释边界见基线 §7/§8。
+> 阶段 4–5 混合检索原型见 [`HYBRID_BASELINE_2026-11-06.md`](HYBRID_BASELINE_2026-11-06.md)（Qwen3-Embedding + Qdrant + pg_trgm + 可选 Reranker）：同 15 条上无 rerank 组 Recall@8 93.3%（14/15）；复现需 `requirements-ai.txt`，与本节旧检索评测口径分开。
 >
 > 历史数字 `Recall@8 55% / MRR 0.451 / 空结果 32% / strict target 0/7` 来自
 > `corpus/eval/queries.json`（40 条开发者自拟措辞，D.83 已承认不可信）。
@@ -201,6 +202,8 @@ echo $LASTEXITCODE    # 0 = 完成
    评测走 `db.system_session()`（平台语料是 platform scope，与教师实际可见内容一致）；
    **用受 RLS 限制的应用角色连会看到 0 条命中，那是权限问题，不是检索质量**。README 记录这一限制。
 4. 真实评测用 `.venv\Scripts\python.exe`；当前仓库环境里 PATH 的裸 `python` 没有后端依赖（脚本会以退出码 4 明确提示）。
+
+阶段 4–5 的混合检索原型是另一条评测链路：见 `HYBRID_BASELINE_2026-11-06.md` §11（Qdrant + `tools/eval_hybrid.py`，额外依赖见 `requirements-ai.txt`），不要用本节的旧 `knowledge_search` 命令替代。
 
 ### 7.4 退出码
 

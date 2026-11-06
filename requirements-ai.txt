@@ -1,0 +1,12 @@
+# V1.2 阶段 4–5 混合检索原型（本地 CPU）的额外依赖。
+# 安装：
+#   .\.venv\Scripts\python.exe -m pip install -r requirements-ai.txt
+# torch 的 CPU wheel 来自 PyTorch 官方索引；其余包来自 PyPI。
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.15.0+cpu
+transformers==5.22.1
+qdrant-client==1.20.0
+numpy==2.5.4
+jieba==0.42.1
+psutil==7.2.2
+huggingface_hub==2.4.0

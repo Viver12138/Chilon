@@ -1,0 +1,107 @@
+{
+  "schema": "chilon-hybrid-index/v1",
+  "created_at": "2026-11-06T16:05:54+08:00",
+  "git_commit": "381d90443dac",
+  "build_mode": "3 parallel shards",
+  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log.",
+  "database": {
+    "host": "127.0.0.1:55495",
+    "name": "chilon",
+    "sources": 346,
+    "chunks": 12902,
+    "questions": 6981,
+    "chunks_embedded": 1894,
+    "limit": null
+  },
+  "collection": {
+    "name": "chilon_chunks_qwen3_embedding_0_6b_v1",
+    "points": 12902,
+    "dim": 1024,
+    "distance": "cosine",
+    "qdrant_url": "http://127.0.0.1:6333",
+    "payload_indexes": [
+      "source_type",
+      "paper",
+      "question_type",
+      "year"
+    ],
+    "mode": "resume",
+    "pre_existing_points_skipped": 11008,
+    "shard": {
+      "count": 3,
+      "index": null
+    }
+  },
+  "knowledge_points": {
+    "source": "knowledge_annotations (active rows: superseded_by IS NULL)",
+    "questions_with_kp": 6045,
+    "name_map_used": true,
+    "name_map_size": 120,
+    "current_knowledge_points_column_used": false,
+    "note": "2026-11-06 annotation import changed current_knowledge_points to kp_id arrays; the hybrid prototype reads knowledge_annotations instead, per Lead data policy."
+  },
+  "embedding": {
+    "model": "Qwen/Qwen3-Embedding-0.6B",
+    "revision": "97b0c614be4d77ee51c0cef4e5f07c00f9eb65b3",
+    "local_dir": "var/retrieval/models/Qwen3-Embedding-0.6B",
+    "dtype": "float32",
+    "device": "cpu",
+    "dim": 1024,
+    "max_length": 512,
+    "batch_size": 4,
+    "batching": "batches formed after sorting chunks by token length (CPU throughput)",
+    "torch_threads": 6,
+    "instruction": "给定一条高中数学教师的教学检索请求，检索与该请求相关的高中数学题目或教材内容。",
+    "input_template": "资料类型/年份/试卷/题号/题型/知识点 + 正文（V1.2 §9.3）"
+  },
+  "versions": {
+    "torch": "2.15.0+cpu",
+    "transformers": "5.22.1"
+  },
+  "timing": {
+    "embed_seconds": 9486.0,
+    "upsert_seconds": 2.5,
+    "sum_of_shard_total_seconds": 9530.8,
+    "wall_seconds": 3183.2,
+    "chunks_per_second": 0.2,
+    "tokens_per_second": 84.5,
+    "aggregate_chunks_per_second": 0.595,
+    "aggregate_tokens_per_second": 251.7,
+    "tokens_embedded": 801295,
+    "chunks_embedded": 1894
+  },
+  "memory": {
+    "peak_rss_per_shard_mb": 3183.1,
+    "shards": [
+      3104.0,
+      3183.1,
+      3012.0
+    ]
+  },
+  "shards": [
+    {
+      "manifest": "var/retrieval/index_manifest_finalD0.json",
+      "chunks": 631,
+      "embed_seconds": 3156.1,
+      "tokens": 266994,
+      "torch_threads": 6,
+      "peak_rss_mb": 3104.0
+    },
+    {
+      "manifest": "var/retrieval/index_manifest_finalD1.json",
+      "chunks": 632,
+      "embed_seconds": 3168.4,
+      "tokens": 267374,
+      "torch_threads": 6,
+      "peak_rss_mb": 3183.1
+    },
+    {
+      "manifest": "var/retrieval/index_manifest_finalD2.json",
+      "chunks": 631,
+      "embed_seconds": 3161.5,
+      "tokens": 266927,
+      "torch_threads": 6,
+      "peak_rss_mb": 3012.0
+    }
+  ]
+}
