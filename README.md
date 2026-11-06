@@ -21,7 +21,7 @@
 ## 这个仓库里有什么
 
 ```text
-Chilon_Project_Design_Master_Document.md   设计与契约基线（133 个章节、AD 记录 D.1–D.98）
+Chilon_Project_Design_Master_Document.md   设计与契约基线（134 个章节、AD 记录 D.1–D.99）
 docs/                                       教师版说明、V1.2 知识库技术设计（知识库层权威）、KB 同步契约
 docs/mock_ocr_backlog_2026-11-06.md         模拟题 39 题 OCR 需求清单（只统计，未调用）
 design/                                     设计分册 D1–D6、K09 字段设计、走查包、校验器
@@ -189,7 +189,7 @@ python backend/tests/check_llm.py
 - **检索质量：混合原型 93.3%，但还不是产品效果**：15 条真人问题、混合检索（pg_trgm + Qdrant + RRF，无 rerank）Recall@8 **93.3%（14/15）**、MRR 0.836、空结果 0%；旧引擎 26.7% 仅作历史对照。样本只有 15 条、判定为 lenient 片段匹配、无 strict target；reranker 无 Recall 增益且 CPU 约 82.7s/query，未默认启用。**93.3% 不是产品最终效果**，详见 `corpus/eval/HYBRID_BASELINE_2026-11-06.md`（D.89）；旧 55%/0.451/32% 不可比、不可引用。问题集仍缺 11–15、类别不全，待补采后重测。
 - **受限资料已投影但没审完**：模拟题 67 套/931 题 + 教材 5 册/1797 块已从 PG 单向投影到 vault（`restricted`/`classroom`，仅内部审校，1005 个文件），但**答案/解析未入库**（题卡只指向同目录答案 PDF）、教材 OCR 待审且**无章节结构**、311 题 `question_type` 为空、legacy 中文模块名标“未核验”；高考卡 6324 张投影前后 0 改动。模拟题题干已本地修复 894/931；**39 题已全部有题干（33 阿里云试卷切题 OCR + 6 人工转录，每题来源可追溯）**（清单 `docs/mock_ocr_backlog_2026-11-06.md`；桌面临时文件夹已在校验 sha256 后删除，审计副本在 `var/`）；索引 12973 不变（mock 1002 / linked 931），15 条基线 93.3% 不变。工具 `tools/project_restricted_corpus.py`、`tools/kb_mock_*.py`、`tools/ocr_mock_backlog.py` 与 `tools/kb_manual_mock_import.py`，规则见 `docs/KB_SYNC_CONTRACT.md`（D.90–D.94）。
 - **模拟题标注：931/931 全部有 primary，197 题经教师复核**：teacher **197**（93 随机抽样 + 104 高风险定向）/ model **734**；secondary **154**、空 primary **0**。一致率：93 题抽样 模块 81.7%/考点 54.8%；104 题定向 模块 45.2%/考点 13.5%（高风险子集，两组不可混用）。卡片 931/931 非空、931 卡 + 67 set note 与高考卡 sha256 未变；**734 条 model 标注仍未抽检，整体仍 `needs_review`**；未调 OCR、Qdrant 12973 与 15 条基线 93.3% 均不变（D.97）。
-- **教材块映射仍是 pilot，未全量**：100 块（5 册×20）教师核对，模块 **66/88 = 75.0%**、考点 exact **56/88 = 63.6%**、含 secondary 70.5%，严重错 19；教材块只有 `page/part`、**缺 chapter/section**，章末复习/多节混排块系统性偏移。**先补章节结构再全量 1797**；本轮未写 PG/vault、未调 OCR（D.98）。
+- **教材块映射 v2 仍未全量**：从现有 OCR 文本恢复 **18 章 / 93 节**（chapter 覆盖 98.3%、section 97.3%，未新增 OCR），同一 100 块 v1→v2：模块 **66→82/88 = 93.2%**（+16）、考点 exact **56→60/88 = 68.2%**（+4）、含 secondary 62→60（-2）；修正 16 / 仍错 16 / 新错 12。结构有效但不够，**下一步 section→kp 规则/词表细化，模块 ≥90% 且 exact 不降后再全量 1797**；未调 OCR、未写 PG/vault（D.99）。
 - **答案解析仍有缺口**：修复错位后 4311/6050（71.3%）有答案，其余约三成是语料本身缺答案，不是解析漏读（D.84）。
 - **草稿编辑还没有界面**：对话改、直接改目前只在服务端留有版本记录，界面上还不能改草稿。
 - **`created_by` 一类字段暂无外键**：它们常由系统 Worker 写入，而 Worker 不是用户。需要先设计"系统主体"概念。
