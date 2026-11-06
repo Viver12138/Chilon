@@ -298,7 +298,7 @@ qid → document_id + question_number
 | `current_knowledge_points` | ⚠️ **旧工作台中文模块名缓存，已还原（task-14）**：非空 4748 / NULL 1302，逐条与导入前快照一致；导入工具默认不再写该列；旧基线 Recall@8 26.7%（4/15）已复现。kp_id SSOT 在 `knowledge_annotations`，hybrid 必须读 annotations |
 | qid → PG UUID 映射 | ⚠️ 派生映射 6050/6050；缺原生外键（open item） |
 | Obsidian 审校 → PG（方向 A，人工字段） | ❌ 未实现（本次只导入模型标注） |
-| PG → Obsidian 投影（方向 B） | ❌ 未实现（题卡 knowledge_points 等尚未回写） |
+| PG → Obsidian 投影（方向 B） | ⚠️ 部分：受限资料（mock 67/931、教材 5/1797）已单向投影；教材块级 kp 链接 1737 条（2026-11-06，D.106）；题卡 `knowledge_points` 等仍待回写（§11） |
 | 冲突处理 / 同步账本 | ❌ 未实现（规则已定义，见 §4/§7） |
 | Qdrant 重建 | ❌ 未实现（索引层尚未接入；注意 PG 中 `knowledge_indexing_jobs`=0） |
 | 报告 | `var/annotations/import_report.md`（计数/校验/遗留缓存与还原记录/风险）、`var/annotations/verify_after_apply.txt`（独立逐条复核）、`var/annotations/restore_legacy_points_console.txt`（还原验证） |
@@ -344,6 +344,14 @@ qid → document_id + question_number
   `10_Indexes/数据来源与许可.md` 与 `08_Review/迁移记录.md` 由工具维护生成段（带 BEGIN/END 标记）。
 - 重建：Obsidian 投影可由 PG 随时重建；人工审校请改 PG/标注后重跑，或在生成文件置 `human_edited: true`
   保护本地修改（之后同步程序按 §3 方向 A 回写）。
+- **教材块级知识点链接（2026-11-06，D.106）**：教材块渲染时按 `textbook_block_annotations` active 行追加
+  `> 知识点：[[kp_id|名称]]　·　teacher 已核/模型待复核`（secondary 同段尾部；vocab_gap 显示“待补”；
+  non_content 不输出）；frontmatter 记 `kp_link_count`/`kp_link_teacher`/`kp_link_model`/`kp_link_vocab_gap`；
+  删除该行可逐字节还原原文投影；标注表缺失/不可读时自动降级为无链接。刷新已生成文件需 `--force-generated`，
+  `human_edited: true` 永远跳过。链接是派生层，可随 PG 重建；双向性由 Obsidian 反向链接面板提供。
+- **验证（2026-11-06 v4）**：5 册 / 1797 块 → 1737 条知识点链接（teacher 331 / model 1406）+ 8 条待补 +
+  52 个 non_content 无链接；链接目标 missing 0；删链接行后与写前投影 0 差异；写后二次 dry-run 0 变更；
+  高考卡 6324 张聚合 sha256 未变；`knowledge_annotations` 9092 未变。
 
 **验证（2026-11-06 首次投影）**：67 set + 931 卡 + 5 教材笔记 + 2 总览 = 1005 文件；
 模拟 PDF 匹配 67/67、教材 5/5；高考卡 6324 张聚合 sha256 前后一致（0 改动）；二次 apply 0 写入、1005 不变（幂等）。
@@ -355,3 +363,4 @@ qid → document_id + question_number
 | 2026-11-06 | v0.1 | 草案建立：SSOT 边界、字段所有权、双向同步、冲突规则、标注映射、Qdrant 派生定位；记录首次标注导入落地状态与 open items |
 | 2026-11-06 | v0.2 | 修正 `current_knowledge_points` 定位：明确定义为**旧工作台遗留中文模块名缓存（非 SSOT）**；记录 task-13 误改导致旧 knowledge_search/26.7% 基线失效、task-14 用快照还原 6050 题并复现 Recall@8 4/15=26.7%；导入工具默认只写 `knowledge_annotations`，`--sync-legacy-points` 仅迁移评审后使用；hybrid retrieval 必须读 `knowledge_annotations` |
 | 2026-11-06 | v0.3 | 新增「受限资料投影」一节：mock 67/931、textbook 5/1797 单向投影进 Obsidian 内部审校区；restricted/classroom/internal_only；答案未入库不伪造；只覆盖 generated 且 human_edited=false 的文件；高考卡 0 改动 |
+| 2026-11-06 | v0.4 | 新增教材块级知识点链接投影：每块原文后 `> 知识点：[[kp_id|名称]]　·　teacher 已核/模型待复核`（secondary/待补/非正文分支），frontmatter `kp_link_*` 计数，`--force-generated` 刷新口径与可重建边界；v4 实测 1737 链接 + 8 待补 + 52 无链接，missing 0、原文 0 差异、二次 dry-run 0 变更（D.106） |

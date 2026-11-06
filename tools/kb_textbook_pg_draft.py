@@ -155,6 +155,7 @@ def stage_dry(args):
                     or e[6] != vals[6] or e[7] != vals[7] or (e[8] or '') != (vals[8] or ''):
                 changed += 1
     teacher = sum(1 for r in rows if r['classification_source'] == 'teacher')
+    print(f'[dry-run] 输入 {REVIEWED.name}；model_version {MODEL_VERSION}；备份 {BACKUP.name}')
     print(f'[dry-run] rows {len(rows)}；textbook chunks {textbook_chunks}；missing chunk {len(missing)}；'
           f'duplicate {len(rows)-len({r["chunk_id"] for r in rows})}；teacher {teacher} / model {len(rows)-teacher}；'
           f'表存在={exists}；待写/变更 {changed}')
@@ -258,7 +259,7 @@ def stage_apply(args):
     L = ['---', 'type: report', 'title: 教材块标注 PG draft 报告', 'updated: 2026-11-06',
          'status: draft-applied', '---', '',
          '# 教材块标注 PG draft 报告', '',
-         '> 表：`textbook_block_annotations`；来源 `mapped_1797_reviewed.json`；只写本表，不动 mock/gaokao/annotations。  ',
+         f'> 表：`{TABLE}`；来源 `{REVIEWED.name}`；model_version `{MODEL_VERSION}`；只写本表，不动 mock/gaokao/annotations。  ',
          '> 不调 OCR、不 commit。', '',
          '## 表结构/DDL', '',
          '- 已按 registry/generator 约定加入 K009：`database/registry/fields/k009.json` + `schema.json`；',
@@ -333,7 +334,19 @@ def main(argv=None):
     g.add_argument('--apply', action='store_true')
     g.add_argument('--rollback', action='store_true')
     ap.add_argument('--drop', action='store_true', help='rollback 时删表')
+    ap.add_argument('--reviewed', default=None,
+                    help='输入 reviewed json（默认 var/textbook_mapping/mapped_1797_reviewed.json）')
+    ap.add_argument('--model-version', default=None,
+                    help='model 行 model_version（默认 textbook-map-v3-2026-11-06）')
+    ap.add_argument('--backup', default=None,
+                    help='dry-run 备份输出路径（默认 var/textbook_mapping/backup_pg_draft_2026-11-06.json）')
     args = ap.parse_args(argv)
+    if args.reviewed:
+        globals()['REVIEWED'] = pathlib.Path(args.reviewed)
+    if args.model_version:
+        globals()['MODEL_VERSION'] = args.model_version
+    if args.backup:
+        globals()['BACKUP'] = pathlib.Path(args.backup)
     if args.apply:
         return stage_apply(args)
     if args.rollback:

@@ -5,6 +5,10 @@
 背景（V1.2 阶段 2–3，PG 是 SSOT）：
 - 模拟题：67 sources / 931 chunks（每 chunk 一道题，答案/解析未入库；答案 PDF 在 corpus/mock-exams）；
 - 教材：5 sources / 1797 chunks（locator page/part，无章节元数据）；
+- 教材块级知识点链接（2026-11-06）：每块原文后输出 `> 知识点：...` 行，数据源 PG
+  `textbook_block_annotations`（active 行 `superseded_by IS NULL`），显示名来自
+  `corpus/eval/kp_vocab.md`；标注表不存在/不可读或词表缺名时自动降级（无链接 /
+  裸 `[[kp_id]]`），不阻断投影；
 - 两者在 PG 均为 rights_status='restricted'、distribution_scope='classroom'；
 - vault 的 04_Exams/MockExams、03_Textbooks 为空，本工具负责首次投影。
 
@@ -76,6 +80,15 @@ TYPE_CN = {'single_choice': '单选', 'multiple_choice': '多选', 'fill_blank':
 ILLEGAL = re.compile(r'[<>:"/\\|?*#\[\]^\x00-\x1f]')
 MARK_MOCK = '<!-- BEGIN generated: restricted-corpus-mock -->'
 MARK_TB = '<!-- BEGIN generated: restricted-corpus-textbook -->'
+# 块级知识点链接：kp_id → 中文名 词表（解析失败时降级为裸 [[kp_id]]）
+KP_VOCAB = ROOT / 'corpus' / 'eval' / 'kp_vocab.md'
+KP_ID_ROW_RE = re.compile(r'^\|\s*`(kp_[0-9a-z_]+)`\s*\|\s*([^|]+?)\s*\|')
+# 教材 chunk 查询的可选标注列（追加在 SELECT 末尾，保持前 7 列下标不变）
+TB_ANN_SELECT = (',\n               a.kp_primary, a.kp_secondary::text, a.status,\n'
+                 '               a.classification_source, a.review_status')
+TB_ANN_NULL = (',\n               NULL::text, NULL::text, NULL::text, NULL::text, NULL::text')
+TB_ANN_JOIN = ('\n        LEFT JOIN textbook_block_annotations a\n'
+               '               ON a.chunk_id = c.id AND a.superseded_by IS NULL')
 
 
 # ---------------------------------------------------------------- 路径 / 连接
@@ -221,6 +234,27 @@ def match_pdf(title: str, index: dict):
 
 
 # ---------------------------------------------------------------- PG 读取
+def textbook_rows_sql(with_annotations: bool) -> str:
+    """教材 chunk 查询；with_annotations=True 时 LEFT JOIN 块级标注 active 行。
+
+    标注列固定追加在 SELECT 末尾（下标 7–11：kp_primary / kp_secondary::text /
+    status / classification_source / review_status），前 7 列下标与旧版一致；
+    表不存在/不可读时用 NULL 列占位，行为降级为「无链接」，不阻断投影。
+    """
+    extra_cols = TB_ANN_SELECT if with_annotations else TB_ANN_NULL
+    extra_join = TB_ANN_JOIN if with_annotations else ''
+    return f"""
+        SELECT s.id::text, c.chunk_key, c.ordinal, c.text_content,
+               (c.locator->>'page')::int, (c.locator->>'part')::int, c.id::text{extra_cols}
+        FROM knowledge_chunks c
+        JOIN knowledge_document_versions dv ON dv.id = c.document_version_id
+        JOIN knowledge_sources s ON s.id = dv.source_id{extra_join}
+        WHERE s.source_type = 'textbook'
+        ORDER BY s.title, (c.locator->>'page')::int, (c.locator->>'part')::int,
+                 c.ordinal, c.id
+    """
+
+
 def fetch_data(conn):
     cur = conn.cursor()
 
@@ -269,16 +303,19 @@ def fetch_data(conn):
         WHERE s.source_type = 'textbook'
         ORDER BY s.title
     """)
-    tb_rows = q("""
-        SELECT s.id::text, c.chunk_key, c.ordinal, c.text_content,
-               (c.locator->>'page')::int, (c.locator->>'part')::int, c.id::text
-        FROM knowledge_chunks c
-        JOIN knowledge_document_versions dv ON dv.id = c.document_version_id
-        JOIN knowledge_sources s ON s.id = dv.source_id
-        WHERE s.source_type = 'textbook'
-        ORDER BY s.title, (c.locator->>'page')::int, (c.locator->>'part')::int,
-                 c.ordinal, c.id
-    """)
+    # 块级知识点标注：表不在（新库/空库）时安全回落为无链接；
+    # 表在但读不了（权限/结构变更）时同样降级，保证投影不被标注表阻断。
+    try:
+        cur.execute("SELECT to_regclass('public.textbook_block_annotations')")
+        has_tb_ann = cur.fetchone()[0] is not None
+    except Exception:  # noqa: BLE001
+        has_tb_ann = False
+    try:
+        tb_rows = q(textbook_rows_sql(has_tb_ann))
+    except Exception:  # noqa: BLE001
+        if not has_tb_ann:
+            raise
+        tb_rows = q(textbook_rows_sql(False))
     return mock_sources, mock_rows, tb_sources, tb_rows
 
 
@@ -449,8 +486,61 @@ def build_mock(sources, rows, pdf_index, now: str):
     return files, stats
 
 
+def load_kp_names() -> dict:
+    """从 corpus/eval/kp_vocab.md 解析 kp_id → 中文名（缺失/读不了时返回空表）。"""
+    names = {}
+    try:
+        text = KP_VOCAB.read_text(encoding='utf-8')
+    except OSError:
+        return names
+    for line in text.splitlines():
+        m = KP_ID_ROW_RE.match(line.strip())
+        if m:
+            names[m.group(1)] = m.group(2).strip()
+    return names
+
+
+def kp_wikilink(kp_id: str, names: dict) -> str:
+    """kp_id → Obsidian Wikilink；词表缺名时退化为裸链接 ``[[kp_id]]``。"""
+    name = names.get(kp_id)
+    return f'[[{kp_id}|{name}]]' if name else f'[[{kp_id}]]'
+
+
+def kp_link_line(status, classification_source, kp_primary, kp_secondary, names: dict):
+    """生成一个教材块的「知识点」引用行，返回 (行或 None, 计数桶)。
+
+    桶：teacher / model / vocab_gap / non_content / missing / unannotated。
+    teacher 行样式：``> 知识点：[[kp_x|名]]　·　teacher 已核``；
+    模型（含 rule 等非 teacher 来源）按「模型待复核」；
+    有 secondary 时同段尾部追加 ``（兼 [[a|名]]、[[b|名]]）``。
+    """
+    if status == 'mapped' and kp_primary:
+        is_teacher = classification_source == 'teacher'
+        suffix = 'teacher 已核' if is_teacher else '模型待复核'
+        line = f'> 知识点：{kp_wikilink(kp_primary, names)}　·　{suffix}'
+        sec_ids = []
+        if kp_secondary:
+            try:
+                sec_ids = [x for x in json.loads(kp_secondary) if x]
+            except (TypeError, ValueError):
+                sec_ids = []
+        if sec_ids:
+            line += '（兼 ' + '、'.join(kp_wikilink(x, names) for x in sec_ids) + '）'
+        return line, ('teacher' if is_teacher else 'model')
+    if status == 'vocab_gap':
+        return '> 知识点：待补（vocab_gap）', 'vocab_gap'
+    if status == 'non_content':
+        return None, 'non_content'
+    if status == 'mapped':  # mapped 却无 kp_primary：不造链接，单独计数
+        return None, 'missing'
+    return None, 'unannotated'
+
+
 def build_textbooks(sources, rows, pdf_index, now: str):
-    files, stats = [], {'books': 0, 'chunks': 0, 'pdf_exact': 0, 'pdf_fuzzy': 0, 'pdf_none': 0}
+    files, stats = [], {'books': 0, 'chunks': 0, 'pdf_exact': 0, 'pdf_fuzzy': 0, 'pdf_none': 0,
+                        'kp_teacher': 0, 'kp_model': 0, 'kp_vocab_gap': 0,
+                        'kp_non_content': 0, 'kp_missing': 0, 'kp_unannotated': 0}
+    kp_names = load_kp_names()
     by_source = {}
     for row in rows:
         by_source.setdefault(row[0], []).append(row)
@@ -477,11 +567,23 @@ def build_textbooks(sources, rows, pdf_index, now: str):
         if vol.startswith('选择性必修'):
             folder = TB_ROOT / '选择性必修' / vol
 
+        counts = {'teacher': 0, 'model': 0, 'vocab_gap': 0, 'non_content': 0,
+                  'missing': 0, 'unannotated': 0}
         pages = {}
-        for (sid2, chunk_key, ordinal, text, page, part, cid) in items:
+        for row in items:
+            sid2, chunk_key, ordinal, text, page, part, cid = row[:7]
             if page is None:
                 continue
-            pages.setdefault(int(page), []).append((int(part or 0), chunk_key, text))
+            kp_primary = row[7] if len(row) > 7 else None
+            kp_secondary = row[8] if len(row) > 8 else None
+            ann_status = row[9] if len(row) > 9 else None
+            ann_source = row[10] if len(row) > 10 else None
+            link_line, bucket = kp_link_line(ann_status, ann_source, kp_primary,
+                                             kp_secondary, kp_names)
+            counts[bucket] += 1
+            pages.setdefault(int(page), []).append((int(part or 0), chunk_key, text, link_line))
+        for bucket, n in counts.items():
+            stats[f'kp_{bucket}'] += n
         page_range = f'{min(pages)}-{max(pages)}' if pages else None
         fm = frontmatter([
             ('type', 'textbook'),
@@ -497,6 +599,10 @@ def build_textbooks(sources, rows, pdf_index, now: str):
             ('source_pdf', pdf_field),
             ('page_range', page_range),
             ('chunk_count', len(items)),
+            ('kp_link_count', counts['teacher'] + counts['model']),
+            ('kp_link_teacher', counts['teacher']),
+            ('kp_link_model', counts['model']),
+            ('kp_link_vocab_gap', counts['vocab_gap']),
             ('human_edited', False),
         ])
         body = [f'# {title}', '',
@@ -512,9 +618,13 @@ def build_textbooks(sources, rows, pdf_index, now: str):
         for page in sorted(pages):
             body.append(f'## 第 {page} 页')
             body.append('')
-            for _part, _key, text in pages[page]:
+            for _part, _key, text, link_line in pages[page]:
                 body.append(md_body(text))
                 body.append('')
+                if link_line:
+                    # 链接行紧跟块原文（上一行是空行）；不额外加空行，
+                    # 保证「删掉 `> 知识点：` 行」即可逐字节还原原文投影。
+                    body.append(link_line)
         body += ['', copyright_block('教材原文仅供库内审校，禁止外部分发。'), '']
         files.append({'path': folder / f'{vol}.md', 'content': '\n'.join([fm] + body),
                       'kind': 'textbook', 'source_id': sid})
@@ -829,7 +939,9 @@ def main(argv=None):
 
     mock_pdf, tb_pdf = build_pdf_index()
     files, mock_stats = [], {'sources': 0, 'cards': 0, 'pdf_exact': 0, 'pdf_fuzzy': 0, 'pdf_none': 0}
-    tb_stats = {'books': 0, 'chunks': 0, 'pdf_exact': 0, 'pdf_fuzzy': 0, 'pdf_none': 0}
+    tb_stats = {'books': 0, 'chunks': 0, 'pdf_exact': 0, 'pdf_fuzzy': 0, 'pdf_none': 0,
+                'kp_teacher': 0, 'kp_model': 0, 'kp_vocab_gap': 0,
+                'kp_non_content': 0, 'kp_missing': 0, 'kp_unannotated': 0}
     if args.only != 'textbook':
         mock_files, mock_stats = build_mock(mock_sources, mock_rows, mock_pdf, now)
         files += mock_files
@@ -841,6 +953,12 @@ def main(argv=None):
         files += tb_files
         report['counts']['textbooks'] = len([f for f in tb_files if f['kind'] == 'textbook'])
         report['counts']['textbook_chunks'] = len(tb_rows)
+        report['counts']['kp_link_teacher'] = tb_stats['kp_teacher']
+        report['counts']['kp_link_model'] = tb_stats['kp_model']
+        report['counts']['kp_link_vocab_gap'] = tb_stats['kp_vocab_gap']
+        report['counts']['kp_non_content'] = tb_stats['kp_non_content']
+        report['counts']['kp_missing'] = tb_stats['kp_missing']
+        report['counts']['kp_unannotated'] = tb_stats['kp_unannotated']
     if args.only is None:
         idx_files = build_indexes(
             [(s[1], s[2], sum(1 for r in mock_rows if r[0] == s[0]),
@@ -885,6 +1003,13 @@ def main(argv=None):
     print(f'        模拟：{mock_stats["sources"]} set / {mock_stats["cards"]} 卡；'
           f'教材：{tb_stats["books"]} 册 / {tb_stats["chunks"]} 块；'
           f'索引：{report["counts"].get("indexes", 0)}')
+    if args.only != 'mock':
+        print(f'        教材块级链接：teacher={tb_stats["kp_teacher"]} '
+              f'model={tb_stats["kp_model"]} '
+              f'（链接合计 {tb_stats["kp_teacher"] + tb_stats["kp_model"]}）；'
+              f'vocab_gap={tb_stats["kp_vocab_gap"]} '
+              f'non_content={tb_stats["kp_non_content"]} '
+              f'无标注={tb_stats["kp_unannotated"]} 缺主标注={tb_stats["kp_missing"]}')
     print(f'        PDF 匹配：mock exact={mock_stats["pdf_exact"]} fuzzy={mock_stats["pdf_fuzzy"]} '
           f'none={mock_stats["pdf_none"]}；教材 exact={tb_stats["pdf_exact"]} '
           f'fuzzy={tb_stats["pdf_fuzzy"]} none={tb_stats["pdf_none"]}')
