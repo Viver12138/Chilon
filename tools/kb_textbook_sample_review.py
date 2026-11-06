@@ -18,6 +18,7 @@
   var/textbook_mapping/sample_review_v4_20pct_2026-11-06.json
   var/textbook_mapping/sample_review_v4_20pct_2026-11-06.md
   review_sheets/samples/教材映射复核_v4_剩余1437块_20pct_2026-11-06.xlsx
+  --include-pilot 时输出 `_inclpilot` 版本（xlsx 文件名含“含pilot”），两套互不覆盖。
 """
 from __future__ import annotations
 
@@ -37,9 +38,6 @@ OUT = ROOT / 'var' / 'textbook_mapping'
 REVIEWED = OUT / 'mapped_1797_reviewed_v4.json'
 MAPPED_V4 = OUT / 'mapped_1797_v4.json'
 MAPPED_V3 = OUT / 'mapped_1797.json'
-SAMPLE = OUT / 'sample_review_v4_20pct_2026-11-06.json'
-REPORT = OUT / 'sample_review_v4_20pct_2026-11-06.md'
-XLSX = ROOT / 'review_sheets' / 'samples' / '教材映射复核_v4_剩余1437块_20pct_2026-11-06.xlsx'
 VOCAB_MD = pathlib.Path(os.environ.get('CHILON_KP_VOCAB') or (ROOT / 'corpus' / 'eval' / 'kp_vocab.md'))
 SEED = 20261106
 BOOK_ORDER = ['必修第一册', '必修第二册', '选择性必修第一册', '选择性必修第二册', '选择性必修第三册']
@@ -108,7 +106,7 @@ def allocate(total: int, groups: dict, rng: random.Random) -> dict:
     return alloc
 
 
-def build_sample(percent: float, seed: int):
+def build_sample(percent: float, seed: int, include_pilot: bool = False):
     reviewed = json.loads(REVIEWED.read_text(encoding='utf-8'))['items']
     v4_items = json.loads(MAPPED_V4.read_text(encoding='utf-8'))['items']
     v4 = {x['block_id']: x for x in v4_items}
@@ -118,9 +116,10 @@ def build_sample(percent: float, seed: int):
                  if b['chunk_id'] in by_chunk}
     model = [x for x in reviewed if x.get('review_status') == 'model']
     teacher_ids = {x['block_id'] for x in reviewed if x.get('review_status') == 'teacher'}
-    # 目标仍按 20% × 1437（沿用上一轮 360=1797×20% 的口径）；抽样池剔除 pilot 100（已复核过）
+    # 目标仍按 20% × 1437（沿用上一轮 360=1797×20% 的口径）；
+    # 默认抽样池剔除 pilot 100（已复核过）；--include-pilot 时纳入
     target = math.ceil(len(model) * percent / 100.0)
-    eligible = [x for x in model if x['block_id'] not in pilot_ids]
+    eligible = list(model) if include_pilot else [x for x in model if x['block_id'] not in pilot_ids]
     rng = random.Random(seed)
 
     gap = [x for x in eligible if x.get('status') == 'vocab_gap']
@@ -172,38 +171,65 @@ def build_sample(percent: float, seed: int):
         raise SystemExit(f'样本数异常：{len(ids)}（目标 {target}）')
     if teacher_ids & set(ids):
         raise SystemExit('样本与 teacher 360 重叠')
-    if pilot_ids & set(ids):
+    if not include_pilot and pilot_ids & set(ids):
         raise SystemExit('样本与 pilot 100 重叠')
-    return reviewed, v4, target, gap, non, mapped, rare, chosen, ids, len(model), len(eligible), len(pilot_ids)
+    pilot_n = 0 if include_pilot else len(pilot_ids)
+    pilot_in_sample = len(set(ids) & pilot_ids)
+    return (reviewed, v4, target, gap, non, mapped, rare, chosen, ids,
+            len(model), len(eligible), pilot_n, pilot_in_sample)
+
+
+def resolve_paths(args):
+    """按是否纳入 pilot 选择输出路径（两套表互不覆盖）。"""
+    if getattr(args, 'include_pilot', False):
+        return (OUT / 'sample_review_v4_20pct_inclpilot_2026-11-06.json',
+                OUT / 'sample_review_v4_20pct_inclpilot_2026-11-06.md',
+                ROOT / 'review_sheets' / 'samples' /
+                '教材映射复核_v4_剩余1437块_20pct_含pilot_2026-11-06.xlsx')
+    return (OUT / 'sample_review_v4_20pct_2026-11-06.json',
+            OUT / 'sample_review_v4_20pct_2026-11-06.md',
+            ROOT / 'review_sheets' / 'samples' /
+            '教材映射复核_v4_剩余1437块_20pct_2026-11-06.xlsx')
 
 
 def stage_sample(args):
     (reviewed, v4, target, gap, non, mapped, rare, chosen, ids,
-     pool_model, pool_eligible, pilot_n) = build_sample(args.percent, args.seed)
+     pool_model, pool_eligible, pilot_n, pilot_in_sample) = build_sample(
+        args.percent, args.seed, getattr(args, 'include_pilot', False))
+    sample_path, report_path, _xlsx_path = resolve_paths(args)
+    include_pilot = bool(getattr(args, 'include_pilot', False))
     by_book = collections.Counter(book_key(x['book']) for x in [v for v in reviewed if v['block_id'] in set(ids)])
     risk = collections.Counter(risk_of(x) for x in reviewed if x['block_id'] in set(ids))
     rate = len(ids) / pool_eligible * 100 if pool_eligible else 0
-    SAMPLE.write_text(json.dumps({
+    sample_path.write_text(json.dumps({
         'seed': args.seed, 'percent': args.percent, 'target': target,
         'pool_model': pool_model, 'exclude_teacher': 360,
+        'include_pilot': include_pilot,
         'exclude_pilot': pilot_n, 'pool_eligible': pool_eligible,
+        'pilot_in_sample': pilot_in_sample,
         'eligible_rate_pct': round(rate, 1),
         'method': ('rare-status census (vocab_gap+non_content) + mapped stratified by book/confidence, '
                    'chapter round-robin'),
         'risk': dict(risk), 'by_book': dict(by_book),
         'block_ids': ids,
     }, ensure_ascii=False, indent=1), encoding='utf-8')
+    pool_desc = (f'teacher 360 已复核、从池中剔除；pilot 100 已纳入抽样池（本表含 **{pilot_in_sample}** 行 pilot 块，'
+                 f'用于补回当年缺失的逐块标签）' if include_pilot else
+                 'teacher 360 与 pilot 100 已复核过、均从抽样池剔除')
+    overlap_desc = ('样本与 teacher 360 零重叠；pilot 块在池内，可能重复出现（re-collect）'
+                    if include_pilot else '样本与 teacher 360、pilot 100 零重叠')
     L = ['---', 'type: report', f'title: 教材 v4 复核抽样（{args.percent:g}%，{target} 块）', 'updated: 2026-11-06',
          'status: sample-pending-review', '---', '',
          f'# 教材 v4 复核抽样（{args.percent:g}%）', '',
          f'> 目标 **{target}** 块 = 1437 个 model 块 × 20%（沿用上一轮 360=1797×20% 的口径）；'
-         f'teacher 360 与 pilot 100 已复核过、均从抽样池剔除，可抽池 **{pool_eligible}**'
+         f'{pool_desc}，可抽池 **{pool_eligible}**'
          f'（实际抽样率 {rate:.1f}%）；seed={args.seed}；不写 PG/vault/OCR。', '',
          '## 1. 抽样口径', '',
-         '- 池：reviewed_v4 中 `review_status=model` 的 1437 块，剔除 teacher 360 与 pilot 100；',
+         f'- 池：reviewed_v4 中 `review_status=model` 的 1437 块，teacher 360 排除；'
+         f'{"pilot 100 纳入" if include_pilot else "pilot 100 剔除"}；',
          '- 全量采集稀有状态：`vocab_gap` 全部 + `non_content` 全部；',
          '- 其余预算给 `mapped`：先按册比例分配，册内按置信分层（≤0.70 / >0.70），再按章轮转；',
-         '- 映射阶段不读教师标签；样本与 teacher 360、pilot 100 零重叠。', '',
+         f'- 映射阶段不读教师标签；{overlap_desc}。', '',
          '## 2. 样本构成', '',
          '| 层 | 样本数 | 可抽池 |', '| --- | ---: | ---: |',
          f'| vocab_gap | {len(gap)} | {len(gap)} |',
@@ -218,15 +244,14 @@ def stage_sample(args):
         L.append(f'| {k} | {risk.get(k, 0)} |')
     L += ['', '## 3. 校验', '',
           f'- 目标 **{target}**、实际 **{len(ids)}**、唯一 block_id **{len(set(ids))}**；',
-          '- 与 teacher 360、pilot 100 均零重叠；',
+          f'- {overlap_desc}；',
           '- 分册/风险构成见上；xlsx 每行完整原文非空、教师列留空、17/120 下拉。', '',
           '---', '',
-          '> 产物：`sample_review_v4_20pct_2026-11-06.json`、'
-          '`review_sheets/samples/教材映射复核_v4_剩余1437块_20pct_2026-11-06.xlsx`。', '']
-    REPORT.write_text('\n'.join(L), encoding='utf-8')
+          f'> 产物：`{sample_path.name}`、`{_xlsx_path.name}`。', '']
+    report_path.write_text('\n'.join(L), encoding='utf-8')
     print(f'[sample] target={target} got={len(ids)} eligible={pool_eligible} ({rate:.1f}%) '
-          f'risk={dict(risk)} by_book={dict(by_book)}')
-    print(f'报告：{REPORT}')
+          f'pilot_in_sample={pilot_in_sample} risk={dict(risk)} by_book={dict(by_book)}')
+    print(f'报告：{report_path}')
     return 0
 
 
@@ -248,7 +273,9 @@ def stage_xlsx(args):
     reviewed = {x['block_id']: x for x in json.loads(REVIEWED.read_text(encoding='utf-8'))['items']}
     v4 = {x['block_id']: x for x in json.loads(MAPPED_V4.read_text(encoding='utf-8'))['items']}
     v3 = {x['block_id']: x for x in json.loads(MAPPED_V3.read_text(encoding='utf-8'))['items']}
-    ids = json.loads(SAMPLE.read_text(encoding='utf-8'))['block_ids']
+    sample_path, _report_path, xlsx_path = resolve_paths(args)
+    sample = json.loads(sample_path.read_text(encoding='utf-8'))
+    ids = sample['block_ids']
     items = []
     for bid in ids:
         r = reviewed[bid]
@@ -309,17 +336,24 @@ def stage_xlsx(args):
         ws.row_dimensions[r].height = 70
     ws.freeze_panes = 'A2'; ws.auto_filter.ref = f'A1:T{ws.max_row}'
     # 说明 sheet
-    sample = json.loads(SAMPLE.read_text(encoding='utf-8'))
     ws3 = wb.create_sheet('说明')
+    if sample.get('include_pilot'):
+        pool_line = (f"池 = 1437 个 model 块（teacher 360 已复核、不在本表；pilot 100 **已纳入**抽样池，"
+                     f"本表含 {sample.get('pilot_in_sample', 0)} 行 pilot 块，用于补回缺失标签）；"
+                     f"目标 {sample['target']} 块 = 1437×20%；seed={sample['seed']}。")
+        old_line = '与 teacher 360 块零重叠；pilot 块在池内，可能在表内重复出现（re-collect，正常填写）。'
+    else:
+        pool_line = (f"池 = 1437 个 model 块（teacher 360 已复核、不在本表；pilot 100 已复核过、也从池中剔除，"
+                     f"可抽池 {sample['pool_eligible']}）；目标 {sample['target']} 块 = 1437×20%（实际抽样率 "
+                     f"{sample['eligible_rate_pct']}%）；seed={sample['seed']}。")
+        old_line = '与 teacher 360 块、pilot 100 块均零重叠；本表 block_id 全部是未复核过的块。'
     lines = [
-        ['教材 v4 映射 · 剩余 1437 块 20% 教师复核表'],
+        ['教材 v4 映射 · 剩余 1437 块 20% 教师复核表' + ('（含 pilot 回采）' if sample.get('include_pilot') else '')],
         [''],
         ['目的', '验证 v4 规则在未复核 model 块上的质量；本表只给模型候选，教师判定请填 教师模块/教师考点/备注。'],
-        ['池与比例', f"池 = 1437 个 model 块（teacher 360 已复核、不在本表；pilot 100 已复核过、也从池中剔除，"
-                    f"可抽池 {sample['pool_eligible']}）；目标 {sample['target']} 块 = 1437×20%（实际抽样率 "
-                    f"{sample['eligible_rate_pct']}%）；seed={sample['seed']}。"],
+        ['池与比例', pool_line],
         ['抽样口径', '稀有状态全量：vocab_gap 8 + non_content 23；其余预算给 mapped：按册分配、册内按置信分层、章轮转。'],
-        ['与旧样本', '与 teacher 360 块、pilot 100 块均零重叠；本表 block_id 全部是未复核过的块。'],
+        ['与旧样本', old_line],
         ['排序', '按 册 → 页码 → part → ordinal 排序，方便按册连续审阅。'],
         ['列说明', '模型模块/模型primary/名称/secondary/置信/理由 = v4 候选；v4规则 = 修正层来源（v3_base/SEC/PRI/FILL 等）；v3模型primary = 上一版候选，便于对比。'],
         ['待填', '教师模块、教师考点、备注 三列留空；模块 17 项、考点 120 项下拉。'],
@@ -329,16 +363,16 @@ def stage_xlsx(args):
         ws3.append(r)
     ws3['A1'].font = Font(bold=True, size=14)
     ws3.column_dimensions['A'].width = 20; ws3.column_dimensions['B'].width = 120
-    XLSX.parent.mkdir(parents=True, exist_ok=True)
-    wb.save(XLSX)
+    xlsx_path.parent.mkdir(parents=True, exist_ok=True)
+    wb.save(xlsx_path)
     copy_to = getattr(args, 'xlsx_copy', None)
     if copy_to:
         target = pathlib.Path(copy_to)
         target.parent.mkdir(parents=True, exist_ok=True)
-        shutil.copyfile(XLSX, target)
-        print(f'[xlsx] {XLSX}（{n} 行）；副本 {target}')
+        shutil.copyfile(xlsx_path, target)
+        print(f'[xlsx] {xlsx_path}（{n} 行）；副本 {target}')
     else:
-        print(f'[xlsx] {XLSX}（{n} 行）')
+        print(f'[xlsx] {xlsx_path}（{n} 行）')
     return 0
 
 
@@ -347,6 +381,8 @@ def main(argv=None):
     ap.add_argument('--stage', choices=['sample', 'xlsx', 'all'], default='all')
     ap.add_argument('--percent', type=float, default=20.0, help='抽样比例（相对 model 池，默认 20）')
     ap.add_argument('--seed', type=int, default=SEED)
+    ap.add_argument('--include-pilot', action='store_true',
+                    help='把 100 个 pilot 块纳入抽样池（补回缺失标签）；默认剔除')
     ap.add_argument('--xlsx-copy', default=os.environ.get('CHILON_XLSX_COPY'),
                     help='可选：把生成的复核 xlsx 复制到指定路径')
     args = ap.parse_args(argv)
