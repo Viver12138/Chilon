@@ -38,6 +38,11 @@ NEEDED = ROOT / 'var' / 'mock_annotations' / 'ocr_needed_final.json'
 RECOVERED = OUT / 'recovered_39.json'
 BACKUP = OUT / 'backup_ocr_2026-11-06.json'
 REPORT = OUT / 'ocr_batch_report.md'
+RETRY2_RAW = OUT / 'retry2_raw'
+RETRY2_REC = OUT / 'recovered_retry2.json'
+RETRY2_CALLS = OUT / 'retry2_calls.json'
+RETRY2_BACKUP = OUT / 'backup_ocr_retry2_2026-11-06.json'
+RETRY2_REPORT = OUT / 'retry2_report.md'
 CONTAINER = 'chilon-pg-corpus'
 DB_HOST, DB_PORT, DB_NAME, DB_USER = '127.0.0.1', 55495, 'chilon', 'postgres'
 OCR_TAG = 'ocr39_task28'
@@ -163,10 +168,11 @@ def parse_candidates(payload, page, raw_file):
     return out, None
 
 
-def ocr_call(pdf_path, page, image_type, purpose, state, no_photo=False):
+def ocr_call(pdf_path, page, image_type, purpose, state, no_photo=False, raw_dir=None):
     """带 resume/重试的单页调用；返回 (candidates, call_record, error)。"""
+    raw_dir = raw_dir or RAW
     key = f'{sha1(pdf_path.name)}_p{page:02d}_{image_type}'
-    raw_file = RAW / f'{key}.json'
+    raw_file = raw_dir / f'{key}.json'
     rec = state['calls'].get(key)
     if rec and rec.get('status') == 'ok' and raw_file.exists():
         payload = json.loads(raw_file.read_text(encoding='utf-8'))
@@ -188,7 +194,7 @@ def ocr_call(pdf_path, page, image_type, purpose, state, no_photo=False):
         t0 = time.time()
         try:
             payload = provider._call(pages[page - 1], params, page)
-            RAW.mkdir(parents=True, exist_ok=True)
+            raw_dir.mkdir(parents=True, exist_ok=True)
             raw_file.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding='utf-8')
             cands, err = parse_candidates(payload, page, raw_file.name)
             rec = {'pdf': pdf_path.name, 'page': page, 'image_type': image_type,
@@ -383,6 +389,290 @@ def stage_ocr(args):
     print(f'输出：{RECOVERED}')
     return 0
 
+
+
+# ── retry2：6 题全页重试（同一阿里云试卷切题） ───────────────────────────────
+def stage_retry2(args):
+    """6 题全页重试：候选严格按 PDF 隔离，避免跨套串题。"""
+    from app.services import ocr as ocr_service
+    needed = json.loads(NEEDED.read_text(encoding='utf-8'))['items']
+    targets_items = [x for x in needed if x.get('status') == 'unresolved']
+    if args.only_qid:
+        targets_items = [x for x in targets_items if x['qid'] in args.only_qid]
+    if not targets_items:
+        die('没有 unresolved 目标（ocr_needed_final.json）')
+    repaired = {x['qid']: x for x in json.loads(
+        (ROOT / 'var' / 'mock_annotations' / 'repaired_931.json').read_text(encoding='utf-8'))['items']}
+    kid, sec = load_creds()
+    RETRY2_RAW.mkdir(parents=True, exist_ok=True)
+    state = {'key_id': kid, 'key_secret': sec, 'pages': {}, 'calls': {}}
+    if RETRY2_CALLS.exists():
+        try:
+            state['calls'].update(json.loads(RETRY2_CALLS.read_text(encoding='utf-8')))
+        except Exception:  # noqa: BLE001
+            pass
+    by_pdf = collections.OrderedDict()
+    for x in targets_items:
+        by_pdf.setdefault(x['source_pdf'], []).append(x)
+    pdf_pages, recovered, basis_map, unresolved_reasons = {}, {}, {}, {}
+    calls_before = len(state['calls'])
+    t0 = time.time()
+    for pdf_str, items in by_pdf.items():
+        pdf_path = pathlib.Path(pdf_str)
+        if not pdf_path.exists():
+            for x in items:
+                unresolved_reasons[x['qid']] = 'source_pdf 不存在'
+            continue
+        pages = ocr_service.render_pages(pdf_path.read_bytes())
+        state['pages'][pdf_path.name] = pages
+        pdf_pages[pdf_path.name] = len(pages)
+        print(f'[PDF] {pdf_path.name} 全部 {len(pages)} 页 scan …', flush=True)
+        cands_pdf = []
+        for page in range(1, len(pages) + 1):
+            cands, rec, err = ocr_call(pdf_path, page, 'scan', 'retry2-all-pages',
+                                       state, args.no_photo, raw_dir=RETRY2_RAW)
+            cands_pdf.extend(cands)
+            if err:
+                print(f'  [warn] p{page}: {err}', flush=True)
+        targets = []
+        set_nums = set()
+        sid = items[0]['qid'][5:].rsplit('_q', 1)[0]
+        for rq in repaired.values():
+            if rq['qid'].startswith('mock_' + sid + '_q'):
+                set_nums.add(rq.get('assigned_visible_no') or rq['question_no'])
+        for x in items:
+            assigned = repaired.get(x['qid'], {}).get('assigned_visible_no')
+            exp = {x['question_no']}
+            if assigned:
+                exp.add(assigned)
+            targets.append({'qid': x['qid'], 'item': x, 'question_no': x['question_no'],
+                            'assigned': assigned, 'expected': exp, 'page': x['page'],
+                            'set': x['set_title']})
+        used = set()
+
+        def cand_ok(c, t):
+            return (not c['is_option'] and c['num'] is not None
+                    and len((c.get('stem') or '').strip()) >= 25
+                    and c['raw_file'] + ':' + str(c['index']) not in used
+                    and (c['num'] in t['expected'] or c['lead_num'] in t['expected']))
+
+        pending = list(targets)
+        while pending:
+            best = None
+            for t in pending:
+                for c in cands_pdf:
+                    if not cand_ok(c, t):
+                        continue
+                    score = (10 if c['num'] == t.get('assigned') else 8) + \
+                            (4 if c['page'] == t['page'] else 0) + \
+                            (2 if len(c['stem']) >= 40 else 0)
+                    if best is None or score > best[0]:
+                        best = (score, t, c)
+            if not best:
+                break
+            _s, t, c = best
+            used.add(c['raw_file'] + ':' + str(c['index']))
+            recovered[t['qid']] = c
+            basis_map[t['qid']] = f'question_no={t["question_no"]} 精确命中 vendor 题号 {c["num"]}（本套 p{c["page"]}）'
+            pending.remove(t)
+        # photo 兜底：本套未命中目标页/相邻页
+        if pending and not args.no_photo:
+            photo_pages = sorted({p for t in pending for p in (t['page'] - 1, t['page'], t['page'] + 1)})
+            for p in photo_pages:
+                if 1 <= p <= len(pages):
+                    cands, rec, err = ocr_call(pdf_path, p, 'photo', 'retry2-photo',
+                                               state, False, raw_dir=RETRY2_RAW)
+                    cands_pdf.extend(cands)
+        for t in targets:
+            if t['qid'] not in recovered:
+                unresolved_reasons[t['qid']] = (f'本套全 {len(pages)} 页 scan+photo 后：'
+                                               f'未返回目标题号（本套 crumb 1..? 中无匹配）')
+
+    elapsed = round(time.time() - t0, 1)
+    rows = []
+    for x in targets_items:
+        c = recovered.get(x['qid'])
+        row = dict(x)
+        if c:
+            text = c['text'].strip()
+            if c.get('answer'):
+                text += '\n【答案】' + c['answer'].strip() + '（来源：阿里云试卷切题返回）'
+            row.update({'status': 'recovered', 'text': text, 'text_len': len(text),
+                        'ocr_num': c['num'], 'ocr_page': c['page'], 'ocr_raw': c['raw_file'],
+                        'match_basis': basis_map.get(x['qid'])})
+        else:
+            row.update({'status': 'unresolved', 'text': None, 'text_len': 0,
+                        'ocr_num': None, 'ocr_page': None, 'ocr_raw': None,
+                        'match_basis': unresolved_reasons.get(x['qid'], '全页重试后仍无匹配')})
+        rows.append(row)
+    payload = {'total': len(rows), 'recovered': sum(1 for r in rows if r['status'] == 'recovered'),
+               'unresolved': sum(1 for r in rows if r['status'] == 'unresolved'),
+               'pdfs': pdf_pages, 'calls_records': len(state['calls']),
+               'calls_new': len(state['calls']) - calls_before,
+               'elapsed_sec': elapsed, 'items': rows}
+    RETRY2_REC.write_text(json.dumps(payload, ensure_ascii=False, indent=1), encoding='utf-8')
+    RETRY2_CALLS.write_text(json.dumps(state['calls'], ensure_ascii=False, indent=1), encoding='utf-8')
+    kinds = collections.Counter((v.get('image_type'), v.get('purpose')) for v in state['calls'].values())
+    L = ['---', 'type: report', 'title: 试卷切题第二轮（6 题全页重试）', 'updated: 2026-11-06',
+         'status: retry2-ocr', '---', '',
+         '# 试卷切题第二轮 · 6 题全页重试（仅阿里云）', '',
+         '> 仅调用 `RecognizeEduPaperCut`（scan 全页 + photo 兜底）；未换其他 OCR；本阶段未写 PG/卡片。', '',
+         '## 页数/调用', '', '| PDF | 页数 |', '| --- | --- |']
+    for name, n in pdf_pages.items():
+        L.append(f'| {name} | {n} |')
+    L += ['', f'- 调用记录：{len(state["calls"])}（本次新增 {payload["calls_new"]}）',
+          f'- 类型：scan-all-pages {kinds.get(("scan","retry2-all-pages"),0)}、photo {kinds.get(("photo","retry2-photo"),0)}',
+          f'- 耗时：{elapsed}s', '',
+          '## recovered/unresolved', '',
+          f'- recovered：**{payload["recovered"]}/{len(rows)}**｜unresolved：**{payload["unresolved"]}**', '',
+          '| qid | 套 | 题号 | status | OCR页 | OCR号 | 依据 |', '| --- | --- | --- | --- | --- | --- | --- |']
+    for r in rows:
+        L.append(f'| `{r["qid"]}` | {r["set_title"]} | {r["question_no"]} | {r["status"]} | '
+                 f'{r.get("ocr_page","—")} | {r.get("ocr_num","—")} | {r.get("match_basis","")} |')
+    L += ['', '---', '', '> 原始 JSON：`var/ocr_mock/retry2_raw/`；调用：`retry2_calls.json`。', '']
+    RETRY2_REPORT.write_text('\n'.join(L), encoding='utf-8')
+    print(f'[retry2] recovered {payload["recovered"]}/{len(rows)}｜unresolved {payload["unresolved"]}｜'
+          f'新增调用 {payload["calls_new"]}｜耗时 {elapsed}s')
+    print(f'输出：{RETRY2_REC}')
+    return 0
+
+
+def _retry2_backup_plan(args):
+    import psycopg
+    rec = json.loads(RETRY2_REC.read_text(encoding='utf-8'))
+    found = [x for x in rec['items'] if x['status'] == 'recovered']
+    if not found:
+        die('recovered_retry2.json 没有 recovered 项')
+    url, label = db_url()
+    rows = load_db(url)
+    if len(rows) != 931:
+        die(f'linked mock questions {len(rows)} ≠ 931')
+    by_qid = {f'mock_{r["sid"]}_q{r["question_no"]:02d}': r for r in rows}
+    plan = {'updates': [], 'unchanged': [], 'errors': []}
+    for x in found:
+        r = by_qid.get(x['qid'])
+        if not r:
+            plan['errors'].append(f'{x["qid"]}: 找不到 PG question/chunk')
+            continue
+        text = x['text']
+        if not text or len(text) < 10:
+            plan['errors'].append(f'{x["qid"]}: 文本为空/过短')
+            continue
+        if r['text'] == text and r['hash'] == h(text):
+            plan['unchanged'].append(x['qid'])
+            continue
+        plan['updates'].append({'qid': x['qid'], 'chunk_id': r['chunk_id'],
+                                'chunk_key': r['chunk_key'], 'old_text': r['text'],
+                                'old_hash': r['hash'], 'text': text, 'hash': h(text)})
+    if not RETRY2_BACKUP.exists() or (args.force_backup and plan['updates']):
+        conn = psycopg.connect(url)
+        cur = conn.cursor()
+        cur.execute("""SELECT c.id::text, c.document_version_id::text, c.chunk_key, c.ordinal,
+            c.text_content, c.text_hash, c.locator, c.content_kind, c.parser_version,
+            c.parse_schema_version, c.created_at::text, s.id::text, s.title
+            FROM knowledge_chunks c JOIN knowledge_document_versions dv ON dv.id=c.document_version_id
+            JOIN knowledge_sources s ON s.id=dv.source_id WHERE s.source_type='mock_exam'""")
+        chunks = [dict(zip(['id','dv','chunk_key','ordinal','text','hash','locator','kind',
+                            'parser','schema','created','sid','title'], row)) for row in cur.fetchall()]
+        cur.execute("""SELECT q.id::text, q.document_version_id::text, q.question_no,
+            q.stem_locator, q.ordinal, q.updated_at::text, s.id::text
+            FROM knowledge_questions q JOIN knowledge_document_versions dv ON dv.id=q.document_version_id
+            JOIN knowledge_sources s ON s.id=dv.source_id WHERE s.source_type='mock_exam'""")
+        questions = [dict(zip(['id','dv','question_no','stem_locator','ordinal','updated_at','sid'], row))
+                     for row in cur.fetchall()]
+        conn.close()
+        backup = {'schema': 'chilon-ocr-retry2-backup/v1', 'repair_tag': 'ocr_retry2',
+                  'chunks': chunks, 'questions': questions, 'plan': plan,
+                  'rollback': {'restore_chunk_texts': [
+                      {'id': u['chunk_id'], 'text': u['old_text'], 'hash': u['old_hash']}
+                      for u in plan['updates']]}}
+        RETRY2_BACKUP.write_text(json.dumps(backup, ensure_ascii=False, indent=1), encoding='utf-8')
+        print(f'[备份] {RETRY2_BACKUP}（chunks {len(chunks)} / questions {len(questions)}）')
+    else:
+        print(f'[备份] 保留已有 {RETRY2_BACKUP}')
+    return url, plan
+
+
+def stage_retry2_apply(args):
+    import psycopg
+    url, plan = _retry2_backup_plan(args)
+    print(f'[计划] update {len(plan["updates"])}｜unchanged {len(plan["unchanged"])}｜errors {len(plan["errors"])}')
+    if plan['errors']:
+        for e in plan['errors']:
+            print('  -', e)
+        return 2
+    if args.dry_run:
+        print('[dry-run] 未写 PG')
+        return 0
+    conn = psycopg.connect(url)
+    try:
+        with conn.transaction():
+            cur = conn.cursor()
+            for u in plan['updates']:
+                cur.execute('UPDATE knowledge_chunks SET text_content=%s, text_hash=%s '
+                            'WHERE id=%s AND (text_content IS DISTINCT FROM %s OR text_hash IS DISTINCT FROM %s)',
+                            (u['text'], u['hash'], u['chunk_id'], u['text'], u['hash']))
+        conn.commit()
+    finally:
+        conn.close()
+    # 更新 ocr_needed_final 状态
+    p = ROOT / 'var' / 'mock_annotations' / 'ocr_needed_final.json'
+    d = json.loads(p.read_text(encoding='utf-8'))
+    rec = {x['qid']: x for x in json.loads(RETRY2_REC.read_text(encoding='utf-8'))['items']}
+    done = 0
+    for x in d['items']:
+        r = rec.get(x['qid'])
+        if r and r['status'] == 'recovered':
+            x['status'] = 'done'; x['retry'] = 'retry2'
+            x['ocr_page'] = r['ocr_page']; x['ocr_num'] = r['ocr_num']
+            x['text_len'] = r['text_len']; x['match_basis'] = r.get('match_basis')
+            done += 1
+        elif r and r['status'] == 'unresolved':
+            x['status'] = 'unresolved'; x['retry'] = 'retry2'
+            x['retry2_reason'] = r.get('match_basis')
+    d['status_summary'] = {'done': sum(1 for x in d['items'] if x.get('status') == 'done'),
+                           'unresolved': sum(1 for x in d['items'] if x.get('status') == 'unresolved'),
+                           'updated': '2026-11-06'}
+    p.write_text(json.dumps(d, ensure_ascii=False, indent=1), encoding='utf-8')
+    print(f'[status] ocr_needed_final done {d["status_summary"]["done"]} / unresolved {d["status_summary"]["unresolved"]}')
+    # 校验计数
+    conn = psycopg.connect(url); cur = conn.cursor()
+    cur.execute("""SELECT count(*) FROM knowledge_chunks c JOIN knowledge_document_versions dv ON dv.id=c.document_version_id JOIN knowledge_sources s ON s.id=dv.source_id WHERE s.source_type='mock_exam'""")
+    total = cur.fetchone()[0]
+    cur.execute("""SELECT count(*) FROM knowledge_questions q JOIN knowledge_chunks c ON c.document_version_id=q.document_version_id AND c.locator=q.stem_locator JOIN knowledge_document_versions dv ON dv.id=q.document_version_id JOIN knowledge_sources s ON s.id=dv.source_id WHERE s.source_type='mock_exam'""")
+    linked = cur.fetchone()[0]
+    cur.execute('SELECT count(*) FROM knowledge_annotations WHERE superseded_by IS NULL'); ann = cur.fetchone()[0]
+    cur.execute("""SELECT count(*) FILTER (WHERE cardinality(coalesce(q.current_knowledge_points,'{}'))>0) FROM knowledge_questions q JOIN knowledge_document_versions dv ON dv.id=q.document_version_id JOIN knowledge_sources s ON s.id=dv.source_id WHERE s.source_type='mock_exam'""")
+    pts = cur.fetchone()[0]
+    cur.execute("""SELECT (SELECT count(*) FROM knowledge_sources WHERE source_type='gaokao_paper'), (SELECT count(*) FROM knowledge_questions q JOIN knowledge_document_versions dv ON dv.id=q.document_version_id JOIN knowledge_sources s ON s.id=dv.source_id WHERE s.source_type='gaokao_paper')""")
+    gk = cur.fetchone(); conn.close()
+    print(f'[apply] chunks {total}｜linked {linked}｜annotations {ann}｜mock_points {pts}｜gk {gk}')
+    return 0
+
+
+def stage_retry2_rollback(args):
+    import psycopg
+    if not RETRY2_BACKUP.exists():
+        die(f'找不到 {RETRY2_BACKUP}')
+    b = json.loads(RETRY2_BACKUP.read_text(encoding='utf-8'))
+    restores = b['rollback']['restore_chunk_texts']
+    print(f'[rollback2] 恢复 chunk 文本 {len(restores)}')
+    if args.dry_run:
+        print('[rollback2] dry-run，未写 PG')
+        return 0
+    url, _ = db_url()
+    conn = psycopg.connect(url)
+    try:
+        with conn.transaction():
+            cur = conn.cursor()
+            for x in restores:
+                cur.execute('UPDATE knowledge_chunks SET text_content=%s, text_hash=%s WHERE id=%s',
+                            (x['text'], x['hash'], x['id']))
+        conn.commit()
+    finally:
+        conn.close()
+    print('[rollback2] 完成')
+    return 0
 
 # ── apply / rollback ─────────────────────────────────────────────────────────
 def h(text):
@@ -594,17 +884,24 @@ def stage_rollback(args):
 
 def main(argv=None):
     ap = argparse.ArgumentParser(description='阿里云试卷切题批量 OCR / 回填 39 题')
-    ap.add_argument('--stage', choices=['ocr', 'apply', 'rollback'], default='ocr')
+    ap.add_argument('--stage', choices=['ocr', 'apply', 'rollback', 'retry2', 'retry2-apply', 'retry2-rollback'], default='ocr')
     ap.add_argument('--only-pdf', default=None, help='只处理标题/路径包含该字符串的 PDF（测试用）')
     ap.add_argument('--no-photo', action='store_true', help='不尝试 photo 兜底')
     ap.add_argument('--dry-run', action='store_true', help='apply/rollback 只打印计划')
     ap.add_argument('--force-backup', action='store_true', help='apply 时重写备份')
+    ap.add_argument('--only-qid', nargs='*', default=None, help='retry2 只处理指定 qid')
     args = ap.parse_args(argv)
     if args.stage == 'ocr':
         return stage_ocr(args)
     if args.stage == 'apply':
         return stage_apply(args)
-    return stage_rollback(args)
+    if args.stage == 'rollback':
+        return stage_rollback(args)
+    if args.stage == 'retry2':
+        return stage_retry2(args)
+    if args.stage == 'retry2-apply':
+        return stage_retry2_apply(args)
+    return stage_retry2_rollback(args)
 
 
 if __name__ == '__main__':
