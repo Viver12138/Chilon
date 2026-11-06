@@ -21,8 +21,9 @@
 ## 这个仓库里有什么
 
 ```text
-Chilon_Project_Design_Master_Document.md   设计与契约基线（125 个章节、AD 记录 D.1–D.90）
+Chilon_Project_Design_Master_Document.md   设计与契约基线（126 个章节、AD 记录 D.1–D.91）
 docs/                                       教师版说明、V1.2 知识库技术设计（知识库层权威）、KB 同步契约
+docs/mock_ocr_backlog_2026-11-06.md         模拟题 39 题 OCR 需求清单（只统计，未调用）
 design/                                     设计分册 D1–D6、K09 字段设计、走查包、校验器
 schemas/                                    机器可读契约（状态机、动作、接口、导航、测试矩阵）
 database/registry/                          表结构权威：6 个模块、82 张表
@@ -33,6 +34,7 @@ backend/                                    Alembic 基线 + 应用骨架
 corpus/                                     平台语料（2012–2026 高考真题、模拟卷、教材 PDF）与 corpus/eval 检索评测/基线
 requirements-ai.txt                         混合检索原型（Qwen3 CPU）额外依赖
 tools/check_all.py                          17 项检查的唯一入口
+tools/kb_mock_*.py                          模拟题题干修复流水线（校验/探针/修复/重投影）
 tools/project_restricted_corpus.py          受限资料投影（PG → Obsidian 内部审校区）
 ```
 
@@ -185,7 +187,7 @@ python backend/tests/check_llm.py
 - **知识库标注只到参考级，不得当验收**：6050 道高考真题的考点标注已全部处理（primary 6045，5 道判无归属）。第三轮“97%（修正后 99%）”是 AI 对 AI 标注的自洽复核，不是真人验收；第四轮真人抽检 100 题模块层一致 **94.0%（94/100，95% CI 87.5%–97.2%）**，只作参考级依据，用户告知填写人为高三资深教师（教龄/独立性未说明，未独立核实）。考点层尚未抽检，`annotation.status` 整体仍为 `needs_review`，不批量升级。
 - **标注已进 PG，但仍是“双表示”迁移态**：6050 题导入 `knowledge_annotations` 8007 条 active（primary 6045）；`current_knowledge_points` 仍是旧工作台的中文模块名缓存（4748/6050 非空），不是新事实源。迁移完成前 hybrid 检索只读 `knowledge_annotations`；旧基线 Recall@8 26.7% 已复现，同步契约见 `docs/KB_SYNC_CONTRACT.md`（D.88）。
 - **检索质量：混合原型 93.3%，但还不是产品效果**：15 条真人问题、混合检索（pg_trgm + Qdrant + RRF，无 rerank）Recall@8 **93.3%（14/15）**、MRR 0.836、空结果 0%；旧引擎 26.7% 仅作历史对照。样本只有 15 条、判定为 lenient 片段匹配、无 strict target；reranker 无 Recall 增益且 CPU 约 82.7s/query，未默认启用。**93.3% 不是产品最终效果**，详见 `corpus/eval/HYBRID_BASELINE_2026-11-06.md`（D.89）；旧 55%/0.451/32% 不可比、不可引用。问题集仍缺 11–15、类别不全，待补采后重测。
-- **受限资料已投影但没审完**：模拟题 67 套/931 题 + 教材 5 册/1797 块已从 PG 单向投影到 vault（`restricted`/`classroom`，仅内部审校，1005 个文件），但**答案/解析未入库**（题卡只指向同目录答案 PDF）、教材 OCR 待审且**无章节结构**、311 题 `question_type` 为空、legacy 中文模块名标“未核验”；高考卡 6324 张投影前后 0 改动。工具 `tools/project_restricted_corpus.py`，规则见 `docs/KB_SYNC_CONTRACT.md`（D.90）。
+- **受限资料已投影但没审完**：模拟题 67 套/931 题 + 教材 5 册/1797 块已从 PG 单向投影到 vault（`restricted`/`classroom`，仅内部审校，1005 个文件），但**答案/解析未入库**（题卡只指向同目录答案 PDF）、教材 OCR 待审且**无章节结构**、311 题 `question_type` 为空、legacy 中文模块名标“未核验”；高考卡 6324 张投影前后 0 改动。模拟题题干已本地修复 894/931，**39 题待 OCR**（清单 `docs/mock_ocr_backlog_2026-11-06.md`，未调用 OCR）；卡片/索引已按修复文本更新（Qdrant 12967 点），15 条基线 93.3% 不变。工具 `tools/project_restricted_corpus.py` 与 `tools/kb_mock_*.py`，规则见 `docs/KB_SYNC_CONTRACT.md`（D.90/D.91）。
 - **答案解析仍有缺口**：修复错位后 4311/6050（71.3%）有答案，其余约三成是语料本身缺答案，不是解析漏读（D.84）。
 - **草稿编辑还没有界面**：对话改、直接改目前只在服务端留有版本记录，界面上还不能改草稿。
 - **`created_by` 一类字段暂无外键**：它们常由系统 Worker 写入，而 Worker 不是用户。需要先设计"系统主体"概念。

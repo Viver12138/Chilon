@@ -3,19 +3,21 @@
   "created_at": "2026-11-06T16:05:54+08:00",
   "git_commit": "381d90443dac",
   "build_mode": "3 parallel shards",
-  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log.",
+  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log. 2026-11-06 mock 修复后增量更新：points 12902→12967（mock 931→996，124 更新 + 65 split 新增重嵌入；gaokao/textbook 11971 点未动；无 orphan 删除）。",
   "database": {
     "host": "127.0.0.1:55495",
     "name": "chilon",
     "sources": 346,
-    "chunks": 12902,
+    "chunks": 12967,
     "questions": 6981,
     "chunks_embedded": 1894,
-    "limit": null
+    "limit": null,
+    "mock_chunks": 996,
+    "mock_chunks_before_repair": 931
   },
   "collection": {
     "name": "chilon_chunks_qwen3_embedding_0_6b_v1",
-    "points": 12902,
+    "points": 12967,
     "dim": 1024,
     "distance": "cosine",
     "qdrant_url": "http://127.0.0.1:6333",
@@ -103,5 +105,76 @@
       "torch_threads": 6,
       "peak_rss_mb": 3012.0
     }
-  ]
+  ],
+  "incremental_update": {
+    "updated_at": "2026-11-06T17:46:07+08:00",
+    "reason": "mock repair (task-25): 124 in-place text updates + 65 split inserts; re-embedded and upserted only changed mock chunks",
+    "source_plan": "var/mock_repair/apply_plan.json",
+    "changes": {
+      "chunk_updates": 124,
+      "chunk_inserts": 65,
+      "reembedded": 189,
+      "unchanged_mock_chunks": 807,
+      "plan_text_mismatch": 0
+    },
+    "mock_points_before": 931,
+    "mock_points_after": 996,
+    "total_points_before": 12902,
+    "total_points_after": 12967,
+    "non_mock_points_before": 11971,
+    "non_mock_points_after": 11971,
+    "non_mock_points_untouched": true,
+    "orphan_mock_points": 0,
+    "payload_refresh": {
+      "reason": "65 questions moved to split chunks; their old source chunks keep vectors but question_id metadata was stale",
+      "stale_points": 65,
+      "remaining_mismatch_after": 0,
+      "vector_changed": false,
+      "mock_only": true
+    },
+    "embedding": {
+      "model": "Qwen/Qwen3-Embedding-0.6B",
+      "dim": 1024,
+      "max_length": 512,
+      "batch_size": 4,
+      "load_seconds": 17.24,
+      "embed_seconds": 351.82,
+      "tokens": 38140,
+      "chunks_per_second": 0.54,
+      "tokens_per_second": 108.4,
+      "upsert_seconds": 0.42,
+      "total_seconds": 371.7,
+      "rss_before_mb": 105.6,
+      "rss_after_model_mb": 2738.1,
+      "peak_rss_mb": 2886.7
+    },
+    "spot_checks": [
+      {
+        "kind": "update",
+        "chunk_id": "49c4c651-e069-4826-8fbd-3b50b228ce8e",
+        "chunk_key": "q01_007",
+        "query_fragment": "名学生的成绩时不小心遗失了一位学生的成绩，且剩余",
+        "text_rank": 1,
+        "vector_rank": 7
+      },
+      {
+        "kind": "update",
+        "chunk_id": "44bb164c-12d7-4a0f-9741-27cc9b65f376",
+        "chunk_key": "q02_009",
+        "query_fragment": "为空间中三个单位向量，且",
+        "text_rank": 1,
+        "vector_rank": 7
+      },
+      {
+        "kind": "split",
+        "chunk_id": "57c92662-a0e2-5737-8123-e596ab70ea95",
+        "chunk_key": "q01_003_r25s1",
+        "query_fragment": "两种型号空调的销售情况，得到销售量的折",
+        "text_rank": 1,
+        "vector_rank": 1
+      }
+    ],
+    "report": "var/retrieval/mock_incremental_update_2026-11-06.json"
+  },
+  "file_name_note": "文件名为历史名称（建立时 12902 points）；2026-11-06 模拟题修复增量后实测 points=12967（mock 996，gaokao/textbook 11971）。"
 }
