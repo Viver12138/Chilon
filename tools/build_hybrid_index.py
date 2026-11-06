@@ -6,7 +6,7 @@ embeds it with Qwen3-Embedding-0.6B on CPU, and writes vectors + filter
 metadata to Qdrant.  The index is a derived artefact and can be rebuilt from
 PostgreSQL at any time.
 
-Usage (from D:\\Chilon):
+Usage (from repo root):
 
     $env:CHILON_TEST_DATABASE_URL = "postgresql+psycopg://postgres:<pw>@127.0.0.1:55495/chilon"
     .\\.venv\\Scripts\\python.exe tools\\build_hybrid_index.py --recreate
