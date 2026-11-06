@@ -31,6 +31,8 @@ MODULE_META = {
     "14": ("算法初步", "旧课标", "旧课标必修三 第一章（新教材已删除）"),
     "15": ("平面几何选讲", "旧课标", "旧课标选修 4-1 几何证明选讲（新教材已删除）"),
     "16": ("极限", "旧课标", "旧课标数列与函数极限（新教材已删除）"),
+    "17": ("矩阵与变换", "旧课标", "旧课标选修 4-2 矩阵与变换（新教材已删除）"),
+    "18": ("定积分", "旧课标", "旧课标选修 2-2 定积分（新教材已删除）"),
 }
 
 MODULE_ID = {
@@ -41,12 +43,14 @@ MODULE_ID = {
     "14": "kp_14_algorithm",
     "15": "kp_15_plane_geometry",
     "16": "kp_16_limit",
+    "17": "kp_17_matrix",
+    "18": "kp_18_integral",
 }
 
 LEGACY = {
     "kp_08_01_threeview", "kp_12_04_region", "kp_09_13_polar", "kp_09_14_param_eq",
     "kp_12_09_abs_inequality", "kp_12_10_cauchy", "kp_14_01_flowchart",
-    "kp_15_01_similar_triangle", "kp_15_02_circle_power", "kp_16_01_limit",
+    "kp_15_01_similar_triangle", "kp_15_02_circle_power", "kp_16_01_limit", "kp_17_01_matrix_transform", "kp_17_02_matrix_eigen", "kp_18_01_integral",
 }
 NEW_BOOK = {"kp_10_12_normal"}
 
@@ -139,4 +143,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
