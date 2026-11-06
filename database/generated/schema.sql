@@ -1,7 +1,7 @@
 -- GENERATED FILE — do not edit by hand.
 -- generator: database/generator/generate_ddl.py v0.1.0
 -- registry_version: 0.1.0
--- registry_hash: 42bf0c06f4b1d0cc90e34693fdb985c324275875a903917c54e93c9d8858fd88
+-- registry_hash: ddedad08055f1cdc54401c13cbcbe1ff198b47aabdadfbc0100f929a2091ffaa
 -- variant: core (optional tables excluded)
 -- regenerate with: python database/generator/generate_ddl.py
 
@@ -2003,6 +2003,40 @@ CREATE POLICY pol_material_knowledge_citations_owner ON material_knowledge_citat
 CREATE INDEX ix_material_knowledge_citations_version ON material_knowledge_citations ("material_version_id");
 CREATE INDEX ix_material_knowledge_citations_source ON material_knowledge_citations ("source_id");
 CREATE INDEX ix_material_knowledge_citations_question ON material_knowledge_citations ("question_id") WHERE question_id IS NOT NULL;
+
+-- 教材块级标注；teacher/model 双状态，唯一 active 版本
+CREATE TABLE textbook_block_annotations (
+    "id" UUID NOT NULL,
+    "chunk_id" UUID NOT NULL,
+    "block_id" VARCHAR(80) NOT NULL,
+    "kp_primary" TEXT,
+    "kp_secondary" JSONB NOT NULL DEFAULT '[]'::jsonb,
+    "module_id" VARCHAR(40),
+    "status" VARCHAR(16) NOT NULL,
+    "classification_source" VARCHAR(16) NOT NULL,
+    "confidence" NUMERIC(4,3),
+    "model_version" VARCHAR(120),
+    "review_status" VARCHAR(16) NOT NULL,
+    "rationale" TEXT,
+    "superseded_by" UUID,
+    "created_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    "updated_at" TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CONSTRAINT pk_textbook_block_annotations PRIMARY KEY ("id"),
+    CONSTRAINT fk_textbook_block_annotations_chunk_id FOREIGN KEY ("chunk_id") REFERENCES knowledge_chunks(id) ON DELETE CASCADE,
+    CONSTRAINT fk_textbook_block_annotations_superseded_by FOREIGN KEY ("superseded_by") REFERENCES textbook_block_annotations(id) ON DELETE RESTRICT,
+    CONSTRAINT ck_textbook_block_annotations_status CHECK (status IN ('mapped','non_content','vocab_gap')),
+    CONSTRAINT ck_textbook_block_annotations_source CHECK (classification_source IN ('rule','model','teacher')),
+    CONSTRAINT ck_textbook_block_annotations_review CHECK (review_status IN ('draft','needs_review','reviewed','rejected')),
+    CONSTRAINT ck_textbook_block_annotations_conf CHECK (confidence IS NULL OR (confidence >= 0 AND confidence <= 1)),
+    CONSTRAINT ck_textbook_block_annotations_model_version CHECK (classification_source <> 'model' OR model_version IS NOT NULL)
+);
+
+ALTER TABLE textbook_block_annotations ENABLE ROW LEVEL SECURITY;
+ALTER TABLE textbook_block_annotations FORCE ROW LEVEL SECURITY;
+CREATE POLICY pol_textbook_block_annotations_owner ON textbook_block_annotations FOR ALL USING (EXISTS (SELECT 1 FROM knowledge_chunks JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_chunks.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_chunks.id = chunk_id AND knowledge_sources.owner_id = public.app_current_user_id())) WITH CHECK (EXISTS (SELECT 1 FROM knowledge_chunks JOIN knowledge_document_versions ON knowledge_document_versions.id = knowledge_chunks.document_version_id JOIN knowledge_sources ON knowledge_sources.id = knowledge_document_versions.source_id WHERE knowledge_chunks.id = chunk_id AND knowledge_sources.owner_id = public.app_current_user_id()));
+
+CREATE UNIQUE INDEX ix_textbook_block_annotations_active ON textbook_block_annotations ("chunk_id") WHERE superseded_by IS NULL;
+CREATE INDEX ix_textbook_block_annotations_review ON textbook_block_annotations ("review_status");
 
 -- Deferred foreign keys (circular or forward references)
 ALTER TABLE materials ADD CONSTRAINT fk_materials_current_version_id FOREIGN KEY ("current_version_id") REFERENCES material_versions(id) ON DELETE SET NULL;

@@ -700,6 +700,13 @@
       "layer": "core",
       "owner_scoped": false,
       "soft_delete": false
+    },
+    {
+      "name": "textbook_block_annotations",
+      "module": "K009",
+      "layer": "detail",
+      "owner_scoped": false,
+      "soft_delete": false
     }
   ],
   "layers": {
@@ -790,7 +797,8 @@
     "knowledge_indexing_jobs",
     "knowledge_retrieval_runs",
     "knowledge_retrieval_results",
-    "material_knowledge_citations"
+    "material_knowledge_citations",
+    "textbook_block_annotations"
   ],
   "aggregate_tables": {
     "task": "tasks",
