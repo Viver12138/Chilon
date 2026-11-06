@@ -3,7 +3,7 @@
   "created_at": "2026-11-06T16:05:54+08:00",
   "git_commit": "381d90443dac",
   "build_mode": "3 parallel shards",
-  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log. 2026-11-06 mock 修复后增量更新：points 12902→12967（mock 931→996，124 更新 + 65 split 新增重嵌入；gaokao/textbook 11971 点未动；无 orphan 删除）。 2026-11-06 OCR 回填后增量更新：points 12967→12973（mock 996→1002，11 更新 + 6 新 OCR chunk 重嵌入；6 条旧 payload 刷新；gaokao/textbook 11971 点未动；无删除）。",
+  "note": "The full index has 12902 points; this manifest's timing/throughput covers the final resume run (last shard batch). Earlier build phases and OOM/recovery are in var/retrieval/index_build_*.log. 2026-11-06 mock 修复后增量更新：points 12902→12967（mock 931→996，124 更新 + 65 split 新增重嵌入；gaokao/textbook 11971 点未动；无 orphan 删除）。 2026-11-06 OCR 回填后增量更新：points 12967→12973（mock 996→1002，11 更新 + 6 新 OCR chunk 重嵌入；6 条旧 payload 刷新；gaokao/textbook 11971 点未动；无删除）。 2026-11-06 人工补录 6 题后增量更新：6 条 mock chunk 文本更新并重嵌入，points 仍 12973（mock 1002；gaokao/textbook 11971 未动；无删除）。",
   "database": {
     "host": "127.0.0.1:55495",
     "name": "chilon",
@@ -177,7 +177,7 @@
     ],
     "report": "var/retrieval/mock_incremental_update_2026-11-06.json"
   },
-  "file_name_note": "文件名为历史名称（建立时 12902 points）；2026-11-06 mock 修复 + OCR 回填两次增量后实测 points=12973（mock 1002，gaokao/textbook 11971）。",
+  "file_name_note": "文件名为历史名称（建立时 12902 points）；2026-11-06 mock 修复 + OCR 回填 + 人工补录三次增量后实测 points=12973（mock 1002，gaokao/textbook 11971）。",
   "incremental_update_ocr": {
     "updated_at": "2026-11-06T18:04:39+08:00",
     "reason": "OCR backfill (task-28): 11 in-place chunk text updates + 6 new OCR chunks; 6 question locators moved; only changed/new mock chunks re-embedded",
@@ -235,5 +235,66 @@
       }
     ],
     "report": "var/retrieval/ocr_incremental_update_2026-11-06.json"
+  },
+  "incremental_update_manual": {
+    "updated_at": "2026-11-06T19:21:33+08:00",
+    "reason": "manual transcription of the 6 remaining mock questions (task-33): 6 in-place chunk text updates, no inserts, no locator changes; only those 6 mock chunks re-embedded",
+    "source_backup": "var/manual_transcription/backup_manual_2026-11-06.json",
+    "changes": {
+      "chunk_updates": 6,
+      "chunk_inserts": 0,
+      "reembedded": 6,
+      "plan_text_mismatch": 0
+    },
+    "mock_points_before": 1002,
+    "mock_points_after": 1002,
+    "total_points_before": 12973,
+    "total_points_after": 12973,
+    "non_mock_points_before": 11971,
+    "non_mock_points_after": 11971,
+    "non_mock_points_untouched": true,
+    "payload_refresh": {
+      "refreshed": 0,
+      "remaining_question_id_mismatch": 0
+    },
+    "text_hash_verification": {
+      "changed_chunks": 6,
+      "all_old_hashes_differ_from_current": true
+    },
+    "embedding": {
+      "model": "Qwen/Qwen3-Embedding-0.6B",
+      "dim": 1024,
+      "max_length": 512,
+      "batch_size": 4,
+      "load_seconds": 11.48,
+      "embed_seconds": 4.71,
+      "tokens": 1225,
+      "chunks_per_second": 1.28,
+      "tokens_per_second": 260.3,
+      "upsert_seconds": 0.1,
+      "total_seconds": 18.8,
+      "rss_before_mb": 111.5,
+      "rss_after_model_mb": 2741.6,
+      "peak_rss_mb": 3057.7
+    },
+    "spot_checks": [
+      {
+        "kind": "manual_update",
+        "chunk_id": "aa04224a-e943-4ff6-acbc-0ee1fd36a1b0",
+        "chunk_key": "q01_007",
+        "query_fragment": "arallel MF_1$，$|ON|=b$，则 $C$ 的离心率为（  ）\nA",
+        "text_rank": 1,
+        "vector_rank": 3
+      },
+      {
+        "kind": "manual_update",
+        "chunk_id": "d3268e93-14dd-4174-9363-4661d856f04c",
+        "chunk_key": "q03_010",
+        "query_fragment": "$\nB. 当 $AB=2$ 时，直线 $AR$ 与平面 $BCC_1B_1$ 成",
+        "text_rank": 1,
+        "vector_rank": 3
+      }
+    ],
+    "report": "var/retrieval/manual_incremental_update_2026-11-06.json"
   }
 }
