@@ -86,7 +86,7 @@ def prepare_rows(items):
                 review = 'reviewed'
                 module = x.get('teacher_module') or None
                 conf = 1.0
-                mv = TEACHER_VERSION
+                mv = x.get('teacher_version') or TEACHER_VERSION
                 rationale = x.get('reason') or '教师复核'
             else:
                 status = 'non_content'
@@ -94,7 +94,7 @@ def prepare_rows(items):
                 review = 'reviewed'
                 module = None
                 conf = 1.0
-                mv = TEACHER_VERSION
+                mv = x.get('teacher_version') or TEACHER_VERSION
                 rationale = '教师复核：非内容/不映射'
         else:
             status = x.get('status') or ('mapped' if kp else 'vocab_gap')
@@ -288,7 +288,10 @@ def stage_apply(args):
           '---', '', '> 工具：`tools/kb_textbook_pg_draft.py`。', '']
     REPORT.write_text('\n'.join(L), encoding='utf-8')
     print(f'报告：{REPORT}')
-    return 0 if count == 1797 and uniq == 1797 and src.get('teacher') == 360 and src.get('model') == 1437 else 4
+    teacher_expected = sum(1 for r in rows if r['classification_source'] == 'teacher')
+    model_expected = len(rows) - teacher_expected
+    return 0 if (count == 1797 and uniq == 1797 and src.get('teacher') == teacher_expected
+                 and src.get('model') == model_expected) else 4
 
 
 def stage_rollback(args):
