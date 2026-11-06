@@ -1,4 +1,4 @@
-# Obsidian ↔ PostgreSQL 同步契约（草案 v0.2）
+# Obsidian ↔ PostgreSQL 同步契约（草案 v0.3）
 
 > 状态：**草案 / 待评审**（2026-11-06）
 > 适用范围：Chilon 高中数学知识库（vault `C:\Users\Viver\Desktop\高中数学`）+ PostgreSQL `chilon`（容器 `chilon-pg-corpus`）+ Qdrant 派生索引
@@ -316,9 +316,42 @@ qid → document_id + question_number
 
 ---
 
-## 11. 变更记录
+
+## 11. 受限资料投影（模拟题 / 教材 → Obsidian 内部审校区）
+
+**背景**：PG 现有 `mock_exam` 67 套 / 931 题与 `textbook` 5 册 / 1797 块（`rights_status='restricted'`、`distribution_scope='classroom'`）。
+两者此前只在 PG，vault 的 `04_Exams/MockExams`、`03_Textbooks` 为空；本契约规定其**单向投影**边界。
+
+**投影规则**：
+
+- 工具 `tools/project_restricted_corpus.py`：默认 dry-run，`--apply` 写入，`--only mock|textbook` 局部投影，
+  `--force-generated` 刷新本工具生成的文件；输出 manifest/report 到 `var/projection/`。
+- 路径：模拟题 `04_Exams/MockExams/<年份>/<安全套名>/<安全套名>.md` + `<安全套名>-qNN.md`；
+  教材 `03_Textbooks/<册>/<册>.md`（选择性必修在 `03_Textbooks/选择性必修/<册>.md`）。
+- 幂等与安全：只写带 `generated_from: postgres` 且 `human_edited: false` 的文件；人工编辑过的跳过；
+  默认不覆盖任何已有文件；`--force-generated` 也只刷新“本工具生成且未被人工编辑”的文件。
+- 模拟题卡片 `question_id=mock_<source_uuid>_qNN`；题目原文取 `knowledge_chunks.text_content`；
+  `page` 取 `locator.page_number`；`question_type` 取 `knowledge_questions.current_paper_question_type`（可为 null）。
+- **答案/解析未入库**（`knowledge_questions.answer_locator` 全为 NULL）：卡片只写“未入库，见同目录
+  `__数学答案.pdf`”，**不伪造答案**；答案 PDF 与试题 PDF 同目录（`D:\Chilon\corpus\mock-exams`）。
+- 教材按 `locator.page/part` 分组为 `## 第 N 页`，只放 OCR 原文；PG 无章节元数据，**不伪造章节结构**。
+- 知识点：`knowledge_points: []`（新 kp_id 尚未同步）；DB 旧中文模块名放 `legacy_knowledge_points`
+  并标 `未核验`，不得当作已审校结论。hybrid retrieval 仍只读 `knowledge_annotations`。
+- 版权：所有生成物 frontmatter 带 `rights_status: restricted` / `distribution_scope: classroom` /
+  `internal_only: true`，正文带版权段；**仅限库内审校，不对外发布/再分发**。教材版权归人民教育出版社，
+  模拟卷来源分散、许可不明。
+- 索引：`10_Indexes/模拟题总览.md`、`10_Indexes/教材总览.md`；首页“当前状态”、
+  `10_Indexes/数据来源与许可.md` 与 `08_Review/迁移记录.md` 由工具维护生成段（带 BEGIN/END 标记）。
+- 重建：Obsidian 投影可由 PG 随时重建；人工审校请改 PG/标注后重跑，或在生成文件置 `human_edited: true`
+  保护本地修改（之后同步程序按 §3 方向 A 回写）。
+
+**验证（2026-11-06 首次投影）**：67 set + 931 卡 + 5 教材笔记 + 2 总览 = 1005 文件；
+模拟 PDF 匹配 67/67、教材 5/5；高考卡 6324 张聚合 sha256 前后一致（0 改动）；二次 apply 0 写入、1005 不变（幂等）。
+
+## 12. 变更记录
 
 | 日期 | 版本 | 变更 |
 | --- | --- | --- |
 | 2026-11-06 | v0.1 | 草案建立：SSOT 边界、字段所有权、双向同步、冲突规则、标注映射、Qdrant 派生定位；记录首次标注导入落地状态与 open items |
 | 2026-11-06 | v0.2 | 修正 `current_knowledge_points` 定位：明确定义为**旧工作台遗留中文模块名缓存（非 SSOT）**；记录 task-13 误改导致旧 knowledge_search/26.7% 基线失效、task-14 用快照还原 6050 题并复现 Recall@8 4/15=26.7%；导入工具默认只写 `knowledge_annotations`，`--sync-legacy-points` 仅迁移评审后使用；hybrid retrieval 必须读 `knowledge_annotations` |
+| 2026-11-06 | v0.3 | 新增「受限资料投影」一节：mock 67/931、textbook 5/1797 单向投影进 Obsidian 内部审校区；restricted/classroom/internal_only；答案未入库不伪造；只覆盖 generated 且 human_edited=false 的文件；高考卡 0 改动 |
