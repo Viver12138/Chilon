@@ -152,12 +152,15 @@ async def _legacy_knowledge_search(session: AsyncSession, ctx: ToolContext) -> d
 
 
 async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str, Any]:
-    """Knowledge search with the H/HR router.
+    """Knowledge search with an explicit search-mode switch.
 
-    Default (`CHILON_RETRIEVAL_ROUTER=off`) keeps the legacy SQL path exactly as
-    before. `shadow`/`on` route through the hybrid retrieval service; shadow still
-    returns H hits but records the auto mode for comparison. If the hybrid service
-    is unavailable, fall back to legacy and mark the fallback in the output.
+    `CHILON_AGENT_SEARCH_MODE`:
+    * `legacy` (default) — original SQL path, unchanged for tests/rollback;
+    * `hybrid_h` — hybrid H only, no HR routing;
+    * `auto` — QueryPlan/router (shadow/on flags decide H vs HR).
+
+    If the hybrid service is unavailable, fall back to legacy and mark the
+    fallback in the output.
     """
     requirement = ctx.requirement
     topic = (requirement.get("topic") or "").strip()
@@ -166,10 +169,13 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
     if not topic:
         raise ToolFailed("requirement has no topic to search for")
 
+    search_mode = (config.get("CHILON_AGENT_SEARCH_MODE", "legacy") or "legacy").lower()
     flag = (config.get("CHILON_RETRIEVAL_ROUTER", "off") or "off").lower()
-    if flag not in ("shadow", "on"):
+    if search_mode not in ("legacy", "hybrid_h", "auto"):
+        search_mode = "legacy"
+    if search_mode == "legacy":
         result = await _legacy_knowledge_search(session, ctx)
-        result["retrieval"] = {"mode": "legacy", "router_flag": flag}
+        result["retrieval"] = {"mode": "legacy", "search_mode": search_mode, "router_flag": flag}
         return result
 
     try:
@@ -180,7 +186,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             routed_retrieval.search,
             topic,
             limit=limit,
-            mode="auto",
+            mode="h" if search_mode == "hybrid_h" else "auto",
             user_key=str(ctx.owner_id),
             sources=list(sources),
         )
@@ -190,6 +196,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             "hits": routed["hits"],
             "retrieval": {
                 "mode": routed["mode"],
+                "search_mode": search_mode,
                 "auto_mode": routed["auto_mode"],
                 "shadow_mode": routed["shadow_mode"],
                 "router_flag": routed["router_flag"],
@@ -206,6 +213,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             'query': topic[:500],
             'user_hash': shadow_log.user_hash(str(ctx.owner_id)),
             'mode': 'legacy_fallback',
+            'search_mode': search_mode,
             'router_flag': flag,
             'error': f'{type(exc).__name__}: {exc}'[:300],
             'elapsed_ms': round((time.perf_counter() - started) * 1000, 1) if 'started' in locals() else None,
@@ -213,6 +221,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
         })
         result["retrieval"] = {
             "mode": "legacy_fallback",
+            "search_mode": search_mode,
             "router_flag": flag,
             "error": f"{type(exc).__name__}: {exc}"[:300],
         }
