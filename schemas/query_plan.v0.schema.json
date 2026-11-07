@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chilon.local/schemas/query_plan.v0.schema.json",
+  "title": "Chilon QueryPlan v0",
+  "description": "教师自然语言查询 → 结构化检索计划。hard 中的字段是必须满足的硬过滤；soft 只用于召回/排序。版本 query-plan/v0。",
+  "type": "object",
+  "required": ["version", "query", "intent", "object_scope", "hard", "soft", "uncertain"],
+  "properties": {
+    "version": { "const": "query-plan/v0" },
+    "query": { "type": "string", "minLength": 1 },
+    "intent": {
+      "enum": ["knowledge_search", "formula_search", "question_search", "solution_search", "mixed_search"]
+    },
+    "object_scope": {
+      "enum": ["knowledge", "question", "any"],
+      "description": "knowledge = 教材知识块（定义/定理/公式）；question = 题目；any = 不限制"
+    },
+    "hard": {
+      "type": "object",
+      "description": "明确指定的硬过滤；执行时不得静默放宽",
+      "properties": {
+        "question_scope": { "enum": ["knowledge", "question"] },
+        "source_types": {
+          "type": "array",
+          "items": { "enum": ["textbook", "gaokao_paper", "mock_exam"] }
+        },
+        "year_range": {
+          "type": "array",
+          "items": { "type": "integer" },
+          "minItems": 2,
+          "maxItems": 2
+        },
+        "papers": { "type": "array", "items": { "type": "string" } },
+        "question_types": {
+          "type": "array",
+          "items": { "enum": ["single_choice", "multiple_choice", "fill_blank", "free_response"] }
+        }
+      },
+      "additionalProperties": false
+    },
+    "soft": {
+      "type": "object",
+      "properties": {
+        "knowledge_points": { "type": "array", "items": { "type": "string" } },
+        "keywords": { "type": "array", "items": { "type": "string" } },
+        "role_hints": {
+          "type": "array",
+          "items": { "enum": ["challenge", "basic", "medium", "error_prone", "comprehensive", "innovative"] }
+        }
+      },
+      "additionalProperties": false
+    },
+    "uncertain": { "type": "array", "items": { "type": "string" } },
+    "extractor_conditions": { "type": "object" }
+  },
+  "additionalProperties": false
+}
