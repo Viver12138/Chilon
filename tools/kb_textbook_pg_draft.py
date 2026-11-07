@@ -89,13 +89,20 @@ def prepare_rows(items):
                 mv = x.get('teacher_version') or TEACHER_VERSION
                 rationale = x.get('reason') or '教师复核'
             else:
-                status = 'non_content'
+                module = x.get('teacher_module') or None
+                if module in ('—', '-'):
+                    module = None
+                # 教师给模块但不指定主考点 → vocab_gap（词表缺口）；模块/考点都空 → non_content
+                status = 'vocab_gap' if module else 'non_content'
                 source = 'teacher'
                 review = 'reviewed'
-                module = None
                 conf = 1.0
                 mv = x.get('teacher_version') or TEACHER_VERSION
-                rationale = '教师复核：非内容/不映射'
+                if module:
+                    rationale = (x.get('teacher_note') or x.get('reason')
+                                 or '教师复核：有模块但无合适主考点')
+                else:
+                    rationale = '教师复核：非内容/不映射'
         else:
             status = x.get('status') or ('mapped' if kp else 'vocab_gap')
             if not kp and status != 'non_content':
