@@ -139,6 +139,46 @@ pre {
   background: #f7f9ff; border: 1px solid #e9edf7; padding: 12px 14px;
   border-radius: 10px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
 }
+.app { display: flex; min-height: 100vh; }
+.sidebar {
+  width: 238px; flex: 0 0 238px; background: #101a34; color: #dce4ff;
+  padding: 20px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+}
+.sidebar .brand { color: #fff; font-size: 1.08rem; display: block; margin: 0 8px 22px; }
+.nav-group { color: #8292b8; font-size: 0.68rem; letter-spacing: 0.14em; margin: 18px 10px 6px; }
+.nav-item {
+  display: block; color: #c5d0ea; padding: 9px 11px; border-radius: 9px;
+  font-size: 0.9rem; margin: 2px 0;
+}
+.nav-item:hover { background: #1b294a; text-decoration: none; color: #fff; }
+.nav-item.active { background: #3157d5; color: #fff; font-weight: 650; }
+.main-shell { flex: 1; min-width: 0; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  padding: 14px 26px; background: #ffffffee; border-bottom: 1px solid var(--line);
+  position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+}
+.crumb { color: var(--muted); font-size: 0.88rem; }
+.top-actions { display: flex; align-items: center; gap: 12px; }
+.top-search { width: 260px; margin: 0; }
+.content { max-width: 1120px; margin: 0 auto; padding: 26px 26px 64px; }
+.dash-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
+.quick-card { display: block; color: inherit; text-decoration: none; }
+.quick-card:hover { text-decoration: none; transform: translateY(-1px); }
+.quick-card .kicker { color: var(--muted); font-size: 0.78rem; }
+.quick-card h3 { margin: 6px 0; font-size: 1.05rem; }
+.stat-row { display: flex; gap: 14px; flex-wrap: wrap; }
+.stat { flex: 1; min-width: 160px; }
+.stat b { font-size: 1.6rem; display: block; }
+.activity { display: flex; justify-content: space-between; gap: 12px; padding: 10px 0; border-bottom: 1px solid var(--line); }
+.pill { display: inline-flex; align-items: center; padding: 2px 9px; border-radius: 999px; background: #eef2ff; color: #2d4bb3; font-size: 0.8rem; }
+.auth-wrap { max-width: 420px; margin: 10vh auto; padding: 0 18px; }
+.auth-brand { text-align: center; color: var(--brand); font-weight: 800; font-size: 1.3rem; margin-bottom: 12px; }
+@media (max-width: 900px) {
+  .sidebar { display: none; }
+  .dash-grid { grid-template-columns: 1fr; }
+  .top-search { display: none; }
+}
 @media (max-width: 640px) {
   .wrap { padding: 18px 14px 48px; }
   .topbar { padding: 14px 14px 0; flex-wrap: wrap; }
@@ -152,26 +192,71 @@ def esc(value: object) -> str:
     return html.escape(str(value), quote=True)
 
 
-def page(title: str, body: str, *, teacher: str | None = None) -> HTMLResponse:
-    links = ""
-    if teacher:
-        links = (
-            f'<div class="nav"><span>{esc(teacher)}</span>'
-            '<a href="/ui/search">检索</a>'
-            '<a href="/ui/knowledge">知识库</a>'
-            '<form method="post" action="/ui/logout" style="margin:0">'
-            '<button class="secondary" type="submit">退出</button></form></div>'
-        )
-    header = (
-        '<div class="topbar">'
-        '<a class="brand" href="/ui/tasks">Chilon · 教师知识库</a>'
-        f'{links}</div>'
+ACTIVE_BY_TITLE = {
+    '工作台': 'dashboard',
+    '知识库': 'knowledge',
+    '知识库检索': 'search',
+    '我的任务': 'tasks',
+    '任务': 'tasks',
+    '设置': 'settings',
+}
+
+
+def _sidebar(active: str | None) -> str:
+    def item(label: str, href: str, key: str) -> str:
+        cls = 'nav-item active' if active == key else 'nav-item'
+        return f'<a class="{cls}" href="{href}">{esc(label)}</a>'
+
+    return (
+        '<aside class="sidebar">'
+        '<a class="brand" href="/ui/dashboard">Chilon · 教师知识库</a>'
+        '<div class="nav-group">WORKSPACE</div>'
+        + item('工作台', '/ui/dashboard', 'dashboard')
+        + item('AI 教学助手', '/ui/tasks', 'tasks')
+        + item('我的教学项目', '/ui/tasks', 'tasks')
+        + '<div class="nav-group">KNOWLEDGE CENTER</div>'
+        + item('知识库', '/ui/knowledge', 'knowledge')
+        + item('智能检索', '/ui/search', 'search')
+        + item('资料上传', '/ui/knowledge', 'knowledge')
+        + item('内容审核', '/ui/knowledge', 'knowledge')
+        + '<div class="nav-group">SYSTEM</div>'
+        + item('历史记录', '/ui/tasks', 'tasks')
+        + item('设置', '/ui/settings', 'settings')
+        + '</aside>'
     )
+
+
+def page(title: str, body: str, *, teacher: str | None = None,
+         active: str | None = None) -> HTMLResponse:
+    if teacher:
+        active = active or ACTIVE_BY_TITLE.get(title, 'dashboard')
+        top = (
+            '<header class="topbar">'
+            f'<span class="crumb">{esc(title)}</span>'
+            '<div class="top-actions">'
+            '<form class="top-search" method="get" action="/ui/search">'
+            '<input name="q" placeholder="搜索知识库…" aria-label="搜索知识库"></form>'
+            f'<span class="muted">{esc(teacher)}</span>'
+            '<form method="post" action="/ui/logout" style="margin:0">'
+            '<button class="secondary" type="submit">退出</button></form>'
+            '</div></header>'
+        )
+        shell = (
+            '<div class="app">' + _sidebar(active)
+            + '<div class="main-shell">' + top
+            + f'<main class="content"><h1>{esc(title)}</h1>{body}</main>'
+            + '</div></div>'
+        )
+    else:
+        shell = (
+            '<main class="auth-wrap"><div class="auth-brand">Chilon</div>'
+            f'<h1>{esc(title)}</h1>{body}</main>'
+        )
     return HTMLResponse(
         f"<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>"
         f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>{esc(title)} · Chilon</title><style>{STYLE}</style></head>"
-        f"<body>{header}<main class='wrap'><h1>{esc(title)}</h1>{body}</main></body></html>"
+        f"<body>{shell}</body></html>"
     )
 
 
@@ -228,7 +313,7 @@ def register_page(error: str | None = None) -> HTMLResponse:
 @router.get("/")
 async def root(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
     who = await teacher_from_cookie(chilon_session)
-    return RedirectResponse("/ui/tasks" if who else "/ui/login", status_code=303)
+    return RedirectResponse("/ui/dashboard" if who else "/ui/login", status_code=303)
 
 
 @router.get("/ui/login")
@@ -245,7 +330,7 @@ async def post_login(
             issued = await identity.login(session, username, password)
         except identity.IdentityError:
             return login_page("用户名或密码不正确")
-    response = RedirectResponse("/ui/tasks", status_code=303)
+    response = RedirectResponse("/ui/dashboard", status_code=303)
     response.set_cookie(
         COOKIE, issued.token, httponly=True, samesite="lax", path="/"
     )
@@ -277,7 +362,7 @@ async def post_register(
         await agent.ensure_default_grants(session, user_id)
     async with db.system_session() as session:
         issued = await identity.login(session, username, password)
-    response = RedirectResponse("/ui/tasks", status_code=303)
+    response = RedirectResponse("/ui/dashboard", status_code=303)
     response.set_cookie(COOKIE, issued.token, httponly=True, samesite="lax", path="/")
     return response
 
@@ -406,6 +491,7 @@ def _hit_card(hit: dict) -> str:
     return (
         f"<div class='card result-card {group}'>"
         f"{head}{body}"
+        f"<p><a href='/ui/search/{esc(str(hit.get('chunk_id')))}'>查看详情 →</a></p>"
         f"<button class='secondary copy-cite' data-citation='{esc(citation)}'>复制引用</button>"
         "</div>"
     )
@@ -461,7 +547,7 @@ def _search_page(user_name: str, query: str, result: dict | None, error: str | N
                 "b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.citation);"
                 "b.textContent='已复制';setTimeout(function(){b.textContent='复制引用';},1200);});});</script>"
             )
-    return page("知识库检索", ''.join(parts), teacher=user_name)
+    return page("知识库检索", ''.join(parts), teacher=user_name, active="search")
 
 
 @router.get("/ui/search")
@@ -502,6 +588,135 @@ async def ui_search(
         return _search_page(name, query, None, '今日检索额度已用完。')
     except Exception as exc:  # noqa: BLE001 - teacher sees a readable error
         return _search_page(name, query, None, f"检索暂时不可用：{type(exc).__name__}")
+
+
+@router.get("/ui/search/{chunk_id}")
+async def search_detail(
+    chunk_id: uuid.UUID,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    async with db.session_for(user_id) as session:
+        row = (await session.execute(text("""
+            SELECT c.id::text, c.text_content, s.title, s.source_type, s.year,
+                   s.exam_paper, c.locator::text,
+                   q.question_no, q.current_paper_question_type,
+                   q.current_knowledge_points, ac.text_content AS answer_text
+            FROM knowledge_chunks c
+            JOIN knowledge_document_versions dv ON dv.id = c.document_version_id
+            JOIN knowledge_sources s ON s.id = dv.source_id
+            LEFT JOIN knowledge_questions q
+              ON q.document_version_id = dv.id AND q.stem_locator = c.locator
+            LEFT JOIN knowledge_chunks ac
+              ON ac.document_version_id = dv.id AND ac.locator = q.answer_locator
+            WHERE c.id = :id
+        """), {'id': chunk_id})).first()
+    if row is None:
+        return page("找不到内容", "<p class='err'>内容不存在或无权访问。</p>", teacher=name)
+    source_label = SOURCE_LABELS.get(row[3], row[3] or '知识库')
+    qtype = QUESTION_TYPE_LABELS.get(row[8], row[8] or '')
+    qno = f"第{row[7]}题" if row[7] else ''
+    locator = _locator_page(row[6])
+    points = '、'.join(row[9] or [])
+    answer = (
+        f"<details class='answer' open><summary>原卷答案</summary>"
+        f"<pre>{esc(str(row[10])[:1600])}</pre></details>"
+        if row[10] else "<p class='muted'>没有关联原卷答案。</p>"
+    )
+    body = (
+        "<p><a href='/ui/search'>← 返回检索</a></p>"
+        "<div class='card'>"
+        f"<div class='result-head'><span class='tag'>{esc(source_label)}</span>"
+        f"{f'<span class=\'tag\'>{esc(qno)}</span>' if qno else ''}"
+        f"{f'<span class=\'tag\'>{esc(qtype)}</span>' if qtype else ''}</div>"
+        f"<p><b>{esc(row[2])}</b> · {esc(locator)}</p>"
+        + (f"<p class='muted'>知识点：{esc(points)}</p>" if points else '')
+        + f"<pre class='stem'>{esc(row[1])}</pre>{answer}"
+        "</div>"
+    )
+    return page(qno or "内容详情", body, teacher=name, active='search')
+
+
+# ── dashboard / settings ───────────────────────────────────────────────────────
+
+
+@router.get("/ui/dashboard")
+async def dashboard(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    async with db.session_for(user_id) as session:
+        tasks_rows = (await session.execute(text(
+            "SELECT id, title, status, created_at FROM tasks "
+            "WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 6"
+        ))).all()
+        task_count = (await session.execute(text(
+            "SELECT count(*) FROM tasks WHERE deleted_at IS NULL"
+        ))).scalar_one()
+        source_count = (await session.execute(text(
+            "SELECT count(*) FROM knowledge_sources WHERE deleted_at IS NULL"
+        ))).scalar_one()
+        pending_count = (await session.execute(text(
+            "SELECT count(*) FROM knowledge_document_versions "
+            "WHERE lifecycle_status = 'pending_review'"
+        ))).scalar_one()
+    activity = ''.join(
+        f"<div class='activity'><span>{esc(r.title)}</span>"
+        f"<span><span class='tag'>{esc(r.status)}</span> "
+        f"<span class='muted'>{esc(str(r.created_at)[:16])}</span></span></div>"
+        for r in tasks_rows
+    ) or "<p class='muted'>还没有任务。从一个教学需求开始。</p>"
+    body = (
+        "<div class='card'><h2>下午好，" + esc(name) + "</h2>"
+        "<p class='muted'>今天想从哪里开始？</p>"
+        "<form class='search-form' method='get' action='/ui/search'>"
+        "<input name='q' placeholder='例如：找近五年考查数列递推的高考解答题'>"
+        "<button type='submit'>智能检索</button></form></div>"
+        "<div class='dash-grid'>"
+        "<a class='card quick-card' href='/ui/search'><div class='kicker'>KNOWLEDGE</div>"
+        "<h3>智能检索</h3><p class='muted'>用自然语言找教材、真题和模拟题，并核对来源。</p></a>"
+        "<a class='card quick-card' href='/ui/knowledge'><div class='kicker'>KNOWLEDGE</div>"
+        "<h3>知识库</h3><p class='muted'>浏览、上传和审核高中数学资料。</p></a>"
+        "<a class='card quick-card' href='/ui/tasks'><div class='kicker'>WORKSPACE</div>"
+        "<h3>AI 教学助手</h3><p class='muted'>从一句话开始生成教学方案和材料。</p></a>"
+        "</div>"
+        "<div class='stat-row'>"
+        f"<div class='card stat'><span class='muted'>教学任务</span><b>{esc(task_count)}</b></div>"
+        f"<div class='card stat'><span class='muted'>知识资料</span><b>{esc(source_count)}</b></div>"
+        f"<div class='card stat'><span class='muted'>待审核版本</span><b>{esc(pending_count)}</b></div>"
+        "</div>"
+        "<h2>最近任务</h2><div class='card'>" + activity + "</div>"
+    )
+    return page("工作台", body, teacher=name, active='dashboard')
+
+
+@router.get("/ui/settings")
+async def settings_page(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    _, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    body = (
+        "<div class='card'><h2>账号与安全</h2>"
+        f"<p>当前账号：<b>{esc(name)}</b></p>"
+        "<p><a href='/ui/password'>修改密码</a></p></div>"
+        "<div class='card'><h2>检索设置</h2>"
+        "<p class='muted'>第一版使用 hybrid H 检索；HR 路由默认关闭。"
+        "检索来源、页码和审核状态会显示在结果卡中。</p></div>"
+        "<div class='card'><h2>数据与隐私</h2>"
+        "<p class='muted'>个人资料默认仅自己可见；导出学生版时答案由后端过滤。</p></div>"
+    )
+    return page("设置", body, teacher=name, active='settings')
 
 
 # ── tasks ──────────────────────────────────────────────────────────────────────
@@ -565,7 +780,8 @@ REASON_TEXT = {
 
 
 @router.get("/ui/knowledge")
-async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
+                         type: str | None = None) -> Response:
     """What the teacher uploaded, and what to do about anything held for review.
 
     The reason is rendered next to the state because the two together are the actionable
@@ -578,11 +794,20 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None)
     if pending:
         return RedirectResponse("/ui/password", status_code=303)
 
+    where = ["s.deleted_at IS NULL"]
+    params: dict = {}
+    type = (type or '').strip()
+    if type == 'mine':
+        where.append("s.scope = 'teacher'")
+    elif type in ('textbook', 'gaokao_paper', 'mock_exam'):
+        where.append("s.source_type = :source_type")
+        params['source_type'] = type
+
     async with db.session_for(user_id) as session:
         rows = (
             await session.execute(
                 text(
-                    """
+                    f"""
                     SELECT s.title, s.source_type, s.rights_status,
                            v.id AS version_id, v.lifecycle_status,
                            (SELECT r.metrics->'review_reasons' FROM knowledge_ingestion_runs r
@@ -596,10 +821,11 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None)
                         SELECT dv.id, dv.lifecycle_status FROM knowledge_document_versions dv
                         WHERE dv.source_id = s.id ORDER BY dv.version_no DESC LIMIT 1
                     ) v ON true
-                    WHERE s.deleted_at IS NULL
+                    WHERE {' AND '.join(where)}
                     ORDER BY s.created_at DESC LIMIT 100
                     """
-                )
+                ),
+                params,
             )
         ).all()
 
@@ -649,8 +875,17 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None)
             f"{reason_html}{holes}{promote}{detail}</div>"
         )
 
+    tabs = [('', '全部'), ('textbook', '教材'), ('gaokao_paper', '高考真题'),
+            ('mock_exam', '模拟题'), ('mine', '我的资料')]
+    tab_html = ''.join(
+        f"<a class='chip' style='text-decoration:none' href='/ui/knowledge{('?type=' + key) if key else ''}'>"
+        f"{'● ' if type == key else ''}{esc(label)}</a>"
+        for key, label in tabs
+    )
     body = (
-        (''.join(blocks) if blocks else "<p class='muted'>还没有上传任何材料。</p>")
+        "<p class='muted'>管理、查阅和审核高中数学教学资料。</p>"
+        f"<div class='chip-row'>{tab_html}</div>"
+        + (''.join(blocks) if blocks else "<p class='muted'>还没有上传任何材料。</p>")
         + "<h2>上传试卷</h2><div class='card'>"
         "<form method='post' action='/ui/knowledge' enctype='multipart/form-data'>"
         "<p><label>标题<br><input name='title' required></label></p>"
@@ -816,7 +1051,7 @@ async def knowledge_questions(
         f"<p class='muted'><a href='/ui/knowledge'>← 返回知识库</a></p>"
         + (''.join(cards) if cards else "<p class='muted'>这个版本还没有题目。</p>")
     )
-    return page("校对题目", body, teacher=name)
+    return page("校对题目", body, teacher=name, active="knowledge")
 
 
 async def _ui_question_action(chilon_session: str | None):
@@ -1210,7 +1445,7 @@ async def task_detail(
             "<h2>材料</h2><div class='card'><p class='muted'>执行完成后会在这里出现。</p></div>"
         )
 
-    return page(task.title, "".join(parts), teacher=name)
+    return page(task.title, "".join(parts), teacher=name, active="tasks")
 
 
 @router.post("/ui/tasks/{task_id}/plan")
