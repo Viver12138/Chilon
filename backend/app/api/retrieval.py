@@ -11,7 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.api.deps import ApiError, UserDep
-from app.services import retrieval_guard, retrieval_router, routed_retrieval
+from app.services import retrieval_guard, retrieval_health, retrieval_router, routed_retrieval
 
 router = APIRouter(tags=["retrieval"], prefix="/retrieval")
 
@@ -49,6 +49,11 @@ async def search(payload: SearchRequest, user: UserDep) -> dict:
         raise ApiError(503, 'CAPABILITY_GAP', str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
         raise ApiError(500, 'INTERNAL', f'retrieval failed: {exc}') from exc
+
+
+@router.get("/health")
+async def health() -> dict:
+    return await run_in_threadpool(retrieval_health.check)
 
 
 @router.post("/route")
