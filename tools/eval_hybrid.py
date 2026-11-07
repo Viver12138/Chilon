@@ -291,9 +291,11 @@ def main() -> int:
             t_extract = time.perf_counter() - started
 
             t0 = time.perf_counter()
-            text_hits = hr.text_search(conn, query["text"], conditions, use_filters=True)
+            text_hits, rare_hits, rare_missing, rare_rescue = hr.text_search_with_rare_rescue(
+                conn, query["text"], conditions
+            )
             text_fallback = False
-            if len(text_hits) < hr.CONFIG["min_filtered_hits"]:
+            if not rare_rescue and len(text_hits) < hr.CONFIG["min_filtered_hits"]:
                 text_hits = hr.text_search(conn, query["text"], conditions, use_filters=False)
                 text_fallback = True
             text_s = time.perf_counter() - t0
@@ -329,7 +331,12 @@ def main() -> int:
             hydrate_s = time.perf_counter() - t0
 
             t0 = time.perf_counter()
-            fused = hr.rrf_fuse([text_hits, vector_full])
+            if rare_rescue:
+                fused = hr.rrf_fuse(
+                    [text_hits, vector_full, rare_hits], weights=[1.0, 1.0, 3.0]
+                )
+            else:
+                fused = hr.rrf_fuse([text_hits, vector_full])
             hr.attach_annotation_points(fused, annotations)
             fuse_s = time.perf_counter() - t0
 
@@ -388,6 +395,8 @@ def main() -> int:
                     "conditions": conditions,
                     "text_hits": len(text_hits),
                     "text_fallback_unfiltered": text_fallback,
+                    "rare_keywords_missing": rare_missing,
+                    "rare_rescue_used": rare_rescue,
                     "vector_hits": len(vector_hits),
                     "vector_fallback_unfiltered": vector_fallback,
                     "fused_candidates": len(fused),

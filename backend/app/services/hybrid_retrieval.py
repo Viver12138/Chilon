@@ -740,6 +740,68 @@ def text_search(
         return [hit_from_row(row) for row in cur.fetchall()]
 
 
+RARE_TERM_MAX_CHUNKS = 50
+
+
+def _rare_keywords(conn, keywords: Sequence[str], *, max_freq: int = RARE_TERM_MAX_CHUNKS) -> list[str]:
+    """Keywords that are rare in the corpus (and thus easy to lose behind filters).
+
+    A term is rare when it occurs in at most ``max_freq`` chunks.  The count is
+    done per term; evaluation sets are small, and the alternative (silently
+    dropping a literal term such as 递推) is what Q08 exposed on 2026-11-07.
+    """
+    rare: list[str] = []
+    with conn.cursor() as cur:
+        for keyword in keywords:
+            if len(keyword) < 2:
+                continue
+            cur.execute(
+                "SELECT count(*) FROM knowledge_chunks WHERE text_content ILIKE %s",
+                (f"%{keyword}%",),
+            )
+            if int(cur.fetchone()[0]) <= max_freq:
+                rare.append(keyword)
+    return rare
+
+
+def text_search_with_rare_rescue(
+    conn,
+    query: str,
+    conditions: dict[str, Any],
+    *,
+    limit: int | None = None,
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], bool]:
+    """Filtered text search, plus a rare-term rescue list.
+
+    Problem (Q08, 2026-11-07): a query can combine a hard filter (近五年) with a
+    rare literal term (递推).  The filtered text path returns >= min_filtered_hits
+    rows, so the existing fallback never runs, while every 递推 chunk is outside
+    the filter.  We return the filtered list plus a separate list of unfiltered
+    hits containing the missing rare keyword; the caller fuses the rescue list
+    with a weight so the rare term is not silently dropped.
+    """
+    filtered = text_search(conn, query, conditions, limit=limit, use_filters=True)
+    rare = _rare_keywords(conn, conditions.get("keywords") or [])
+    if not rare:
+        return filtered, [], [], False
+    missing = [
+        keyword
+        for keyword in rare
+        if not any(keyword in (hit.get("text") or "") for hit in filtered)
+    ]
+    if not missing:
+        return filtered, [], [], False
+    unfiltered = text_search(conn, query, conditions, limit=limit, use_filters=False)
+    rescue = [
+        hit
+        for hit in unfiltered
+        if any(keyword in (hit.get("text") or "") for keyword in missing)
+    ]
+    if not rescue:
+        return filtered, [], missing, False
+    return filtered, rescue, missing, True
+
+
 # ---------------------------------------------------------------------------
 # Qdrant
 # ---------------------------------------------------------------------------
@@ -808,15 +870,21 @@ def vector_search(
 # ---------------------------------------------------------------------------
 
 
-def rrf_fuse(ranked_lists: Iterable[Sequence[dict[str, Any]]], *, k: int | None = None) -> list[dict[str, Any]]:
+def rrf_fuse(
+    ranked_lists: Iterable[Sequence[dict[str, Any]]],
+    *,
+    k: int | None = None,
+    weights: Sequence[float] | None = None,
+) -> list[dict[str, Any]]:
     k = k or CONFIG["rrf_k"]
     scores: dict[str, float] = {}
     by_id: dict[str, dict[str, Any]] = {}
     sources: dict[str, list[str]] = {}
     for list_index, hits in enumerate(ranked_lists):
+        weight = float(weights[list_index]) if weights is not None else 1.0
         for rank, hit in enumerate(hits, 1):
             chunk_id = hit["chunk_id"]
-            scores[chunk_id] = scores.get(chunk_id, 0.0) + 1.0 / (k + rank)
+            scores[chunk_id] = scores.get(chunk_id, 0.0) + weight / (k + rank)
             if chunk_id not in by_id:
                 by_id[chunk_id] = hit
             sources.setdefault(chunk_id, []).append(f"{list_index}:{rank}")
