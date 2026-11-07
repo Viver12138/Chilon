@@ -402,6 +402,11 @@ retrieval_evaluation:
 
 **建议的选型验证**（成本极低）：用同一 12,973 chunks、同 1024 维、同 payload 建两套 Qdrant collection（qwen3.7 vs flash），在 v2.0 验收集上比较 Recall@8 / Strict Recall@8 / Strict@1；总成本 <¥2、API 建库各约 10–25 分钟。v4 作为对照第三套可选。
 
+**选型决策（2026-11-07）**：**质量优先，主选 `qwen3.7-text-embedding`（1024 维，北京区）**。配置变量已写入 `.env.example`：
+`CHILON_QWEN_API_KEY`（兼容官方 `DASHSCOPE_API_KEY`）、`CHILON_QWEN_BASE_URL`、`CHILON_QWEN_REGION`、
+`CHILON_QWEN_EMBEDDING_MODEL`、`CHILON_QWEN_EMBEDDING_DIM`、`CHILON_QWEN_RERANK_MODEL`。flash 保留为后续降本 A/B 候选；
+v4 仅作“本地 Qwen3-Embedding-0.6B 同源”对照。工具切换到 API 后，必须先用 v2 验收集重跑 strict 指标再采信。
+
 ## B8. 验收与决策
 
 1. **初期验收集 v2.0**：60 条、五类各 12、30 条 strict、κ ≥0.70、sha256 冻结 → **数据集验收通过**（只用于阶段 6 初期验收）；

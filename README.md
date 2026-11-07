@@ -175,6 +175,26 @@ python backend/tests/check_llm.py
 | `CHILON_DEEPSEEK_MODEL` | `deepseek-chat` | 或 `deepseek-reasoner` |
 | `CHILON_PLANNER` | `deepseek` | 设为 `template` 可离线跑测试 |
 
+### Qwen / 阿里云百炼（检索 embedding）
+
+2026-11-07 选型：**质量优先 → `qwen3.7-text-embedding`（1024 维，北京区）**。密钥只放在本机 `.env`（不进版本库）：
+
+```powershell
+# 编辑 .env，填入百炼控制台申请的 API-KEY
+CHILON_QWEN_API_KEY=sk-...
+```
+
+| 变量 | 默认 | 说明 |
+| --- | --- | --- |
+| `CHILON_QWEN_API_KEY` | 空 | 必填；也兼容官方环境变量 `DASHSCOPE_API_KEY` |
+| `CHILON_QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | 新加坡区用 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+| `CHILON_QWEN_REGION` | `beijing` | 仅用于选择 endpoint 的提示 |
+| `CHILON_QWEN_EMBEDDING_MODEL` | `qwen3.7-text-embedding` | 质量优先；降本备选 `qwen3.7-text-embedding-flash` |
+| `CHILON_QWEN_EMBEDDING_DIM` | `1024` | 与现有 Qdrant 集合维度一致 |
+| `CHILON_QWEN_RERANK_MODEL` | `qwen3-rerank` | 可选；评估阶段可继续用本地 Qwen3-Reranker-0.6B |
+
+当前 `.env.example` 已给出占位；真正切到 API 时由检索/评测工具读取这些变量。密钥不要提交到仓库，也不要写进文档。
+
 ## 设计与契约的状态
 
 设计已完成并冻结：分册 D1（产品闭环与门禁）、D2（信息架构）、D3（页面规格）、D4（动作与错误码）、D5（接口与 SSE）、D6（验收与测试矩阵）、K09（知识库字段设计）。
