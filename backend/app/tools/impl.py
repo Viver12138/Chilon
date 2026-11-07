@@ -175,7 +175,13 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
         search_mode = "legacy"
     if search_mode == "legacy":
         result = await _legacy_knowledge_search(session, ctx)
-        result["retrieval"] = {"mode": "legacy", "search_mode": search_mode, "router_flag": flag}
+        result["retrieval"] = {
+            "mode": "legacy",
+            "search_mode": search_mode,
+            "router_flag": flag,
+            "status": "ok" if result.get("hits") else "empty",
+            "empty_reason": None if result.get("hits") else "no_match",
+        }
         return result
 
     try:
@@ -200,6 +206,8 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
                 "auto_mode": routed["auto_mode"],
                 "shadow_mode": routed["shadow_mode"],
                 "router_flag": routed["router_flag"],
+                "status": routed.get("status"),
+                "empty_reason": routed.get("empty_reason"),
                 "plan_intent": routed["plan"].get("intent"),
                 "hard_filters": routed["hard_filters"],
                 "candidate_count": routed["candidate_count"],
@@ -223,6 +231,8 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
             "mode": "legacy_fallback",
             "search_mode": search_mode,
             "router_flag": flag,
+            "status": "empty" if not result.get("hits") else "ok",
+            "empty_reason": "no_match" if not result.get("hits") else None,
             "error": f"{type(exc).__name__}: {exc}"[:300],
         }
         return result

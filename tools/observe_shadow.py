@@ -29,6 +29,9 @@ def main() -> int:
     parser = argparse.ArgumentParser(description='Summarize shadow router events')
     parser.add_argument('--path', type=Path, default=DEFAULT)
     parser.add_argument('--out-prefix', type=Path, default=None)
+    parser.add_argument('--max-empty-rate', type=float, default=None)
+    parser.add_argument('--max-p95-ms', type=float, default=None)
+    parser.add_argument('--max-fallback', type=int, default=None)
     args = parser.parse_args()
     if not args.path.exists():
         print(f'no shadow events at {args.path}')
@@ -70,6 +73,17 @@ def main() -> int:
         'top_queries': Counter(e.get('query') for e in events).most_common(10),
     }
     print(json.dumps(summary, ensure_ascii=False, indent=2))
+    failures = []
+    if args.max_empty_rate is not None and summary['empty_rate'] > args.max_empty_rate:
+        failures.append(f"empty_rate {summary['empty_rate']:.2%} > {args.max_empty_rate:.2%}")
+    if args.max_p95_ms is not None and summary['latency_ms']['p95'] is not None and summary['latency_ms']['p95'] > args.max_p95_ms:
+        failures.append(f"p95 {summary['latency_ms']['p95']:.0f}ms > {args.max_p95_ms:.0f}ms")
+    if args.max_fallback is not None and fallback > args.max_fallback:
+        failures.append(f"legacy_fallback {fallback} > {args.max_fallback}")
+    if failures:
+        print('HEALTH FAIL: ' + '; '.join(failures))
+    else:
+        print('HEALTH OK')
     if args.out_prefix:
         args.out_prefix.parent.mkdir(parents=True, exist_ok=True)
         Path(str(args.out_prefix) + '.json').write_text(
@@ -86,7 +100,7 @@ def main() -> int:
             lines.append(f'- {count}× {query}')
         Path(str(args.out_prefix) + '.md').write_text('\n'.join(lines) + '\n', encoding='utf-8')
         print(f'wrote {args.out_prefix}.json/.md')
-    return 0
+    return 1 if failures else 0
 
 
 if __name__ == '__main__':

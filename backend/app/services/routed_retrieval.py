@@ -209,6 +209,15 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
                 'rrf_score': base.get('rrf_score'),
                 'rerank_score': base.get('rerank_score'),
             })
+        candidate_count = len(hits)
+        if final:
+            status = 'ok'
+            empty_reason = None
+        else:
+            status = 'empty'
+            empty_reason = 'no_candidates' if candidate_count == 0 else (
+                'no_match_under_filters' if hard else 'no_match'
+            )
         if router_flag in ('shadow', 'on'):
             shadow_log.append({
                 'source': 'retrieval-service',
@@ -222,7 +231,8 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
                 'hard_filters': plan.get('hard'),
                 'hit_count': len(final),
                 'empty': not final,
-                'candidate_count': len(hits),
+                'empty_reason': empty_reason,
+                'candidate_count': candidate_count,
                 'elapsed_ms': round((time.perf_counter() - started) * 1000, 1),
                 'top_chunk_ids': [h.get('chunk_id') for h in final[:3]],
             })
@@ -234,7 +244,9 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
             'router_flag': router_flag,
             'plan': plan,
             'hits': final,
-            'candidate_count': len(hits),
+            'status': status,
+            'empty_reason': empty_reason,
+            'candidate_count': candidate_count,
             'hard_filters': plan['hard'],
             'elapsed_ms': round((time.perf_counter() - started) * 1000, 1),
         }
