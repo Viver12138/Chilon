@@ -88,12 +88,17 @@ def _hydrate(conn, vector_hits: list[dict]) -> list[dict]:
     with conn.cursor() as cur:
         cur.execute("""
             SELECT c.id::text, c.text_content, s.title, s.source_type, s.year,
-                   s.exam_paper, q.current_paper_question_type, c.locator::text
+                   s.exam_paper, q.current_paper_question_type, c.locator::text,
+                   q.id::text AS question_id, q.question_no,
+                   q.current_knowledge_points, ac.text_content AS answer_text,
+                   s.id::text AS source_id, dv.id::text AS document_version_id
             FROM knowledge_chunks c
             JOIN knowledge_document_versions dv ON dv.id = c.document_version_id
             JOIN knowledge_sources s ON s.id = dv.source_id
             LEFT JOIN knowledge_questions q
               ON q.document_version_id = dv.id AND q.stem_locator = c.locator
+            LEFT JOIN knowledge_chunks ac
+              ON ac.document_version_id = dv.id AND ac.locator = q.answer_locator
             WHERE c.id = ANY(%s::uuid[])
         """, (ids,))
         rows = {r[0]: r for r in cur.fetchall()}
@@ -112,12 +117,19 @@ def _hydrate(conn, vector_hits: list[dict]) -> list[dict]:
             'source_paper': row[5],
             'question_type': row[6],
             'locator': row[7],
+            'question_id': row[8],
+            'question_no': row[9],
+            'knowledge_points': list(row[10] or []),
+            'answer': row[11],
+            'source_id': row[12],
+            'document_version_id': row[13],
             'vector_score': hit.get('vector_score'),
         })
     return out
 
 
-def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '') -> dict[str, Any]:
+def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '',
+           sources: list[str] | None = None) -> dict[str, Any]:
     started = time.perf_counter()
     plan = query_plan.build_plan(query)
     if mode in ('h', 'hr'):
@@ -134,7 +146,9 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
 
     conditions = dict(plan['hard'])
     conditions['keywords'] = list(plan['soft'].get('keywords') or [])
-    hard = bool(plan['hard'])
+    if sources:
+        conditions['source_types'] = list(sources)
+    hard = bool(plan['hard']) or bool(sources)
 
     import psycopg
     from qdrant_client import QdrantClient
@@ -169,21 +183,31 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
                 item = dict(h)
                 item['rerank_score'] = score
                 hits.append(item)
+        final_hits = hits[:limit]
+        enriched = {h['chunk_id']: h for h in _hydrate(conn, final_hits)}
         final = []
-        for rank, hit in enumerate(hits[:limit], 1):
+        for rank, hit in enumerate(final_hits, 1):
+            cid = hit.get('chunk_id')
+            base = dict(enriched.get(cid) or {})
+            base.update({k: v for k, v in hit.items() if v is not None})
             final.append({
                 'rank': rank,
-                'chunk_id': hit.get('chunk_id'),
-                'question_id': hit.get('question_id'),
-                'excerpt': (hit.get('excerpt') or '')[:400],
-                'source_title': hit.get('source_title'),
-                'source_type': hit.get('source_type'),
-                'year': hit.get('year'),
-                'source_paper': hit.get('source_paper'),
-                'question_type': hit.get('question_type'),
-                'locator': hit.get('locator'),
-                'rrf_score': hit.get('rrf_score'),
-                'rerank_score': hit.get('rerank_score'),
+                'chunk_id': cid,
+                'question_id': base.get('question_id'),
+                'question_no': base.get('question_no'),
+                'question_type': base.get('question_type'),
+                'knowledge_points': base.get('knowledge_points') or [],
+                'answer': base.get('answer'),
+                'source_id': base.get('source_id'),
+                'source_title': base.get('source_title'),
+                'source_type': base.get('source_type'),
+                'year': base.get('year'),
+                'source_paper': base.get('source_paper'),
+                'document_version_id': base.get('document_version_id'),
+                'locator': base.get('locator'),
+                'excerpt': (base.get('excerpt') or '')[:400],
+                'rrf_score': base.get('rrf_score'),
+                'rerank_score': base.get('rerank_score'),
             })
         return {
             'query': query,

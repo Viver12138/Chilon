@@ -16,6 +16,7 @@ Every tool returns a JSON-serialisable dict that is stored as the step's output.
 
 from __future__ import annotations
 
+import asyncio
 import hashlib
 import json
 import re
@@ -48,7 +49,7 @@ class ToolContext:
 # ── knowledge.search ────────────────────────────────────────────────────────────
 
 
-async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str, Any]:
+async def _legacy_knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str, Any]:
     """Keyword retrieval over chunks, joined to their question when there is one.
 
     Retrieval stays keyword + metadata on purpose (embedding is deferred), so this
@@ -147,6 +148,63 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
         for r in rows
     ]
     return {"topic": topic, "hit_count": len(hits), "hits": hits}
+
+
+async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str, Any]:
+    """Knowledge search with the H/HR router.
+
+    Default (`CHILON_RETRIEVAL_ROUTER=off`) keeps the legacy SQL path exactly as
+    before. `shadow`/`on` route through the hybrid retrieval service; shadow still
+    returns H hits but records the auto mode for comparison. If the hybrid service
+    is unavailable, fall back to legacy and mark the fallback in the output.
+    """
+    requirement = ctx.requirement
+    topic = (requirement.get("topic") or "").strip()
+    sources = requirement.get("sources") or []
+    limit = int(ctx.spec.get("limit") or 8)
+    if not topic:
+        raise ToolFailed("requirement has no topic to search for")
+
+    flag = (config.get("CHILON_RETRIEVAL_ROUTER", "off") or "off").lower()
+    if flag not in ("shadow", "on"):
+        result = await _legacy_knowledge_search(session, ctx)
+        result["retrieval"] = {"mode": "legacy", "router_flag": flag}
+        return result
+
+    try:
+        from app.services import routed_retrieval
+
+        routed = await asyncio.to_thread(
+            routed_retrieval.search,
+            topic,
+            limit=limit,
+            mode="auto",
+            user_key=str(ctx.owner_id),
+            sources=list(sources),
+        )
+        return {
+            "topic": topic,
+            "hit_count": len(routed["hits"]),
+            "hits": routed["hits"],
+            "retrieval": {
+                "mode": routed["mode"],
+                "auto_mode": routed["auto_mode"],
+                "shadow_mode": routed["shadow_mode"],
+                "router_flag": routed["router_flag"],
+                "plan_intent": routed["plan"].get("intent"),
+                "hard_filters": routed["hard_filters"],
+                "candidate_count": routed["candidate_count"],
+                "elapsed_ms": routed["elapsed_ms"],
+            },
+        }
+    except Exception as exc:  # noqa: BLE001 - availability fallback, not a silent quality claim
+        result = await _legacy_knowledge_search(session, ctx)
+        result["retrieval"] = {
+            "mode": "legacy_fallback",
+            "router_flag": flag,
+            "error": f"{type(exc).__name__}: {exc}"[:300],
+        }
+        return result
 
 
 # ── content.generate ────────────────────────────────────────────────────────────
