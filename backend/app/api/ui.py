@@ -58,26 +58,93 @@ COOKIE = "chilon_session"
 # ── tiny templating ────────────────────────────────────────────────────────────
 
 STYLE = """
-:root { color-scheme: light dark; }
-body { font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
-       max-width: 880px; margin: 0 auto; padding: 24px; line-height: 1.6; }
-h1 { font-size: 1.4rem; } h2 { font-size: 1.1rem; margin-top: 2rem; }
-.card { border: 1px solid #8884; border-radius: 8px; padding: 16px; margin: 12px 0; }
-button { padding: 8px 14px; border-radius: 6px; border: 1px solid #8886;
-         background: #4a6cf7; color: #fff; cursor: pointer; font-size: 0.95rem; }
-button.secondary { background: transparent; color: inherit; }
-input, textarea { width: 100%; padding: 8px; box-sizing: border-box;
-                  border-radius: 6px; border: 1px solid #8886; font: inherit; }
-.muted { opacity: 0.7; font-size: 0.9rem; }
-.err { color: #c0392b; } .ok { color: #27ae60; }
+:root {
+  color-scheme: light;
+  --bg: #f4f6fb;
+  --card: #ffffff;
+  --ink: #172033;
+  --muted: #667085;
+  --line: #e4e8f0;
+  --brand: #3157d5;
+  --brand-soft: #eef2ff;
+  --ok: #0f8a5f;
+  --err: #c0392b;
+}
+* { box-sizing: border-box; }
+body {
+  margin: 0; background: radial-gradient(circle at 10% 0%, #e8eeff 0, transparent 34%), var(--bg);
+  color: var(--ink); font-family: -apple-system, "Segoe UI", "Microsoft YaHei", sans-serif;
+  line-height: 1.65;
+}
+a { color: var(--brand); text-decoration: none; }
+a:hover { text-decoration: underline; }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 24px 22px 64px; }
+.topbar {
+  display: flex; justify-content: space-between; align-items: center; gap: 16px;
+  max-width: 1080px; margin: 0 auto; padding: 18px 22px 0;
+}
+.brand { font-weight: 800; letter-spacing: 0.2px; color: var(--brand); font-size: 1.02rem; }
+.nav { display: flex; align-items: center; gap: 14px; color: var(--muted); font-size: 0.92rem; }
+h1 { font-size: 1.65rem; letter-spacing: -0.3px; margin: 4px 0 18px; }
+h2 { font-size: 1.02rem; margin: 28px 0 10px; color: #26324a; }
+.card {
+  background: var(--card); border: 1px solid var(--line); border-radius: 16px;
+  padding: 20px; margin: 14px 0; box-shadow: 0 8px 26px rgba(24, 39, 75, 0.055);
+}
+.search-hero { padding: 24px; border-radius: 18px; }
+.search-hero h2 { margin-top: 0; }
+.search-form { display: flex; gap: 10px; align-items: stretch; }
+.search-form input { margin: 0; }
+.search-form button { white-space: nowrap; }
+input, textarea {
+  width: 100%; padding: 11px 13px; border-radius: 11px; border: 1px solid #cfd7e6;
+  background: #fbfcff; font: inherit; color: var(--ink); outline: none;
+}
+input:focus, textarea:focus { border-color: var(--brand); box-shadow: 0 0 0 3px #3157d51f; }
+button {
+  padding: 10px 16px; border-radius: 11px; border: 1px solid transparent;
+  background: linear-gradient(180deg, #3f63e0, #3157d5); color: #fff; cursor: pointer;
+  font-size: 0.95rem; font-weight: 650; box-shadow: 0 4px 12px #3157d529;
+}
+button:hover { filter: brightness(1.05); }
+button.secondary { background: #fff; color: var(--brand); border-color: #c9d3f5; box-shadow: none; }
+.muted { color: var(--muted); font-size: 0.9rem; }
+.err { color: var(--err); } .ok { color: var(--ok); }
 table { border-collapse: collapse; width: 100%; }
-td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #8883; }
-.tag { display: inline-block; padding: 2px 8px; border-radius: 999px;
-       background: #8882; font-size: 0.85rem; }
-.chip { display: inline-block; padding: 2px 10px; margin: 2px 4px 2px 0;
-        border-radius: 999px; background: #4a6cf71a; font-size: 0.85rem; }
-.copy-cite { font-size: 0.8rem; padding: 3px 8px; margin-top: 4px; }
-pre { background: #8881; padding: 12px; border-radius: 6px; overflow-x: auto; }
+td, th { text-align: left; padding: 9px 8px; border-bottom: 1px solid var(--line); }
+th { color: var(--muted); font-weight: 600; font-size: 0.86rem; }
+.tag {
+  display: inline-block; padding: 2px 9px; border-radius: 999px;
+  background: var(--brand-soft); color: #2946a7; font-size: 0.8rem; font-weight: 650;
+}
+.chip {
+  display: inline-block; padding: 4px 11px; margin: 2px 6px 2px 0;
+  border-radius: 999px; background: #eef2ff; color: #2d4bb3;
+  border: 1px solid #dbe3ff; font-size: 0.82rem;
+}
+.chip-row { margin: 8px 0 18px; }
+.result-grid { display: grid; grid-template-columns: 1fr; gap: 0; }
+.result-card { border-left: 4px solid #c7d4ff; }
+.result-card.question { border-left-color: var(--brand); }
+.result-card.knowledge { border-left-color: #7aa7ff; }
+.result-meta { color: var(--muted); font-size: 0.86rem; }
+.result-head { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 6px; }
+.stem { white-space: pre-wrap; font-size: 0.95rem; }
+.answer { margin-top: 10px; border-top: 1px dashed var(--line); padding-top: 10px; }
+.answer summary { cursor: pointer; color: var(--brand); font-size: 0.9rem; }
+.copy-cite { font-size: 0.8rem; padding: 5px 10px; margin-top: 10px; }
+.empty-card { text-align: center; padding: 28px; }
+.empty-card .err { font-size: 1.05rem; font-weight: 700; }
+pre {
+  background: #f7f9ff; border: 1px solid #e9edf7; padding: 12px 14px;
+  border-radius: 10px; overflow-x: auto; white-space: pre-wrap; word-break: break-word;
+}
+@media (max-width: 640px) {
+  .wrap { padding: 18px 14px 48px; }
+  .topbar { padding: 14px 14px 0; flex-wrap: wrap; }
+  .search-form { flex-direction: column; }
+  h1 { font-size: 1.4rem; }
+}
 """
 
 
@@ -86,21 +153,25 @@ def esc(value: object) -> str:
 
 
 def page(title: str, body: str, *, teacher: str | None = None) -> HTMLResponse:
-    header = ""
+    links = ""
     if teacher:
-        header = (
-            '<div class="muted" style="display:flex;justify-content:space-between">'
-            f"<span>{esc(teacher)}</span>"
-            '<a href="/ui/search" style="margin-right:12px">检索</a>'
-            '<a href="/ui/knowledge" style="margin-right:12px">知识库</a>'
+        links = (
+            f'<div class="nav"><span>{esc(teacher)}</span>'
+            '<a href="/ui/search">检索</a>'
+            '<a href="/ui/knowledge">知识库</a>'
             '<form method="post" action="/ui/logout" style="margin:0">'
             '<button class="secondary" type="submit">退出</button></form></div>'
         )
+    header = (
+        '<div class="topbar">'
+        '<a class="brand" href="/ui/tasks">Chilon · 教师知识库</a>'
+        f'{links}</div>'
+    )
     return HTMLResponse(
         f"<!doctype html><html lang='zh-CN'><head><meta charset='utf-8'>"
         f"<meta name='viewport' content='width=device-width,initial-scale=1'>"
         f"<title>{esc(title)} · Chilon</title><style>{STYLE}</style></head>"
-        f"<body>{header}<h1>{esc(title)}</h1>{body}</body></html>"
+        f"<body>{header}<main class='wrap'><h1>{esc(title)}</h1>{body}</main></body></html>"
     )
 
 
@@ -298,18 +369,43 @@ def _hit_card(hit: dict) -> str:
     title = hit.get('source_title') or ''
     page = _locator_page(hit.get('locator'))
     qtype = QUESTION_TYPE_LABELS.get(hit.get('question_type'), hit.get('question_type') or '')
+    qno = f"第{hit.get('question_no')}题" if hit.get('question_no') else ''
     meta = [source_label, title, hit.get('source_paper'), hit.get('year')]
     meta_text = ' · '.join(str(x) for x in meta if x)
-    citation = ' '.join(part for part in (title, page, f"题型 {qtype}" if qtype else '') if part)
+    citation = ' '.join(part for part in (title, page, qno, f"题型 {qtype}" if qtype else '') if part)
     citation = f"{citation}｜{(hit.get('excerpt') or '')[:180]}"
+    excerpt = esc((hit.get('excerpt') or '')[:900])
+    head = (
+        "<div class='result-head'>"
+        f"<span class='tag'>{esc(OBJECT_LABELS[group])}</span>"
+        f"<span class='tag'>{esc(source_label)}</span>"
+        + (f"<span class='tag'>{esc(qno)}</span>" if qno else '')
+        + (f"<span class='tag'>{esc(qtype)}</span>" if qtype else '')
+        + "</div>"
+    )
+    if group == 'question':
+        # The chunk is the OCR stem (options included when the paper has them).
+        answer = ''
+        if hit.get('answer'):
+            answer = (
+                "<details class='answer'><summary>查看原卷答案</summary>"
+                f"<pre>{esc(str(hit.get('answer'))[:1200])}</pre></details>"
+            )
+        body = (
+            f"<p class=''>{esc(meta_text)}</p>"
+            f"<p class='result-meta'>{esc(page)} · chunk {esc(str(hit.get('chunk_id'))[:8])}</p>"
+            f"<pre class='stem'>{excerpt}</pre>"
+            f"{answer}"
+        )
+    else:
+        body = (
+            f"<p class=''>{esc(meta_text)}</p>"
+            f"<p class='result-meta'>{esc(page)} · chunk {esc(str(hit.get('chunk_id'))[:8])}</p>"
+            f"<pre>{excerpt}</pre>"
+        )
     return (
-        "<div class='card'>"
-        f"<p><span class='tag'>{esc(OBJECT_LABELS[group])}</span> "
-        f"<span class='tag'>{esc(source_label)}</span> {esc(meta_text)}</p>"
-        f"<p class='muted'>{esc(page)}"
-        f"{' · 题型 ' + esc(qtype) if qtype else ''}"
-        f" · chunk {esc(str(hit.get('chunk_id'))[:8])}</p>"
-        f"<pre>{esc((hit.get('excerpt') or '')[:600])}</pre>"
+        f"<div class='card result-card {group}'>"
+        f"{head}{body}"
         f"<button class='secondary copy-cite' data-citation='{esc(citation)}'>复制引用</button>"
         "</div>"
     )
@@ -317,9 +413,10 @@ def _hit_card(hit: dict) -> str:
 
 def _search_page(user_name: str, query: str, result: dict | None, error: str | None) -> HTMLResponse:
     form = (
-        "<div class='card'><form method='get' action='/ui/search'>"
+        "<div class='card search-hero'><h2>从知识库找证据</h2>"
+        "<form class='search-form' method='get' action='/ui/search'>"
         f"<input name='q' value='{esc(query)}' placeholder='例如：导数的切线方程公式是什么？' required>"
-        "<p><button type='submit'>检索</button></p></form>"
+        "<button type='submit'>检索</button></form>"
         "<p class='muted'>只展示知识库原文证据，不生成答案；请核对来源和页码。</p></div>"
     )
     parts = [form]
@@ -332,12 +429,12 @@ def _search_page(user_name: str, query: str, result: dict | None, error: str | N
         parts.append(
             f"<p class='muted'>模式 {esc(mode)} · 状态 {esc(status)} · "
             f"{esc(result.get('elapsed_ms'))}ms</p>"
-            "<p>" + ''.join(f"<span class='chip'>{esc(chip)}</span>" for chip in chips) + "</p>"
+            "<div class='chip-row'>" + ''.join(f"<span class='chip'>{esc(chip)}</span>" for chip in chips) + "</div>"
         )
         if not result.get('hits'):
             reason = EMPTY_REASONS.get(result.get('empty_reason'), '没有找到匹配内容')
             parts.append(
-                "<div class='card'><p class='err'>没有找到匹配内容。</p>"
+                "<div class='card empty-card'><p class='err'>没有找到匹配内容。</p>"
                 f"<p class='muted'>原因：{esc(reason)}。可以换一个更具体的说法，或去掉年份/题型等条件。</p></div>"
             )
         else:
