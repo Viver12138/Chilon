@@ -95,6 +95,8 @@ Q08 原话：**“整理近五年高考数学数列大题，重点筛选递推�
 
 复测产物：`var/retrieval/hybrid_eval_qwen_api_rare2_2026-11-07.json` / `.md`。
 
+**复跑校验（2026-11-07）**：同配置再跑一遍（`var/retrieval/hybrid_eval_qwen_api_rare_rerun_2026-11-07`），逐条 `status/lenient_rank` 与首次 **0 差异**，指标一致（15/15、MRR 0.780/0.723），说明该修复结果可复现。
+
 ### 3.2 MRR 为什么下降
 
 - **API embedding 排序差异**：Q05（1→4）、Q16（1→4）、Q03（1→2）——qwen3.7 的语义排序与本地 Qwen3-Embedding-0.6B 不同，把“含期望片段”的 chunk 排后了；
