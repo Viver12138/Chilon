@@ -137,7 +137,7 @@ def load() -> Settings:
         # 官方 DASHSCOPE_API_KEY 作为回退，方便直接复用百炼文档里的变量名。
         qwen_api_key=get("CHILON_QWEN_API_KEY") or get("DASHSCOPE_API_KEY"),
         qwen_base_url=get("CHILON_QWEN_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"),
-        qwen_region=get("CHILON_QWEN_REGION", "beijing"),
+        qwen_region=get("CHILON_QWEN_REGION", "cn-beijing"),
         qwen_timeout_seconds=get_int("CHILON_QWEN_TIMEOUT_SECONDS", 30),
         qwen_embedding_model=get("CHILON_QWEN_EMBEDDING_MODEL", "qwen3.7-text-embedding"),
         qwen_embedding_dim=get_int("CHILON_QWEN_EMBEDDING_DIM", 1024),
