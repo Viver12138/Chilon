@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://chilon.local/schemas/content_type.v0.schema.json",
+  "title": "教材块内容类型标注 v0（draft）",
+  "description": "1797 个教师已复核教材块的内容类型 draft。primary 用于检索路由；labels 保留多标签，mixed=true 表示一个块包含多种类型。不是冻结标注，需教师/编辑复核。",
+  "type": "object",
+  "required": ["version", "source", "enum", "total", "counts", "blocks"],
+  "properties": {
+    "version": { "const": "content-type-draft/v0" },
+    "source": { "type": "string" },
+    "enum": {
+      "type": "array",
+      "items": { "enum": ["definition", "theorem", "formula", "example", "exercise", "catalog", "reading", "other"] }
+    },
+    "total": { "type": "integer", "minimum": 0 },
+    "counts": { "type": "object" },
+    "mixed": { "type": "integer", "minimum": 0 },
+    "note": { "type": "string" },
+    "blocks": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/block" }
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "block": {
+      "type": "object",
+      "required": ["block_id", "chunk_id", "source_title", "page", "primary", "labels", "mixed", "confidence", "method", "text_excerpt"],
+      "properties": {
+        "block_id": { "type": "string" },
+        "chunk_id": { "type": "string" },
+        "text": { "type": "string" },
+        "source_title": { "type": "string" },
+        "page": { "type": ["integer", "null"] },
+        "kp_primary": { "type": ["string", "null"] },
+        "module_id": { "type": ["string", "null"] },
+        "primary": { "enum": ["definition", "theorem", "formula", "example", "exercise", "catalog", "reading", "other"] },
+        "labels": {
+          "type": "array",
+          "items": { "enum": ["definition", "theorem", "formula", "example", "exercise", "catalog", "reading", "other"] }
+        },
+        "mixed": { "type": "boolean" },
+        "confidence": { "enum": ["explicit", "weak"] },
+        "method": { "type": "string" },
+        "text_excerpt": { "type": "string" }
+      },
+      "additionalProperties": true
+    }
+  }
+}
