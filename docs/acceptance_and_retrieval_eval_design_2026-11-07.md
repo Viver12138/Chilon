@@ -339,6 +339,22 @@ retrieval_evaluation:
 - 冻结清单：`corpus/eval/teacher_questions.v2.manifest.json`（sha256、DB counts、commit、创建日期）；
 - 回归：`--check-input` 校验结构 + 100% `expect_verified` 才允许出基线。
 
+### B7.1 运行成本估算（当前设备，基于 2026-11-06 实测参数）
+
+> 设备：Intel Core Ultra 5 125H / 14C18T / 31.6GB RAM / 无独显；模型已缓存（不计下载）；fp32 CPU。
+
+| 环节 | 实测 | 60 条评测 | 100 条评测 |
+| --- | --- | ---: | ---: |
+| query embedding（batch 32） | 4.26 queries/s | ~14s | ~24s |
+| pg_trgm + Qdrant 检索 | ~0.15s/query | ~9s | ~15s |
+| Reranker（40 候选/query） | mean **82.7s**、p95 109.6s | **~83min**（p95 110min） | **~138min**（p95 183min） |
+
+- **无 rerank 组（L/T/V/H）**：60 条约 1 分钟，100 条约 1–1.5 分钟（含模型加载）；
+- **含 rerank（HR）**：60 条约 **1.4 小时**（p95 1.8h），100 条约 **2.3 小时**（p95 3.0h）；rerank 占 99% 时间；
+- **全量索引重建**：12,973 chunks × ~1.5 chunks/s ≈ **2.4 小时**（12902 chunks 实测 2h24m）；**当前 Qdrant 已是 12,973 points，无需重建**；若只是增量 N 条，约 N/1.5 秒 + 模型加载（100 条约 1–2 分钟）；
+- **降本选项**：rerank 候选 40→20 约 41s/query（60 条 41min、100 条 69min）；40→10 约 21s/query（60 条 21min、100 条 35min），但需重测质量后再定；
+- **规划建议**：100 条 + rerank 按 **2.5–3 小时**排后台 job；不要与索引重建同时跑（CPU 争抢）；内存 embedding ~2.7GB + reranker ~2.9GB，31.6GB 足够。
+
 ## B8. 验收与决策
 
 1. **初期验收集 v2.0**：60 条、五类各 12、30 条 strict、κ ≥0.70、sha256 冻结 → **数据集验收通过**（只用于阶段 6 初期验收）；
