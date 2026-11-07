@@ -94,6 +94,9 @@ python tools/export_teacher_questions_v2.py
 # 生成 strict 金标核验表（draft gold -> xlsx/csv）
 python tools/export_v2_gold_review.py
 
+# 五组评测（v2.0 冻结集；需 DB/Qdrant/Qwen key）
+.venv\Scripts\python.exe tools/eval_v2.py --database-url "postgresql+psycopg://..." --out-prefix var/retrieval/v2_eval_2026-11-07
+
 # 模板结构 + 配额
 python tools/check_teacher_questions_v2.py
 
