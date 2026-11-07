@@ -656,14 +656,16 @@ async def dashboard(chilon_session: Annotated[str | None, Cookie()] = None) -> R
     async with db.session_for(user_id) as session:
         tasks_rows = (await session.execute(text(
             "SELECT id, title, status, created_at FROM tasks "
-            "WHERE deleted_at IS NULL ORDER BY created_at DESC LIMIT 6"
-        ))).all()
+            "WHERE deleted_at IS NULL AND owner_id = :owner_id "
+            "ORDER BY created_at DESC LIMIT 6"
+        ), {'owner_id': user_id})).all()
         task_count = (await session.execute(text(
-            "SELECT count(*) FROM tasks WHERE deleted_at IS NULL"
-        ))).scalar_one()
+            "SELECT count(*) FROM tasks WHERE deleted_at IS NULL AND owner_id = :owner_id"
+        ), {'owner_id': user_id})).scalar_one()
         source_count = (await session.execute(text(
-            "SELECT count(*) FROM knowledge_sources WHERE deleted_at IS NULL"
-        ))).scalar_one()
+            "SELECT count(*) FROM knowledge_sources "
+            "WHERE deleted_at IS NULL AND (scope = 'platform' OR owner_id = :owner_id)"
+        ), {'owner_id': user_id})).scalar_one()
         pending_count = (await session.execute(text(
             "SELECT count(*) FROM knowledge_document_versions "
             "WHERE lifecycle_status = 'pending_review'"

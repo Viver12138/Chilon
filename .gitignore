@@ -10,6 +10,11 @@ database/generated/*.tmp
 # 导出产物与运行时数据
 var/
 
+# 私有语料、教师问题、标注、评测与内部总结文档：不入公开仓库
+corpus/
+docs/
+Chilon_Project_Design_Master_Document.md
+
 # 抽查表 / 填写后的复查表（教师填写物，含个人信息与受限内容，不入库）
 review_sheets/
 
