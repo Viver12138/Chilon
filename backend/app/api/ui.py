@@ -217,7 +217,7 @@ def _sidebar(active: str | None) -> str:
         + '<div class="nav-group">KNOWLEDGE CENTER</div>'
         + item('知识库', '/ui/knowledge', 'knowledge')
         + item('智能检索', '/ui/search', 'search')
-        + item('资料上传', '/ui/knowledge#upload', 'upload')
+        + item('资料上传', '/ui/knowledge/upload', 'upload')
         + item('内容审核', '/ui/knowledge?type=pending', 'review')
         + '<div class="nav-group">SYSTEM</div>'
         + item('历史记录', '/ui/tasks', 'history')
@@ -890,9 +890,19 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         "<p class='muted'>管理、查阅和审核高中数学教学资料。</p>"
         f"<div class='chip-row'>{tab_html}</div>"
         + (''.join(blocks) if blocks else "<p class='muted'>还没有上传任何材料。</p>")
-        + "<h2 id='upload'>上传试卷</h2><div class='card'>"
+        + "<div class='card'><p class='muted'>需要新增教材、真题或模拟题？</p>"
+        "<p><a href='/ui/knowledge/upload'>上传资料 →</a></p></div>"
+    )
+    active = 'review' if type == 'pending' else 'knowledge'
+    return page("知识库", body, teacher=name, active=active)
+
+
+def _upload_form_html() -> str:
+    return (
+        "<div class='card'>"
         "<form method='post' action='/ui/knowledge' enctype='multipart/form-data'>"
-        "<p><label>标题<br><input name='title' required></label></p>"
+        "<p><label>标题<br><input name='title' required "
+        "placeholder='例如：2024 新课标 I 卷 数学'></label></p>"
         "<p><label>类型<br><select name='source_type'>"
         "<option value='gaokao_paper'>高考真题</option>"
         "<option value='mock_exam'>模拟题</option>"
@@ -900,10 +910,28 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         "<option value='other'>其他</option></select></label></p>"
         "<p><label>文件（.docx 或可复制文字的 .pdf）<br>"
         "<input type='file' name='file' accept='.docx,.pdf' required></label></p>"
-        "<button type='submit'>上传并解析</button></form></div>"
+        "<button type='submit'>上传并解析</button></form>"
+        "<p class='muted'>上传后会进入解析与审核流程；解析失败的版本不会进入正式检索。</p>"
+        "</div>"
     )
-    active = 'review' if type == 'pending' else 'knowledge'
-    return page("知识库", body, teacher=name, active=active)
+
+
+@router.get("/ui/knowledge/upload")
+async def knowledge_upload_page(
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    _, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    body = (
+        "<p class='muted'>上传教材、高考真题或模拟题；解析完成后可在知识库中校对。</p>"
+        + _upload_form_html()
+        + "<p><a href='/ui/knowledge'>← 返回知识库</a></p>"
+    )
+    return page("资料上传", body, teacher=name, active='upload')
 
 
 @router.post("/ui/knowledge")

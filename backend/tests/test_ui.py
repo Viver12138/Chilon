@@ -151,7 +151,10 @@ async def main() -> int:
 
             r = await client.get("/ui/knowledge")
             check(r.status_code == 200, f"the knowledge page renders (got {r.status_code})")
-            check("上传试卷" in r.text, "it offers an upload form")
+            check("上传资料" in r.text, "it links to the upload page")
+            r = await client.get("/ui/knowledge/upload")
+            check(r.status_code == 200, f"the upload page renders (got {r.status_code})")
+            check("上传并解析" in r.text, "it offers an upload form")
 
 
             print("7. signing out closes the door")
