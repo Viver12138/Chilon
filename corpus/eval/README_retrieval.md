@@ -88,6 +88,10 @@
 | 平均命中数 | 总命中块数 / N | 反映 top-k 是否被填满 |
 | strict Recall@k | strict 命中条数 / 有 strict 的条数 | 分母不是 N |
 | strict MRR@k | Σ(1/strict 排名) / 有 strict 的条数 | 同上 |
+| Strict@1 | Top-1 中出现任一 strict gold 的条数 / 有 strict 的条数 | 诊断，不作发布门槛 |
+| Strict-all@8 | Top-8 包含全部 strict gold 的条数 / 有 strict 的条数 | 诊断，不作发布门槛 |
+
+**发布门槛（第一阶段，2026-11-07 起）**：只有两项——Recall@8 **≥85%**、Strict Recall@8 **≥70%**；`strict MRR@8` / `Strict@1` / `Strict-all@8` 只作诊断，不设数值门槛、不阻断发布。v2 数据集把 `expect.strict` 升级为 **chunk_id 集合**（金标来自冻结快照），完整口径见 `docs/acceptance_and_retrieval_eval_design_2026-11-07.md` B5。
 
 口径要点：
 
@@ -245,3 +249,4 @@ echo $LASTEXITCODE    # 0 = 完成
 | --- | --- | --- |
 | v1.0 | 2026-11-06 | 初版：对象/命中/strict/指标口径；问题集 schema、30 条模板、25 条模拟候选；`tools/eval_retrieval.py` 改造（外部问题集、JSON+MD、DB 缺失干净失败、17 项自测）。数据库不可用，未产生基线数字。 |
 | v1.1 | 2026-11-06 | DB 恢复后产出首份真人基线（15 条真人问题、`expect_verified` 15/15，Recall@8 26.7% / MRR 0.180 / 空结果 13.3%，见 `BASELINE_2026-11-06.md`）；顶部状态与第 8 节相应更新，口径与工装说明不变。 |
+| v1.2 | 2026-11-07 | 指标扩展：新增 Strict@1、Strict-all@8 两个诊断指标（均只在 strict 子集计算）；明确第一阶段发布门槛只有 Recall@8 ≥85% 与 Strict Recall@8 ≥70%，MRR@8/Strict@1/Strict-all@8 不阻断发布；v2 数据集把 strict 升级为 chunk_id 集合（见设计稿 B5/D.117）。 |

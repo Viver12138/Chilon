@@ -8651,7 +8651,7 @@ D.114 后 1797 全部 teacher 标注。v8 只修自动映射引擎，**不动 PG
 - **演进（2026-11-07 决策）**：60 条 / 30 strict 只作**初期验收集**；长期扩到 **≥100 条 strict**，覆盖教材定义/定理/公式/完整题目，v2.1 单独冻结后作为长期门禁（设计稿 B10）；
 - 2–3 位教师、分层矩阵采样（模块/来源/年份/题型/难度）；**逐字记录、只收答不上的也算**；
 - 两位核验人独立标注 gold chunk + strict，Cohen's κ ≥0.70；冻结 `teacher-questions/v2`（sha256 + DB counts + commit），**冻结后不调参**；
-- 指标：Recall@8（Wilson 下界 ≥85%）、strict ≥70%、MRR ≥0.8、空结果 ≤2%、P95；五组对照 L/T/V/H/HR 决定 Reranker 是否默认启用；
+- 指标（第一阶段）：发布门槛只有 **Recall@8 ≥85%** 与 **Strict Recall@8 ≥70%**；诊断三项 **MRR@8 / Strict@1 / Strict-all@8**（均只在 strict 子集上算，不阻断发布）；空结果率/延迟/nDCG 作工程观测；五组对照 L/T/V/H/HR 决定 Reranker 是否默认启用；
 - 工装：`eval_retrieval.py`/`eval_hybrid.py` 增加 strict-chunk、bootstrap、分类别 CI。
 
 ### 计划

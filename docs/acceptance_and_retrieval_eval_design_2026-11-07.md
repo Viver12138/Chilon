@@ -181,34 +181,142 @@ status: design-proposal
 5. 数据集 freeze：sha256 + 快照（sources/chunks/questions 计数）+ 版本号 `teacher-questions/v2`；
 6. **冻结后不再用于调参**；调参另建 dev 集（可选 20 条，明确隔离）。
 
-## B5. 指标与验收
+## B5. 指标与验收（新增：5 个检索指标）
 
-| 指标 | 口径 | 建议门槛（产品验收） |
+### B5.1 指标总览
+
+| 指标 | 类型 | 评测范围 | 是否作为发布门槛 |
+| --- | --- | --- | --- |
+| Recall@8 | 核心指标 | 全部查询 | **是（≥85%）** |
+| Strict Recall@8 | 核心指标 | 带 `expect.strict` 的查询 | **是（≥70%）** |
+| MRR@8 | 诊断指标 | 带 `expect.strict` 的查询 | 否 |
+| Strict@1 | 诊断指标 | 带 `expect.strict` 的查询 | 否 |
+| Strict-all@8 | 诊断指标 | 带 `expect.strict` 的查询 | 否 |
+
+**第一阶段只使用两个正式发布门槛**：Recall@8 ≥85%、Strict Recall@8 ≥70%。三个诊断指标用于定位问题（排序靠后、首位不准、多 chunk 不完整），**不设额外数值门槛，也不因它们未达某比例阻止发布**；后续根据真实数据再决定是否升级为门槛。
+
+### B5.2 Recall@8（发布门槛）
+
+- 分母：全部可判定查询 `N`；
+- 命中：top-8 内出现任一 `expect.any` 命中（lenient）；
+- 门槛：**≥85%**（v2.0 初期验收集；同时报告 Wilson 95% CI）。
+
+### B5.3 Strict Recall@8（发布门槛）
+
+- 分母：**只算带 `expect.strict` 的查询**（如 60 条里 30 条带 strict，分母 30；不是全部 60）；
+- 金标对象：数据库里的**精确对象**（`chunk_id` 集合，来自冻结快照），不是文本片段；一个题目/一条教材定义被切成多块时，gold 是该对象的 chunk 集合；
+- 命中：top-8 里出现**至少一个** gold chunk，即算 strict 命中（记录首次命中位置 `strict_rank`）；
+- 不算 strict：只命中同主题/相邻块、答案/解析块（除非标注时纳入 gold）、或同题非 gold chunk；
+- 门槛：**≥70%**（strict 分母上；例 30 条 → ≥21 条）；
+- 统计限制：30 条 strict 的 70% 点估计 95% Wilson CI 约 **52–84%**，只作初期验收信号，不作长期门禁（长期扩到 ≥100 strict 后再定门槛，见 B10）。
+
+### B5.4 MRR@8（诊断，不作门槛）
+
+用于衡量精确 gold chunk 的**排序位置**，评估 Embedding / 混合检索 / Reranker 是否把精确对象排得够靠前。
+
+- 分母：带 `expect.strict` 的查询；
+- 对每条查询：检查 top-8，找到第一个属于 gold 集合的结果，记录 `strict_rank`；top-8 无 gold 则该条得 0；
+- 公式：`MRR@8 = (1/N) · Σ RR_i`，其中 `RR_i = 1/strict_rank_i`（`strict_rank_i ≤ 8`），未命中为 0；`N` = strict 查询数。
+
+| 查询 | 首次 gold 位置 | RR |
+| --- | ---: | ---: |
+| Q1 | 1 | 1.000 |
+| Q2 | 2 | 0.500 |
+| Q3 | 4 | 0.250 |
+| Q4 | 8 | 0.125 |
+| Q5 | 未命中 | 0 |
+| **示例** | — | **0.375** |
+
+用途：比较不同 Embedding 模型、评估 Reranker 是否改善精确对象排名、发现 gold 排名靠后问题。
+
+### B5.5 Strict@1（诊断，不作门槛）
+
+用于衡量精确 gold chunk 是否出现在**第一**位。
+
+- 分母：带 `expect.strict` 的查询；
+- 命中：Top-1 结果属于 gold 集合（只要命中任意一个 gold chunk 即算，不要求多个 gold 全部出现）；
+- 公式：`Strict@1 = Top-1 命中的 strict 查询数 / strict 查询总数`；
+- 示例：30 条 strict 中 Top-1 命中 18 条 → 60%。
+
+用途：观察首位命中能力、对比 Reranker 开启前后 Top-1、定位“gold 经常排在相似内容之后”。
+
+### B5.6 Strict-all@8（诊断，不作门槛）
+
+用于衡量 Top-8 是否**完整包含**该查询的全部 gold chunk（与 Strict Recall 的“至少一个”不同）。
+
+- 分母：带 `expect.strict` 的查询；
+- 命中：该查询的**全部 gold chunk** 都出现在 Top-8；缺少任意一个即未命中；
+- 公式：`Strict-all@8 = Top-8 完整包含 gold 集合的 strict 查询数 / strict 查询总数`。
+
+示例（gold = `chunk_101/102/103`）：Top-8 含 101/102/103 → 命中；只含 101/102 → 未命中（缺 103）。
+
+用途：检查完整题目/教材内容等多 chunk 对象的召回完整性、观察切块策略是否漏内容、分析多 chunk gold 是否难以完整进 Top-8。
+
+### B5.7 四个 strict 指标的区别
+
+| 指标 | 核心问题 | 命中条件 |
 | --- | --- | --- |
-| Recall@8 | 主指标；至少一个 gold chunk 命中 top-8 | ≥90%，且 Wilson 95% 下界 ≥85% |
-| strict Recall@8 | strict 金标对象命中（定义见下） | ≥70% |
-| MRR@8 | 首个 gold 排名倒数 | ≥0.80 |
-| nDCG@8 | 分级相关（0/1/2/3） | 报告值，不设硬门槛 |
-| 空结果率 | 无任何结果 | ≤2% |
-| 有结果但不对 | 有 top-8 但无 gold | ≤10% |
-| 证据不足正确率 | unanswerable 专项 | ≥4/5 正确拒绝 |
-| P50 / P95 延迟 | 检索端到端（不含 LLM） | P95 ≤ 3s（不含 rerank）；rerank 另列 |
-| 分类别/分来源 | 五类 × 三来源 | 每格报告；任何一类 Recall <70% 视为短板 |
+| Strict Recall@8 | 有没有找到精确对象？ | 至少一个 gold chunk 在 Top-8 |
+| MRR@8 | 第一个精确对象排得靠前吗？ | 首次 gold 位置的倒数排名 |
+| Strict@1 | 第一名是不是精确对象？ | Top-1 至少一个 gold chunk |
+| Strict-all@8 | 所有精确对象是否完整召回？ | Top-8 包含全部 gold chunk |
 
-**`strict Recall@8` 的精确口径（避免歧义）**：
+注意：Strict Recall 不要求全部 gold 进 Top-8；MRR 只看首次命中位置；Strict@1 是 MRR 的首位补充；Strict-all@8 要求完整召回。
 
-- **分母**：只算带 `expect.strict` 的查询（如 60 条里 30 条带 strict，则分母 30；不是全部 60）；
-- **金标对象**：数据库里的**精确对象**（`chunk_id` 集合，来自冻结快照），不是文本片段；一个题目/一条教材定义在库里可能被切成多块，此时 gold 是该对象的 chunk 集合；
-- **命中**：top-8 里出现**至少一个**该 gold 集合中的 chunk，即算 strict 命中（记 `strict_rank` = 首次命中位置）；
-- **不算 strict**：只命中同主题/相邻块、答案/解析块（除非标注时也纳入 gold 集合）、或同题不同 chunk 但非该对象；
-- **70% 的含义**：strict 分母上 ≥70% 命中（例：30 条 strict → ≥21 条）；
-- **诊断项（不作门槛）**：`strict@1`（gold 必须排第 1）、`strict-all@8`（多块 gold 必须全部进 top-8）只作为报告里的严格度参考。
+### B5.8 最终评测配置
 
-**为什么 strict 的门槛只对“子集”**：只有当查询有**唯一确定对象**（某道原题、某条教材定义）时才标 strict；多目标/模糊需求只保留 `expect.any`，不强行凑 strict。因此 strict 覆盖率目标 ≥50%，但 strict 指标的分母是该子集，不能与整体 Recall@8 混读。
+```yaml
+retrieval_evaluation:
+  release_gates:
+    recall_at_8:
+      denominator: all_queries
+      threshold: 0.85
+    strict_recall_at_8:
+      denominator: strict_queries_only
+      threshold: 0.70
+      hit_rule: at_least_one_gold_chunk_in_top_8
+  diagnostic_metrics:
+    mrr_at_8:
+      enabled: true
+      denominator: strict_queries_only
+      miss_score: 0
+      rank_source: strict_rank
+    strict_at_1:
+      enabled: true
+      denominator: strict_queries_only
+      hit_rule: top_1_contains_at_least_one_gold_chunk
+    strict_all_at_8:
+      enabled: true
+      denominator: strict_queries_only
+      hit_rule: top_8_contains_all_gold_chunks
+  reporting:
+    - total_query_count
+    - strict_query_count
+    - strict_hit_count
+    - strict_miss_count
+    - strict_rank_distribution
+    - mrr_at_8
+    - strict_at_1
+    - strict_all_at_8
+  constraints:
+    - diagnostic_metrics_do_not_block_release
+    - strict_denominator_excludes_non_strict_queries
+    - gold_objects_are_chunk_id_sets
+    - any_gold_chunk_hit_counts_for_strict_recall
+    - all_gold_chunks_required_for_strict_all
+```
 
-**初期 30 条 strict 的统计限制**：30 条上 70% 点估计的 95% Wilson CI 约 **52–84%**，只适合做“能否继续投入”的初期验收信号，不适合做长期发布门禁；长期扩到 **≥100 条 strict** 后，建议门槛提升为 **≥80% 且 Wilson 下界 ≥75%**（B10，阈值待确认）。
+### B5.9 附加观测（工程指标，不作发布门槛）
 
-统计：比例用 Wilson CI；小样本分格用 bootstrap；报告 **点估计 + 95% CI**，不只报一个百分数。
+除上述 5 个检索指标外，继续报告（只观测、不阻断）：
+
+- 空结果率（目标 ≤2%）、有结果但不对率（目标 ≤10%）；
+- nDCG@8（分级相关 0/1/2/3，报告值）；
+- P50/P95 端到端延迟（不含 LLM；P95 ≤3s 为观测目标，rerank 另列）；
+- 分类别 / 分来源 Recall（五类 × 三来源，任何一类 <70% 标短板）；
+- `unanswerable` 专项的“正确拒绝率”（≥4/5）。
+
+统计：比例用 Wilson CI；小样本分格用 bootstrap；所有报告给 **点估计 + 95% CI**，不只报一个百分数。
 
 ## B6. 对照实验（同一冻结数据集、参数先冻结）
 
@@ -235,8 +343,8 @@ status: design-proposal
 
 1. **初期验收集 v2.0**：60 条、五类各 12、30 条 strict、κ ≥0.70、sha256 冻结 → **数据集验收通过**（只用于阶段 6 初期验收）；
 2. 基线：5 组跑完、可复现 → **检索验收报告**；
-3. 决策：H 组 Recall@8 下界 ≥85% 且 P95 达标 → 检索层“可用”；否则列为阶段 5 未完成；
-4. Reranker：仅当 HR 在 Recall/MRR 有显著提升且 P95 可接受时默认启用，否则保持可选；
+3. **发布门禁（第一阶段）**：Recall@8 **≥85%** 且 Strict Recall@8 **≥70%**；MRR@8、Strict@1、Strict-all@8 只作诊断，不设门槛、不阻断；P95 延迟与空结果率作工程观测；
+4. Reranker：仅当 HR 在 Recall/MRR/Strict 指标上有可见提升且 P95 可接受时默认启用，否则保持可选；
 5. **长期门禁 v2.1**：strict 查询 ≥100、对象类型覆盖达标后，用 v2.1 冻结集重跑；未达 v2.1 前，v2.0 通过只能记为“初期验收通过”，**不能对外宣称检索已长期达标**。
 
 ## B9. 风险
@@ -256,7 +364,7 @@ status: design-proposal
 | 阶段 | 规模 | strict 对象构成 | 用途 | 门槛 |
 | --- | --- | --- | --- | --- |
 | **v2.0 初期验收** | 60 条（strict 30） | 定义 8 / 定理 6 / 公式 6 / 完整题目 10 | 阶段 6 发布前验收 | strict ≥70%（点估计；CI 宽，只作初期信号） |
-| **v2.1 长期基线** | ≥100 条 strict（首批 100） | 定义 25 / 定理 20 / 公式 20 / 完整题目 35 | 长期回归与发布门禁 | strict ≥80% 且 Wilson 下界 ≥75%（待确认） |
+| **v2.1 长期基线** | ≥100 条 strict（首批 100） | 定义 25 / 定理 20 / 公式 20 / 完整题目 35 | 长期回归与发布门禁 | strict 门槛建议上调至 ≥80%（待确认）；MRR@8/Strict@1/Strict-all@8 是否升为门槛由真实数据决定 |
 | **v3 季度刷新** | ≥100 strict + 新增教师问题 | 同上，补充新模块/新教材 | 持续评测 | 与 v2.1 同口径；跨版本只用同一冻结集比较 |
 
 **精确对象类型**（新增字段 `strict_object_type`）：
