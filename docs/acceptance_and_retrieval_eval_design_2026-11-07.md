@@ -355,6 +355,25 @@ retrieval_evaluation:
 - **降本选项**：rerank 候选 40→20 约 41s/query（60 条 41min、100 条 69min）；40→10 约 21s/query（60 条 21min、100 条 35min），但需重测质量后再定；
 - **规划建议**：100 条 + rerank 按 **2.5–3 小时**排后台 job；不要与索引重建同时跑（CPU 争抢）；内存 embedding ~2.7GB + reranker ~2.9GB，31.6GB 足够。
 
+### B7.2 改用 Qwen API 的耗时估算（未实测，按公开限制与典型延迟）
+
+> 依据：`text-embedding-v4` 单请求最多 **10 条**、每条 8192 token；`qwen3-rerank` 单请求最多 **500 docs**、请求最多 120k token（阿里云百炼文档）。API 延迟与 **RPM/TPM 配额、并发**强相关，以下为估算区间；执行前应先用 5–10 条 smoke 校准。
+
+| 环节 | 假设 | 60 条评测 | 100 条评测 |
+| --- | --- | ---: | ---: |
+| query embedding（API） | v4、10 条/请求、0.2–0.5s/请求 | 6 请求 → ~1–3s | 10 请求 → ~2–5s |
+| 本地检索（pg_trgm+Qdrant） | 不变 | ~9s | ~15s |
+| qwen3-rerank（API） | 1 请求/query（40 docs）、0.5–2s/请求 | ~30–120s | ~50–200s |
+| **合计（含 rerank）** | 串行 | **~1–2.5 分钟** | **~1.5–4 分钟** |
+
+- 若配额 QPS 较低（如 10 QPS），100 条 rerank 主要受排队限制，总时间仍在 **5 分钟内**；若 RPM 仅 60，排队约 100s，总约 **3–5 分钟**；
+- **全量索引重建（API embedding）**：12,973 chunks / 每请求 10 条 ≈ 1,298 请求；按 2.06M token、TPM 1M 估算纯推理约 2–3 分钟，加并发与限流后约 **10–25 分钟**（本地 CPU 为 ~2.4h）；
+- **部分 API 方案**：若只把 embedding 换 API、rerank 仍用本地 Qwen3-Reranker-0.6B，则 60/100 条评测仍被 rerank 主导，耗时仍是 **1.4h / 2.3h**，不变；
+- **成本粗估**：全量 embedding ~2.06M token、$0.07/1M ≈ **$0.15**；rerank 100 条约 60 万 token，按百炼排序单价另计（执行前查价）；
+- **不可直接比较**：API 的 `qwen3-rerank` 与本地 Qwen3-Reranker-0.6B 不是同一部署，指标可能不同；必须用同一批 query 做 smoke 对齐后再切换。
+
+**结论**：把 embedding + rerank 都切到 Qwen API，100 条评测从本地约 2.3h 压到 **约 2–5 分钟**；收益几乎全部来自 rerank API。若只切 embedding，时间不省。
+
 ## B8. 验收与决策
 
 1. **初期验收集 v2.0**：60 条、五类各 12、30 条 strict、κ ≥0.70、sha256 冻结 → **数据集验收通过**（只用于阶段 6 初期验收）；
