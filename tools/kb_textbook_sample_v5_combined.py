@@ -115,6 +115,19 @@ def build(args):
     byid = {x['block_id']: x for x in reviewed}
     model = [x for x in reviewed if x.get('review_status') == 'model']
     teacher_ids = {x['block_id'] for x in reviewed if x.get('review_status') == 'teacher'}
+    if getattr(args, 'full_census', False):
+        rows = [{**x, 'sample_source': '全量终检'} for x in model]
+        rows.sort(key=lambda x: (BOOK_ORDER.index(book_key(x['book'])), x['page'],
+                                 x.get('part') or 0, x.get('ordinal') or 0))
+        meta = {'seed': args.seed, 'percent': 100.0, 'model': len(model),
+                'teacher': len(teacher_ids), 'sampled_pool': len(model),
+                'sample_target': len(rows), 'pilot': 0, 'total': len(rows),
+                'full_census': True,
+                'sample_risk': dict(collections.Counter(risk_of(x) for x in rows)),
+                'pilot_risk': {},
+                'by_book': dict(collections.Counter(book_key(x['book']) for x in rows)),
+                'block_ids': [x['block_id'] for x in rows]}
+        return rows, meta
     sampled_pool = [x for x in model if x['block_id'] not in pilot_ids]
     # pilot 块只有仍是 model 时才需要回采（已复核的 pilot 不再进表）
     pilot_model_ids = {i for i in pilot_ids if i in byid and byid[i].get('review_status') == 'model'}
@@ -212,7 +225,11 @@ def write_xlsx(rows, meta, args):
     pdf_dir = ROOT / 'corpus' / 'textbooks'
     pdfs = {p.stem: str(p) for p in pdf_dir.glob('*.pdf')}
     wb = Workbook(); ws = wb.active
-    ws.title = f"复核{getattr(args, 'rule_label', 'v5')}_20pct" + ('_pilot' if meta['pilot'] else '')
+    label = getattr(args, 'rule_label', 'v5')
+    if meta.get('full_census'):
+        ws.title = f'复核{label}_full'
+    else:
+        ws.title = f'复核{label}_20pct' + ('_pilot' if meta['pilot'] else '')
     rule_l = getattr(args, 'rule_label', 'v5')
     prev_l = getattr(args, 'prev_label', 'v4')
     headers = ['序号', '来源', 'block_id', '册', '章', '节', '页码', '块类型', '完整原文',
@@ -257,7 +274,13 @@ def write_xlsx(rows, meta, args):
         ws.row_dimensions[r].height = 70
     ws.freeze_panes = 'A2'; ws.auto_filter.ref = f'A1:U{ws.max_row}'
     ws3 = wb.create_sheet('说明')
-    if meta['pilot']:
+    if meta.get('full_census'):
+        title_line = f"教材 {rule_l} 映射 · 剩余 {meta['model']} 块全量终检表"
+        pool_line = f"reviewed 中 model {meta['model']} 块（teacher {meta['teacher']} 已排除）；全量入表，无抽样。"
+        sample_line = f"全量 {meta['total']} 块，来源列统一为 `全量终检`。"
+        pilot_line = None
+        total_line = f"{meta['total']} 行。"
+    elif meta['pilot']:
         title_line = f"教材 {rule_l} 映射 · 组合复核表（剩余 {meta['percent']:g}% + pilot {meta['pilot']} 回采）"
         pool_line = (f"reviewed 中 model {meta['model']} 块（teacher {meta['teacher']} 已排除）；"
                      f"其中 pilot 100 块单列回采。")
@@ -311,13 +334,22 @@ def main(argv=None):
     ap.add_argument('--rule-label', default='v5', help='规则列前缀（如 v6）')
     ap.add_argument('--prev-label', default='v4', help='上一版模型列前缀（如 v5）')
     ap.add_argument('--prev-mapped', default=None, help='上一版映射 json（默认 mapped_1797_v4.json）')
+    ap.add_argument('--full-census', action='store_true',
+                    help='全部剩余 model 入表（终检），不做抽样、不采 pilot')
     args = ap.parse_args(argv)
 
     rows, meta = build(args)
     pathlib.Path(args.out_json).write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding='utf-8')
     write_xlsx(rows, meta, args)
     rule_l = getattr(args, 'rule_label', 'v5')
-    if meta['pilot']:
+    if meta.get('full_census'):
+        title = f'教材 {rule_l} 全量终检（{meta["model"]} 块）'
+        lines = [f'- model 池 **{meta["model"]}**（teacher {meta["teacher"]} 已排除）；本轮全量入表，无抽样；',
+                 f'- 共 **{meta["total"]}** 行；全量终检，seed 不适用。', '',
+                 '## 构成', '', '| 来源 | 行数 |', '| --- | ---: |',
+                 f'| 全量终检 | {meta["total"]} |',
+                 f'| **合计** | **{meta["total"]}** |', '']
+    elif meta['pilot']:
         title = f'教材 {rule_l} 组合复核表（剩余 {meta["percent"]:g}% + pilot {meta["pilot"]}）'
         lines = [f'- model 池 **{meta["model"]}**（teacher {meta["teacher"]} 排除）；抽样池 **{meta["sampled_pool"]}**；',
                  f'- {meta["percent"]:g}% 抽样 **{meta["sample_target"]}** 块 + pilot 全量 **{meta["pilot"]}** 块 = **{meta["total"]}** 行；',
