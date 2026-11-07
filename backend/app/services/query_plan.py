@@ -112,3 +112,21 @@ def build_plan(query: str) -> dict[str, Any]:
             "question_types": base.get("question_types"),
         },
     }
+
+
+def preferred_mode(plan: dict) -> str:
+    """Interim H/HR routing from the 2026-11-07 decision memo.
+
+    Default H (coverage); HR for explicit formula/definition/theorem lookups,
+    including "A 和 B 有什么区别" comparison queries. Question/mixed list-style
+    queries stay on H until per-category A/B says otherwise.
+    """
+    if plan.get("intent") in ("formula_search", "knowledge_search"):
+        return "HR"
+    if (plan.get("hard") or {}).get("question_scope") == "knowledge":
+        return "HR"
+    if plan.get("intent") == "mixed_search" and any(
+        word in plan.get("query", "") for word in ("区别", "区分", "概念", "定义", "定理", "性质")
+    ):
+        return "HR"
+    return "H"

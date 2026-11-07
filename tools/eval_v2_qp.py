@@ -248,10 +248,12 @@ def main() -> int:
     groups = {}
     for key in ('T', 'V', 'H', 'HR'):
         t0 = time.perf_counter()
-        groups[key] = {'seconds': round(time.perf_counter() - t0, 2), **group(rows_for(key))}
+        rows = rows_for(key)
+        elapsed = round(time.perf_counter() - t0, 2)
+        groups[key] = {'seconds': elapsed, **group(rows)}
         m = groups[key]['metrics']
         print(f"{key}: Recall={m['found']}/{m['queries']} strict={m['strict_found']}/{m['strict_queries']} "
-              f"compliance={m['filter_compliance_rate']}")
+              f"compliance={m['filter_compliance_rate']} seconds={elapsed}")
 
     baseline = {}
     if BASELINE.exists():
@@ -268,6 +270,16 @@ def main() -> int:
         'collection': args.collection,
         'plan_version': query_plan.PLAN_VERSION,
         'models': {'embedding': qwen_api.embedding_model(), 'reranker': qwen_api.rerank_model()},
+        'retrieval_config': {
+            'final_k': base.K,
+            'candidate_k': hr.CONFIG['rerank_candidates'],
+            'text_top_n': hr.CONFIG['text_top_n'],
+            'vector_top_n': hr.CONFIG['vector_top_n'],
+            'rrf_k': hr.CONFIG['rrf_k'],
+            'min_filtered_hits': hr.CONFIG['min_filtered_hits'],
+            'hard_filter_mode': 'strict (no fallback)',
+            'query_plan_version': query_plan.PLAN_VERSION,
+        },
         'query_embedding': embed_stats,
         'groups': groups,
         'plans': plans,
