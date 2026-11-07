@@ -175,6 +175,7 @@
   - [D.113 2026-11-07 剩余 671 全量终检表（v7）](#d113-2026-11-07-剩余-671-全量终检表v7)
   - [D.114 2026-11-07 教材全量终检：1797/1797 teacher 覆盖，model 候选清零](#d114-2026-11-07-教材全量终检17971797-teacher-覆盖model-候选清零)
   - [D.115 2026-11-07 教材映射 v8：终检 64 条 in-sample 修完（PG/vault 不变）](#d115-2026-11-07-教材映射-v8终检-64-条-in-sample-修完pgvault-不变)
+  - [D.116 2026-11-07 教材块标注阶段冻结：teacher 1797/1797，引擎 v8](#d116-2026-11-07-教材块标注阶段冻结teacher-17971797引擎-v8)
 
 [//]: # (toc:end)
 
@@ -8600,6 +8601,31 @@ D.114 后 1797 全部 teacher 标注。v8 只修自动映射引擎，**不动 PG
 - 若未来有新版教材/OCR 块，应先冻结 v8、用新块做 fresh holdout 再评估；
 - 29 条历史仍错（非本轮 64）与 11 vocab_gap/191 non_content 可另作验收清单；
 - 教材块标注阶段收尾：teacher 1797/1797、自动映射引擎 v8、PG/vault 稳定且可重建。
+
+**流水线：17 项静态检查全过。**
+
+----------------------------------------
+
+------------------------------------------------------------------------
+
+## D.116 2026-11-07 教材块标注阶段冻结：teacher 1797/1797，引擎 v8
+
+教材块标注从 D.104 的 PG draft 走到全量教师复核完成。本条目记录冻结状态与交接。
+
+### 冻结内容
+
+- PG `textbook_block_annotations` active **1797**，全部 `classification_source=teacher`、`review_status=reviewed`；status mapped **1595** / non_content **191** / vocab_gap **11**；
+- teacher 版本按五批保留：360 / 288 / 310 / 168 / 671；`knowledge_annotations` **9092** 未变；
+- 自动映射引擎冻结在 **v8**（in-sample 1561/1590 = 98.2%；**无 fresh holdout**，不可当泛化准确率）；
+- Obsidian 5 册 **1606 行** = 1595 条 kp 链接（全部 teacher 已核）+ 11 条待补；可随时从 PG 重建；
+- 冻结快照 `var/freeze/textbook_block_annotations_final_2026-11-07.json`（1797 行，sha256 `39d19847980c81c509d0c6771dc467ce61a2cfc37c560fdbf7e6c859080df804`）；
+- 冻结标签 `textbook-annotations-v8-frozen`；交接文档 `docs/textbook_annotation_handover_2026-11-07.md`（复现/校验/产物/未决项/交接清单）。
+
+### 冻结后的规则
+
+- **不得在 1797 上继续调参后自称泛化准确率**；未来新版块必须冻结 v8 + 新块 fresh holdout；
+- 数据变更走 PG → 重投影 → `check_all` + 交接报告 §4.2 校验；vault 不直接当事实源；
+- 未决项：29 条历史错判、11 条 vocab_gap（词表缺空间几何体结构等）、191 条 non_content 验收、`model_version` 语义拆分、远端 push。
 
 **流水线：17 项静态检查全过。**
 
