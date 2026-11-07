@@ -67,6 +67,9 @@ def main(argv=None):
     ap.add_argument('--out-parsed', default=str(PARSED))
     ap.add_argument('--report', default=str(REPORT))
     ap.add_argument('--apply-teacher', action='store_true')
+    ap.add_argument('--teacher-version', default=TEACHER_VERSION)
+    ap.add_argument('--batch-label', default='第三批组合复核结果（310 块：20% + pilot100）')
+    ap.add_argument('--engine-label', default='v5')
     args = ap.parse_args(argv)
 
     mods, kps = load_vocab()
@@ -136,7 +139,7 @@ def main(argv=None):
         p = next((q for q in parsed if q['block_id'] == x['block_id']), None)
         if p is not None:
             rec['review_status'] = 'teacher'
-            rec['teacher_version'] = TEACHER_VERSION
+            rec['teacher_version'] = args.teacher_version
             rec['teacher_module'] = p['teacher_module']
             rec['teacher_kp'] = p['teacher_kp']
             rec['teacher_note'] = p['teacher_note']
@@ -147,7 +150,7 @@ def main(argv=None):
                 rec.update({'kp_primary': p['teacher_kp'], 'module': p['teacher_kp'].split('_')[1],
                             'module_id': p['teacher_module'], 'kp_name': kps[p['teacher_kp']],
                             'kp_secondary': [], 'status': 'mapped', 'confidence': 1.0,
-                            'reason': p['teacher_note'] or '教师复核（第三批）'})
+                            'reason': p['teacher_note'] or '教师复核'})
             elif p['kind'] == 'module_only':
                 rec.update({'kp_primary': '', 'module': p['teacher_module'].split('_')[1],
                             'module_id': p['teacher_module'], 'kp_name': '', 'kp_secondary': [],
@@ -183,35 +186,39 @@ def main(argv=None):
 
     # 报告
     mism = [p for p in full if (p['model_primary'] or '') != p['teacher_kp']]
-    L = ['---', 'type: report', 'title: 教材第三批组合复核结果（310 块：20% + pilot100）',
-         'updated: 2026-11-07', 'status: review-round3', '---', '',
-         '# 教材第三批组合复核结果（310 块）', '',
-         '> 输入：`review_sheets/filled/复核_v5.txt`（5 列含 block_id）；v5 映射为候选；',
+    n_sample = len(sample_ids)
+    has_pilot = any(p['source'] == 'pilot100' for p in parsed)
+    pilot_note = ('pilot 100 的历史欠账已补。' if has_pilot
+                  else '本轮为剩余模型抽样，无 pilot 回采。')
+    L = ['---', 'type: report', f'title: 教材{args.batch_label}',
+         'updated: 2026-11-07', 'status: review-batch', '---', '',
+         f'# 教材{args.batch_label}', '',
+         f'> 输入：`{pathlib.Path(args.txt).name}`（5 列含 block_id）；{args.engine_label} 映射为候选；',
          '> 教师标签 → reviewed/PG/Obsidian 链接；不调 OCR。', '',
          '## 1. 解析与口径', '',
-         f'- 解析 **{len(parsed)}/310**，block_id 与组合样本一致；模块/考点合法且同模块；',
+         f'- 解析 **{len(parsed)}/{n_sample}**，block_id 与样本一致；模块/考点合法且同模块；',
          f'- 教师完整标签 **{len(full)}**、只有模块无考点 **{len(modonly)}**、留空 **{len(blank)}**；',
          f'- 留空 → non_content（其中模型原判内容 {sum(1 for p in blank if p["status"] != "non_content")} 条）；',
          '- 只有模块无考点 → vocab_gap（保留模块，表示“词表缺合适考点/不宜硬塞”）。', '',
-         '## 2. v5 在第三批上的准确率', '',
+         f'## 2. {args.engine_label} 在本批上的准确率', '',
          '| 口径 | 分母 | 模块 | exact |', '| --- | ---: | ---: | ---: |',
          f'| 完整标签（module+exact） | {len(full)} | {fmod} = {fmod/len(full)*100:.1f}% | '
          f'{fm} = {fm/len(full)*100:.1f}% |',
          f'| 含 module_only（exact 记 0） | {len(content_all)} | {mod_all} = '
          f'{mod_all/len(content_all)*100:.1f}% | {em_all} = {em_all/len(content_all)*100:.1f}% |', '',
-         '### 不一致清单（v5 错、教师对，8 条，供 v6 规则）', '',
-         '| block_id | 教师 | v5 | 来源 | 备注 |', '| --- | --- | --- | --- | --- |']
+         f'### 不一致清单（{args.engine_label} 错、教师对，{len(mism)} 条，供下一版规则）', '',
+         '| block_id | 教师 | ' + args.engine_label + ' | 来源 | 备注 |', '| --- | --- | --- | --- | --- |']
     for p in mism:
         L.append(f'| `{p["block_id"]}` | `{p["teacher_kp"]}` | `{p["model_primary"] or "（空）"}` | '
                  f'{p["source"]} | {p["teacher_note"][:40]} |')
     L += ['', '## 3. reviewed 更新', '',
           f'- `{pathlib.Path(args.out_reviewed).name}`：teacher **{teacher}** / model **{len(new_reviewed) - teacher}**；',
-          f'- 本轮新增 teacher **{applied}** 条（上批 648 不动）；status {dict(status)}。', '',
+          f'- 本轮新增 teacher **{applied}** 条（上批 {teacher - applied} 不动）；status {dict(status)}。', '',
           '## 4. 边界', '',
-          '- 20% 抽样 + pilot 全量回采都是抽样/回采，不是全量；准确率仍是样本值；',
-          '- module_only 9 条按“有模块、无合适主考点”记 vocab_gap，不强行塞考点；',
-          '- 8 条不一致留待 v6 规则收敛；pilot 100 的历史欠账已补。', '',
-          '---', '', '> 明细：`review_round3_parsed.json`。', '']
+          f'- 抽样/回采不是全量；准确率仍是样本值；',
+          f'- module_only {len(modonly)} 条按“有模块、无合适主考点”记 vocab_gap，不强行塞考点；',
+          f'- {len(mism)} 条不一致留待下一版规则收敛；{pilot_note}', '',
+          '---', '', f'> 明细：`{pathlib.Path(args.out_parsed).name}`。', '']
     pathlib.Path(args.report).write_text('\n'.join(L), encoding='utf-8')
     print(f'报告：{args.report}')
     return 0
