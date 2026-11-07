@@ -190,8 +190,8 @@ CHILON_QWEN_API_KEY=sk-...
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
 | `CHILON_QWEN_API_KEY` | 空 | 必填；也兼容官方环境变量 `DASHSCOPE_API_KEY` |
-| `CHILON_QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/api/v1` | DashScope 原生 API；新加坡用 `https://dashscope-intl.aliyuncs.com/api/v1` |
-| `CHILON_QWEN_REGION` | `beijing` | 仅用于选择 endpoint 的提示 |
+| `CHILON_QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/api/v1` | DashScope 原生 API，**固定中国区（北京）**；控制台请在「华北2（北京）」创建 key |
+| `CHILON_QWEN_REGION` | `cn-beijing` | 中国区（北京），不切国际区 |
 | `CHILON_QWEN_TIMEOUT_SECONDS` | `30` | 单次请求超时 |
 | `CHILON_QWEN_EMBEDDING_MODEL` | `qwen3.7-text-embedding` | 质量优先；降本备选 `qwen3.7-text-embedding-flash` |
 | `CHILON_QWEN_EMBEDDING_DIM` | `1024` | 与现有 Qdrant 集合维度一致 |

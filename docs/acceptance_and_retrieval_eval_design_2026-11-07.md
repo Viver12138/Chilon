@@ -381,11 +381,11 @@ retrieval_evaluation:
 
 阿里云百炼当前实际有三档（不是两档）：`text-embedding-v4`、`qwen3.7-text-embedding`、`qwen3.7-text-embedding-flash`；另有旧的 `text-embedding-v3`。
 
-| 模型 | 北京价（文本 / 批量） | 官方质量口径 | 上下文 / 批次 | 维度 | 限流（北京） | 适配判断 |
+| 模型 | 中国区（北京）价（文本 / 批量） | 官方质量口径 | 上下文 / 批次 | 维度 | 限流（中国区北京） | 适配判断 |
 | --- | --- | --- | --- | --- | --- | --- |
 | `text-embedding-v4` | ¥0.5 / ¥0.25 每 1M | 基线（Qwen3，比 v3 +15–40%） | 8192 tok/行；10 条/请求 | 64–2048 | RPM 1800 / TPM 1.2M | 与本地 Qwen3-Embedding-0.6B 同源，**可复现**；但同价下被 3.7 压 |
 | `qwen3.7-text-embedding` | ¥0.5 / ¥0.25 每 1M | **比 v4 +20%**（MTEB 多语言/中英/Code） | 131072 tok；20 条/请求 | 256–2560 | RPM 24000 / TPM 1M | **同价更高质，质量优先首选**；专有模型，需重建基线 |
-| `qwen3.7-text-embedding-flash` | **¥0.125**（页面未列批量价） | 与 v4 基本持平，AIRBench-zh +3% | 131072 tok；批次以 API 页为准 | 256/512/768/1024 | RPM 24000 / TPM 1M | **单价约为 v4 的 1/4，性价比最高**；当前仅见北京区，1024 维够我们使用 |
+| `qwen3.7-text-embedding-flash` | **¥0.125**（页面未列批量价） | 与 v4 基本持平，AIRBench-zh +3% | 131072 tok；批次以 API 页为准 | 256/512/768/1024 | RPM 24000 / TPM 1M | **单价约为 v4 的 1/4，性价比最高**；目前仅中国区（北京）可见，1024 维够我们使用 |
 | `text-embedding-v3` | ¥0.5 | 低于 v4 | 8192 tok；10 条/请求 | ≤1024 | — | 同价更老，**直接排除** |
 
 **按我们语料规模算成本**（12,973 chunks ≈ 2.06M tokens）：
@@ -405,13 +405,13 @@ retrieval_evaluation:
 
 **建议的选型验证**（成本极低）：用同一 12,973 chunks、同 1024 维、同 payload 建两套 Qdrant collection（qwen3.7 vs flash），在 v2.0 验收集上比较 Recall@8 / Strict Recall@8 / Strict@1；总成本 <¥2、API 建库各约 10–25 分钟。v4 作为对照第三套可选。
 
-**选型决策（2026-11-07）**：**质量优先，embedding 用 `qwen3.7-text-embedding`（1024 维，北京区），rerank 也用 API `qwen3.7-text-rerank`**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。配置变量已写入 `.env.example`：
+**选型决策（2026-11-07）**：**质量优先，embedding 用 `qwen3.7-text-embedding`（1024 维，中国区北京），rerank 也用 API `qwen3.7-text-rerank`**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。配置变量已写入 `.env.example`：
 `CHILON_QWEN_API_KEY`（兼容官方 `DASHSCOPE_API_KEY`）、`CHILON_QWEN_BASE_URL`、`CHILON_QWEN_REGION`、
 `CHILON_QWEN_TIMEOUT_SECONDS`、`CHILON_QWEN_EMBEDDING_MODEL`、`CHILON_QWEN_EMBEDDING_DIM`、
 `CHILON_QWEN_RERANK_MODEL`、`CHILON_QWEN_RERANK_TOP_N`。填 key 后用 `backend/tests/check_qwen.py` 自测两条链路；
 flash 保留为后续降本 A/B 候选；v4 仅作“本地 Qwen3-Embedding-0.6B 同源”对照。工具切换到 API 后，必须先用 v2 验收集重跑 strict 指标再采信。
 
-### B7.4 成本估算（北京区，2026-11-07 官方价）
+### B7.4 成本估算（中国区北京，2026-11-07 官方价）
 
 > 假设：embedding 输入 **2.06M tokens**（12,973 chunks，`sum(min(len,512))` 口径；若按全文不截断约 2.3M，成本约 ¥1.15）；rerank 每 query 40 docs、平均 ~159 tokens/doc + query ≈ **6.4k tokens/query**。不含 PG/Qdrant/机器/LLM 成本。
 
@@ -439,7 +439,7 @@ flash 保留为后续降本 A/B 候选；v4 仅作“本地 Qwen3-Embedding-0.6B
 - `qwen3.7-text-embedding` 有 **1M tokens 免费额度**（领取/有效期以控制台为准），可覆盖约一半首次建库，实际现金成本可能更低；以百炼账单为准。
 - 重排成本与候选数近似线性：40→20 约减半，40→10 约 1/4；strict 指标可能变化，需 A/B。
 - 若改用 `qwen3.7-text-embedding-flash`：仅省一次性约 **¥0.77**（¥1.03→¥0.26），查询成本几乎不变；在这个量级“质量优先”的额外成本可忽略。
-- 新加坡区价格更高（embedding ¥0.525/M、rerank ¥0.749/M），同量级成本约为北京区的 **1.2–1.5 倍**。
+- 价格与模型均按**中国区（北京）**；本方案固定中国区，不估算国际区。
 - 生产量级 ≥10 万次/月后，再考虑候选裁剪、缓存、自建模型；当前阶段 API 成本不是瓶颈。
 - 免费额度、活动价与限流以百炼控制台为准；本表为按官方原价做的 planning 估算。
 
