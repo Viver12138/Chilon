@@ -161,6 +161,31 @@ pre {
 .crumb { color: var(--muted); font-size: 0.88rem; }
 .top-actions { display: flex; align-items: center; gap: 12px; }
 .top-search { width: 260px; margin: 0; }
+.user-menu { position: relative; }
+.avatar {
+  width: 38px; height: 38px; padding: 0; border-radius: 50%;
+  display: inline-flex; align-items: center; justify-content: center;
+  background: linear-gradient(135deg, #3157d5, #6f8cff); color: #fff;
+  font-size: 0.95rem; font-weight: 750; box-shadow: 0 4px 12px #3157d533;
+}
+.avatar:hover { filter: brightness(1.08); }
+.dropdown {
+  display: none; position: absolute; right: 0; top: 48px; width: 190px;
+  background: #fff; border: 1px solid var(--line); border-radius: 12px;
+  box-shadow: 0 16px 36px rgba(24, 39, 75, 0.16); padding: 8px; z-index: 30;
+}
+.dropdown.open { display: block; }
+.dropdown-user {
+  padding: 8px 10px 10px; color: var(--muted); font-size: 0.84rem;
+  border-bottom: 1px solid var(--line); margin-bottom: 6px;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.dropdown a, .dropdown-item {
+  display: block; width: 100%; text-align: left; padding: 9px 10px;
+  border: 0; border-radius: 8px; background: transparent; color: var(--ink);
+  box-shadow: none; font: inherit; font-weight: 500; cursor: pointer;
+}
+.dropdown a:hover, .dropdown-item:hover { background: #f1f4ff; text-decoration: none; }
 .content { max-width: 1120px; margin: 0 auto; padding: 26px 26px 64px; }
 .dash-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 14px; }
 .quick-card { display: block; color: inherit; text-decoration: none; }
@@ -230,16 +255,33 @@ def page(title: str, body: str, *, teacher: str | None = None,
          active: str | None = None) -> HTMLResponse:
     if teacher:
         active = active or ACTIVE_BY_TITLE.get(title, 'dashboard')
+        initial = esc((teacher.strip()[:1] or '师').upper())
         top = (
             '<header class="topbar">'
             f'<span class="crumb">{esc(title)}</span>'
             '<div class="top-actions">'
             '<form class="top-search" method="get" action="/ui/search">'
             '<input name="q" placeholder="搜索知识库…" aria-label="搜索知识库"></form>'
-            f'<span class="muted">{esc(teacher)}</span>'
+            '<div class="user-menu">'
+            '<button class="avatar" id="user-menu-button" type="button" '
+            f'aria-label="打开用户菜单" aria-haspopup="true" aria-expanded="false">{initial}</button>'
+            '<div class="dropdown" id="user-menu-dropdown">'
+            f'<div class="dropdown-user">{esc(teacher)}</div>'
+            '<a href="/ui/settings">设置</a>'
             '<form method="post" action="/ui/logout" style="margin:0">'
-            '<button class="secondary" type="submit">退出</button></form>'
+            '<button class="dropdown-item" type="submit">退出登录</button></form>'
+            '</div></div>'
             '</div></header>'
+            '<script>'
+            '(function(){var b=document.getElementById("user-menu-button");'
+            'var d=document.getElementById("user-menu-dropdown");'
+            'if(!b||!d)return;'
+            'function close(){d.classList.remove("open");b.setAttribute("aria-expanded","false");}'
+            'b.addEventListener("click",function(e){e.stopPropagation();'
+            'var open=d.classList.toggle("open");b.setAttribute("aria-expanded",open?"true":"false");});'
+            'document.addEventListener("click",function(e){if(!d.contains(e.target)&&e.target!==b)close();});'
+            'document.addEventListener("keydown",function(e){if(e.key==="Escape")close();});'
+            '})();</script>'
         )
         shell = (
             '<div class="app">' + _sidebar(active)
