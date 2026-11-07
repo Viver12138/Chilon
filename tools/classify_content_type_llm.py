@@ -30,7 +30,7 @@ REVIEW = ROOT / 'corpus/textbook/content_type_reviewed_120_2026-11-07.json'
 OUT_REVIEWED = ROOT / 'var/textbook_mapping/content_type_llm_reviewed.json'
 OUT_ALL = ROOT / 'var/textbook_mapping/content_type_llm_all.json'
 TYPES = ['definition', 'theorem', 'formula', 'example', 'exercise', 'catalog', 'reading', 'other']
-URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+URL = qwen_api.chat_base_url() + '/chat/completions'
 
 SYSTEM = """你是高中数学教材内容标注专家。给每个教材块选一个主类型，并给出多标签。
 类型（只能使用这些英文值）：
@@ -114,7 +114,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description='Qwen content_type classifier')
     parser.add_argument('--all', action='store_true')
     parser.add_argument('--reviewed-only', action='store_true')
-    parser.add_argument('--model', default='qwen-plus')
+    parser.add_argument('--model', default=qwen_api.chat_model())
     parser.add_argument('--batch', type=int, default=10)
     parser.add_argument('--limit', type=int, default=0)
     args = parser.parse_args()

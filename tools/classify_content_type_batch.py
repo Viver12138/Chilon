@@ -39,7 +39,7 @@ DRAFT = ROOT / 'var/textbook_mapping/textbook_content_type_draft.json'
 CHECKPOINT = ROOT / 'var/textbook_mapping/content_type_llm_checkpoint.jsonl'
 USAGE = ROOT / 'var/textbook_mapping/content_type_llm_usage.json'
 OUT = ROOT / 'var/textbook_mapping/content_type_llm_all.json'
-URL = 'https://dashscope.aliyuncs.com/compatible-mode/v1/chat/completions'
+URL = qwen_api.chat_base_url() + '/chat/completions'
 
 
 def now() -> str:
@@ -131,7 +131,7 @@ def main() -> int:
     parser.add_argument('--limit', type=int, default=0, help='process at most N pending blocks')
     parser.add_argument('--batch', type=int, default=20)
     parser.add_argument('--workers', type=int, default=1, help='parallel batch requests')
-    parser.add_argument('--model', default='qwen-plus')
+    parser.add_argument('--model', default=qwen_api.chat_model())
     parser.add_argument('--timeout', type=float, default=180)
     parser.add_argument('--max-retries', type=int, default=3)
     parser.add_argument('--price-in', type=float, default=0.8, help='CNY per 1M prompt tokens')

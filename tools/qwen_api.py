@@ -113,6 +113,18 @@ def rerank_model() -> str:
     return config.get("CHILON_QWEN_RERANK_MODEL") or "qwen3.7-text-rerank"
 
 
+def chat_model() -> str:
+    """Chinese text LLM tasks (content_type, semantic query helpers) use qwen-plus."""
+    return config.get("CHILON_QWEN_CHAT_MODEL") or "qwen-plus"
+
+
+def chat_base_url() -> str:
+    """DashScope OpenAI-compatible endpoint for chat completions."""
+    base = (config.get("CHILON_QWEN_CHAT_BASE_URL")
+            or "https://dashscope.aliyuncs.com/compatible-mode/v1")
+    return base.rstrip("/")
+
+
 def rerank_top_n() -> int:
     return int(config.get("CHILON_QWEN_RERANK_TOP_N") or 40)
 
