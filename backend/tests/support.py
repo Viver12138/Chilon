@@ -32,6 +32,14 @@ async def provision_runtime_role(url: str, *, role: str = ROLE, password: str = 
     admin = create_async_engine(url)
     try:
         async with admin.begin() as conn:
+            await conn.execute(text(
+                f"""DO $$
+                BEGIN
+                  IF EXISTS (SELECT 1 FROM pg_roles WHERE rolname = '{role}') THEN
+                    EXECUTE 'DROP OWNED BY {role}';
+                  END IF;
+                END $$;"""
+            ))
             await conn.execute(text(f"DROP ROLE IF EXISTS {role}"))
             await conn.execute(text(f"CREATE ROLE {role} LOGIN PASSWORD '{password}'"))
             await conn.execute(text(f"GRANT USAGE ON SCHEMA public TO {role}"))
