@@ -55,7 +55,9 @@ ORIGIN_LABELS = {
     "simulated_candidate": "模拟候选",
     "legacy_developer": "旧自拟",
 }
-FIELDS = ("text", "excerpt", "title", "knowledge_points", "year", "paper", "source_type")
+FIELDS = (
+    "text", "excerpt", "title", "knowledge_points", "year", "paper", "source_type", "question_type"
+)
 OBJECT_TYPES = ("any", "chunk", "question", "paragraph")
 # 数据集里 object_type 只是"这条问题想要什么对象"的标注，用于覆盖率统计；
 # 判定规则由 expect 子句的 object 字段决定，两者是分开的。
@@ -375,6 +377,8 @@ def _field_value(hit: dict, field: str) -> str:
         return str(hit.get("source_paper") or "")
     if field == "source_type":
         return str(hit.get("source_type") or "")
+    if field == "question_type":
+        return str(hit.get("question_type") or "")
     return ""
 
 

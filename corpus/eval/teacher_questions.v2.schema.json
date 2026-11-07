@@ -83,7 +83,7 @@
       "type": "object",
       "properties": {
         "field": {
-          "enum": ["text", "excerpt", "title", "knowledge_points", "year", "paper", "source_type"],
+          "enum": ["text", "excerpt", "title", "knowledge_points", "year", "paper", "source_type", "question_type"],
           "default": "text",
           "description": "text = 块摘要 + 来源标题；其余为对应命中字段"
         },
