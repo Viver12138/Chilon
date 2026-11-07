@@ -130,9 +130,23 @@ def _hydrate(conn, vector_hits: list[dict]) -> list[dict]:
 
 
 def _search_impl(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '',
-                 sources: list[str] | None = None) -> dict[str, Any]:
+                 sources: list[str] | None = None, scope_override: str | None = None) -> dict[str, Any]:
     started = time.perf_counter()
     plan = query_plan.build_plan(query)
+    if scope_override == 'knowledge':
+        # Related textbook knowledge should not inherit question-only filters
+        # (year/paper/question_type); otherwise a question query's hard filters
+        # make it impossible to find a textbook block.
+        plan['hard'].pop('question_scope', None)
+        plan['hard'].pop('year_range', None)
+        plan['hard'].pop('papers', None)
+        plan['hard'].pop('question_types', None)
+        plan['hard']['source_types'] = ['textbook']
+        plan['object_scope'] = 'knowledge'
+    elif scope_override == 'question':
+        plan['hard']['question_scope'] = 'question'
+        plan['hard'].pop('source_types', None)
+        plan['object_scope'] = 'question'
     if mode in ('h', 'hr'):
         selected = mode.upper()
         auto_mode = query_plan.preferred_mode(plan)
@@ -262,7 +276,7 @@ _SLOTS = threading.BoundedSemaphore(
 
 
 def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '',
-           sources: list[str] | None = None) -> dict[str, Any]:
+           sources: list[str] | None = None, scope_override: str | None = None) -> dict[str, Any]:
     """Public entrypoint with a global concurrency cap (API + agent)."""
     try:
         timeout = float(settings.get('CHILON_RETRIEVAL_ACQUIRE_TIMEOUT_SECONDS', '5') or 5)
@@ -271,6 +285,7 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
     if not _SLOTS.acquire(timeout=timeout):
         raise RuntimeError('retrieval busy: concurrency cap reached')
     try:
-        return _search_impl(query, limit=limit, mode=mode, user_key=user_key, sources=sources)
+        return _search_impl(query, limit=limit, mode=mode, user_key=user_key,
+                            sources=sources, scope_override=scope_override)
     finally:
         _SLOTS.release()

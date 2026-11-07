@@ -411,7 +411,8 @@ def _hit_card(hit: dict) -> str:
     )
 
 
-def _search_page(user_name: str, query: str, result: dict | None, error: str | None) -> HTMLResponse:
+def _search_page(user_name: str, query: str, result: dict | None, error: str | None,
+                 related: dict | None = None) -> HTMLResponse:
     form = (
         "<div class='card search-hero'><h2>从知识库找证据</h2>"
         "<form class='search-form' method='get' action='/ui/search'>"
@@ -445,6 +446,16 @@ def _search_page(user_name: str, query: str, result: dict | None, error: str | N
                 if groups[group]:
                     parts.append(f"<h2>{esc(OBJECT_LABELS[group])}</h2>")
                     parts.extend(_hit_card(hit) for hit in groups[group])
+        if related is not None:
+            parts.append("<h2>相关教材知识</h2>")
+            if related.get('hits'):
+                parts.extend(_hit_card(hit) for hit in related['hits'])
+            else:
+                parts.append(
+                    "<div class='card'><p class='muted'>没有找到相关教材知识块；"
+                    "可以试试更概念化的问法，例如“数列的递推公式定义”。</p></div>"
+                )
+        if result.get('hits') or (related and related.get('hits')):
             parts.append(
                 "<script>document.querySelectorAll('.copy-cite').forEach(function(b){"
                 "b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.citation);"
@@ -474,7 +485,17 @@ async def ui_search(
         result = await asyncio.to_thread(
             routed_retrieval.search, query, limit=8, mode='h', user_key=str(user_id)
         )
-        return _search_page(name, query, result, None)
+        related = None
+        has_knowledge = any(_object_group(hit) == 'knowledge' for hit in result.get('hits', []))
+        if not has_knowledge:
+            try:
+                related = await asyncio.to_thread(
+                    routed_retrieval.search, query, limit=4, mode='h', user_key=str(user_id),
+                    scope_override='knowledge',
+                )
+            except Exception:  # noqa: BLE001 - the question results are still useful
+                related = None
+        return _search_page(name, query, result, None, related=related)
     except retrieval_guard.RateLimited:
         return _search_page(name, query, None, '请求过于频繁，请稍后再试。')
     except retrieval_guard.QuotaExceeded:
