@@ -175,25 +175,30 @@ python backend/tests/check_llm.py
 | `CHILON_DEEPSEEK_MODEL` | `deepseek-chat` | 或 `deepseek-reasoner` |
 | `CHILON_PLANNER` | `deepseek` | 设为 `template` 可离线跑测试 |
 
-### Qwen / 阿里云百炼（检索 embedding）
+### Qwen / 阿里云百炼（检索 embedding + rerank）
 
-2026-11-07 选型：**质量优先 → `qwen3.7-text-embedding`（1024 维，北京区）**。密钥只放在本机 `.env`（不进版本库）：
+2026-11-07 决策：**质量优先，embedding 与 rerank 都走 Qwen API**——`qwen3.7-text-embedding`（1024 维）+ `qwen3-rerank`；本地 Qwen3-Embedding/Reranker 只保留为离线回退。密钥只放在本机 `.env`（不进版本库）：
 
 ```powershell
 # 编辑 .env，填入百炼控制台申请的 API-KEY
 CHILON_QWEN_API_KEY=sk-...
+
+# 填完后自测 embedding + rerank 是否都连通
+.venv\Scripts\python.exe backend\tests\check_qwen.py
 ```
 
 | 变量 | 默认 | 说明 |
 | --- | --- | --- |
 | `CHILON_QWEN_API_KEY` | 空 | 必填；也兼容官方环境变量 `DASHSCOPE_API_KEY` |
-| `CHILON_QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/compatible-mode/v1` | 新加坡区用 `https://dashscope-intl.aliyuncs.com/compatible-mode/v1` |
+| `CHILON_QWEN_BASE_URL` | `https://dashscope.aliyuncs.com/api/v1` | DashScope 原生 API；新加坡用 `https://dashscope-intl.aliyuncs.com/api/v1` |
 | `CHILON_QWEN_REGION` | `beijing` | 仅用于选择 endpoint 的提示 |
+| `CHILON_QWEN_TIMEOUT_SECONDS` | `30` | 单次请求超时 |
 | `CHILON_QWEN_EMBEDDING_MODEL` | `qwen3.7-text-embedding` | 质量优先；降本备选 `qwen3.7-text-embedding-flash` |
 | `CHILON_QWEN_EMBEDDING_DIM` | `1024` | 与现有 Qdrant 集合维度一致 |
-| `CHILON_QWEN_RERANK_MODEL` | `qwen3-rerank` | 可选；评估阶段可继续用本地 Qwen3-Reranker-0.6B |
+| `CHILON_QWEN_RERANK_MODEL` | `qwen3-rerank` | API 重排，替代本地 Qwen3-Reranker-0.6B |
+| `CHILON_QWEN_RERANK_TOP_N` | `40` | 送入 rerank 的候选数，与本地评测一致 |
 
-当前 `.env.example` 已给出占位；真正切到 API 时由检索/评测工具读取这些变量。密钥不要提交到仓库，也不要写进文档。
+当前 `.env.example` 已给出占位；检索/评测工具切换到 API 时读取这些变量。密钥不要提交到仓库，也不要写进文档。
 
 ## 设计与契约的状态
 
@@ -206,7 +211,7 @@ CHILON_QWEN_API_KEY=sk-...
 - **真实教师验收仍未做**：D3 冻结时只有场景 A 一次线框图走查；**场景 B（编辑不重审 Plan）、C（G3 自动批准）、D（纸质资料/知识库价值）仍未真实验收**。验收方案（A–E 场景、4–6 位分层教师、通过门槛）与检索扩样本方案已设计、未执行：`docs/acceptance_and_retrieval_eval_design_2026-11-07.md`（D.117）。
 - **知识库标注只到参考级，不得当验收**：6050 道高考真题的考点标注已全部处理（primary 6045，5 道判无归属）。第三轮“97%（修正后 99%）”是 AI 对 AI 标注的自洽复核，不是真人验收；第四轮真人抽检 100 题模块层一致 **94.0%（94/100，95% CI 87.5%–97.2%）**，只作参考级依据，用户告知填写人为高三资深教师（教龄/独立性未说明，未独立核实）。考点层尚未抽检，`annotation.status` 整体仍为 `needs_review`，不批量升级。
 - **标注已进 PG，但仍是“双表示”迁移态**：6050 题导入 `knowledge_annotations` 8007 条 active（primary 6045）；`current_knowledge_points` 仍是旧工作台的中文模块名缓存（4748/6050 非空），不是新事实源。迁移完成前 hybrid 检索只读 `knowledge_annotations`；旧基线 Recall@8 26.7% 已复现，同步契约见 `docs/KB_SYNC_CONTRACT.md`（D.88）。
-- **检索质量：混合原型 93.3%，但还不是产品效果**：15 条真人问题、混合检索（pg_trgm + Qdrant + RRF，无 rerank）Recall@8 **93.3%（14/15）**、MRR 0.836、空结果 0%；旧引擎 26.7% 仅作历史对照。样本只有 15 条、判定为 lenient 片段匹配、无 strict target；reranker 无 Recall 增益且 CPU 约 82.7s/query，未默认启用。**93.3% 不是产品最终效果**，详见 `corpus/eval/HYBRID_BASELINE_2026-11-06.md`（D.89）；旧 55%/0.451/32% 不可比、不可引用。问题集仍缺 11–15、类别不全，待补采后重测；扩样本设计（初期 15→60 条、其中 30 条 strict；长期 ≥100 条 strict 覆盖定义/定理/公式/完整题目；发布门槛 Recall@8 ≥85% + Strict Recall@8 ≥70%，MRR@8/Strict@1/Strict-all@8 为诊断；双人核验、五组对照、Wilson CI）见 D.117。
+- **检索质量：混合原型 93.3%，但还不是产品效果**：15 条真人问题、混合检索（pg_trgm + Qdrant + RRF，无 rerank）Recall@8 **93.3%（14/15）**、MRR 0.836、空结果 0%；旧引擎 26.7% 仅作历史对照。样本只有 15 条、判定为 lenient 片段匹配、无 strict target；reranker 无 Recall 增益且 CPU 约 82.7s/query，未默认启用（2026-11-07 决策：评测/生产改用 `qwen3-rerank` API，本地 reranker 仅离线回退，待 v2 评测验证）。**93.3% 不是产品最终效果**，详见 `corpus/eval/HYBRID_BASELINE_2026-11-06.md`（D.89）；旧 55%/0.451/32% 不可比、不可引用。问题集仍缺 11–15、类别不全，待补采后重测；扩样本设计（初期 15→60 条、其中 30 条 strict；长期 ≥100 条 strict 覆盖定义/定理/公式/完整题目；发布门槛 Recall@8 ≥85% + Strict Recall@8 ≥70%，MRR@8/Strict@1/Strict-all@8 为诊断；双人核验、五组对照、Wilson CI）见 D.117。
 - **受限资料已投影但没审完**：模拟题 67 套/931 题 + 教材 5 册/1797 块已从 PG 单向投影到 vault（`restricted`/`classroom`，仅内部审校，1005 个文件），但**答案/解析未入库**（题卡只指向同目录答案 PDF）、教材 OCR 待审且**无章节结构**、311 题 `question_type` 为空、legacy 中文模块名标“未核验”；高考卡 6324 张投影前后 0 改动。模拟题题干已本地修复 894/931；**39 题已全部有题干（33 阿里云试卷切题 OCR + 6 人工转录，每题来源可追溯）**（清单 `docs/mock_ocr_backlog_2026-11-06.md`；桌面临时文件夹已在校验 sha256 后删除，审计副本在 `var/`）；索引 12973 不变（mock 1002 / linked 931），15 条基线 93.3% 不变。工具 `tools/project_restricted_corpus.py`、`tools/kb_mock_*.py`、`tools/ocr_mock_backlog.py` 与 `tools/kb_manual_mock_import.py`，规则见 `docs/KB_SYNC_CONTRACT.md`（D.90–D.94）。
 - **模拟题标注：931/931 全部有 primary，197 题经教师复核**：teacher **197**（93 随机抽样 + 104 高风险定向）/ model **734**；secondary **154**、空 primary **0**。一致率：93 题抽样 模块 81.7%/考点 54.8%；104 题定向 模块 45.2%/考点 13.5%（高风险子集，两组不可混用）。卡片 931/931 非空、931 卡 + 67 set note 与高考卡 sha256 未变；**734 条 model 标注仍未抽检，整体仍 `needs_review`**；未调 OCR、Qdrant 12973 与 15 条基线 93.3% 均不变（D.97）。
 - **教材块标注阶段已冻结：teacher 1797/1797、引擎 v8、PG/vault 稳定**：`textbook_block_annotations` active **1797**，全部 teacher、reviewed；status mapped **1595** / non_content **191** / vocab_gap **11**；teacher 五批版本保留；`knowledge_annotations` 9092 未变。自动映射引擎冻结在 **v8**（in-sample exact 1561/1590 = 98.2%、module 1583/1590；**无 fresh holdout，不是泛化准确率**）；vault 5 册 **1606 行**（1595 kp 链接 + 11 待补），原文 0 差异、missing 0、可重建。冻结快照 `var/freeze/textbook_block_annotations_final_2026-11-07.json`（sha256 `39d19847…df804`），git tag `textbook-annotations-v8-frozen`；交接报告 [docs/textbook_annotation_handover_2026-11-07.md](docs/textbook_annotation_handover_2026-11-07.md)（含复现、校验、未决项、交接清单；D.104–D.116）。
