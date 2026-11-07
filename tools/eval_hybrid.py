@@ -175,6 +175,19 @@ def main() -> int:
     parser.add_argument("--limit-queries", type=int, default=0, help="0 = all 15")
     parser.add_argument("--skip-rerank", action="store_true", help="only run the no-rerank group")
     parser.add_argument("--skip-download", action="store_true")
+    parser.add_argument(
+        "--api",
+        action="store_true",
+        help="use Qwen API for query embedding + rerank (qwen3.7-text-embedding / qwen3.7-text-rerank)",
+    )
+    parser.add_argument("--api-dim", type=int, default=1024)
+    parser.add_argument("--api-embedding-model", default=None)
+    parser.add_argument("--api-rerank-model", default=None)
+    parser.add_argument(
+        "--api-query-instruction",
+        action="store_true",
+        help="prepend the local instruction template to API queries (default: raw query; measured worse on 15 queries)",
+    )
     args = parser.parse_args()
 
     if not args.database_url:
@@ -192,19 +205,20 @@ def main() -> int:
     print(f"questions: {len(scored)} (excluded {len(excluded)})")
 
     # models
-    embed_dir, embed_rev = (
-        (args.embedding_model_dir, None)
-        if args.skip_download
-        else ensure_model("Qwen/Qwen3-Embedding-0.6B", args.embedding_model_dir, args.hf_cache)
-    )
-    rerank_dir = None
-    rerank_rev = None
-    if not args.skip_rerank:
-        rerank_dir, rerank_rev = (
-            (args.reranker_model_dir, None)
+    embed_dir = rerank_dir = None
+    embed_rev = rerank_rev = None
+    if not args.api:
+        embed_dir, embed_rev = (
+            (args.embedding_model_dir, None)
             if args.skip_download
-            else ensure_model(RERANK_REPO, args.reranker_model_dir, args.hf_cache)
+            else ensure_model("Qwen/Qwen3-Embedding-0.6B", args.embedding_model_dir, args.hf_cache)
         )
+        if not args.skip_rerank:
+            rerank_dir, rerank_rev = (
+                (args.reranker_model_dir, None)
+                if args.skip_download
+                else ensure_model(RERANK_REPO, args.reranker_model_dir, args.hf_cache)
+            )
 
     from qdrant_client import QdrantClient  # type: ignore
 
@@ -213,30 +227,51 @@ def main() -> int:
     points = collection_info.points_count
     print(f"collection {args.collection}: {points} points")
 
-    print("loading embedding model ...")
-    t0 = time.perf_counter()
-    embedding_model, embedding_tokenizer, dim = hr.load_embedding_model(embed_dir)
-    embedding_load_s = time.perf_counter() - t0
-    print(f"   dim={dim} load={embedding_load_s:.1f}s rss={hr._rss_mb()}MB")
-
     queries = [query["text"] for query in scored]
-    query_vectors, embed_stats = hr.embed_queries(embedding_model, embedding_tokenizer, queries)
-    print(f"query embedding: {embed_stats}")
-    # free the embedding model before loading the reranker (CPU RAM is shared with
-    # other processes on this machine; two 0.6B fp32 models at once is unnecessary)
-    import gc
+    if args.api:
+        from qwen_api import embed_texts as api_embed_texts
 
-    del embedding_model, embedding_tokenizer
-    gc.collect()
+        api_queries = (
+            [hr.embedding_query_text(query) for query in queries]
+            if args.api_query_instruction
+            else queries
+        )
+        print("embedding queries via Qwen API ...")
+        t0 = time.perf_counter()
+        query_vectors, embed_stats = api_embed_texts(api_queries)
+        embedding_load_s = 0.0
+        dim = len(query_vectors[0]) if query_vectors else args.api_dim
+        print(
+            f"   dim={dim} query_template="
+            f"{'instruction' if args.api_query_instruction else 'raw'} api={embed_stats}"
+        )
+    else:
+        print("loading embedding model ...")
+        t0 = time.perf_counter()
+        embedding_model, embedding_tokenizer, dim = hr.load_embedding_model(embed_dir)  # type: ignore[arg-type]
+        embedding_load_s = time.perf_counter() - t0
+        print(f"   dim={dim} load={embedding_load_s:.1f}s rss={hr._rss_mb()}MB")
+        query_vectors, embed_stats = hr.embed_queries(embedding_model, embedding_tokenizer, queries)
+        print(f"query embedding: {embed_stats}")
+        # free the embedding model before loading the reranker (CPU RAM is shared with
+        # other processes on this machine; two 0.6B fp32 models at once is unnecessary)
+        import gc
+
+        del embedding_model, embedding_tokenizer
+        gc.collect()
 
     reranker_model = reranker_tokenizer = None
     reranker_load_s = None
     if not args.skip_rerank:
-        print("loading reranker model ...")
-        t0 = time.perf_counter()
-        reranker_model, reranker_tokenizer = hr.load_reranker(rerank_dir)
-        reranker_load_s = time.perf_counter() - t0
-        print(f"   load={reranker_load_s:.1f}s rss={hr._rss_mb()}MB")
+        if args.api:
+            reranker_model = "api"
+            reranker_load_s = 0.0
+        else:
+            print("loading reranker model ...")
+            t0 = time.perf_counter()
+            reranker_model, reranker_tokenizer = hr.load_reranker(rerank_dir)  # type: ignore[arg-type]
+            reranker_load_s = time.perf_counter() - t0
+            print(f"   load={reranker_load_s:.1f}s rss={hr._rss_mb()}MB")
 
     conn = connect(args.database_url)
     # Knowledge points: read from knowledge_annotations (SSOT), not from
@@ -311,9 +346,16 @@ def main() -> int:
                 docs = [
                     hr.embedding_text(hit)[: hr.CONFIG["rerank_doc_chars"]] for hit in candidates
                 ]
-                scores, rerank_stats = hr.rerank_scores(
-                    reranker_model, reranker_tokenizer, query["text"], docs
-                )
+                if args.api:
+                    import qwen_api
+
+                    scores, rerank_stats = qwen_api.rerank(
+                        query["text"], docs, model=args.api_rerank_model
+                    )
+                else:
+                    scores, rerank_stats = hr.rerank_scores(
+                        reranker_model, reranker_tokenizer, query["text"], docs
+                    )
                 rerank_stats_all.append(rerank_stats)
                 ranked = sorted(zip(candidates, scores), key=lambda pair: pair[1], reverse=True)
                 rerank_hits = []
@@ -406,7 +448,11 @@ def main() -> int:
     }
     if not args.skip_rerank:
         groups["rerank"] = {
-            "label": "混合 + Qwen3-Reranker-0.6B",
+            "label": (
+                "混合 + qwen3.7-text-rerank（API）"
+                if args.api
+                else "混合 + Qwen3-Reranker-0.6B"
+            ),
             "metrics": legacy_eval.compute_metrics(rows_rerank, k),
             "by_category": _category_metrics(rows_rerank, k),
             "queries": [
@@ -476,20 +522,37 @@ def main() -> int:
             "qdrant_url": args.qdrant_url,
         },
         "models": {
-            "embedding": {
-                "repo": "Qwen/Qwen3-Embedding-0.6B",
-                "revision": embed_rev,
-                "dim": dim,
-                "load_seconds": round(embedding_load_s, 2),
-            },
+            "embedding": (
+                {
+                    "provider": "dashscope",
+                    "model": args.api_embedding_model or "qwen3.7-text-embedding",
+                    "dim": dim,
+                    "load_seconds": None,
+                }
+                if args.api
+                else {
+                    "repo": "Qwen/Qwen3-Embedding-0.6B",
+                    "revision": embed_rev,
+                    "dim": dim,
+                    "load_seconds": round(embedding_load_s, 2),
+                }
+            ),
             "reranker": (
                 {
-                    "repo": RERANK_REPO,
-                    "revision": rerank_rev,
-                    "load_seconds": round(reranker_load_s, 2) if reranker_load_s else None,
+                    "provider": "dashscope",
+                    "model": args.api_rerank_model or "qwen3.7-text-rerank",
+                    "load_seconds": None,
                 }
-                if reranker_model is not None
-                else None
+                if args.api and reranker_model is not None
+                else (
+                    {
+                        "repo": RERANK_REPO,
+                        "revision": rerank_rev,
+                        "load_seconds": round(reranker_load_s, 2) if reranker_load_s else None,
+                    }
+                    if reranker_model is not None
+                    else None
+                )
             ),
         },
         "throughput": {
