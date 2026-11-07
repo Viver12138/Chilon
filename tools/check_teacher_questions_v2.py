@@ -45,6 +45,7 @@ def main() -> int:
     parser.add_argument("--schema", type=Path, default=DEFAULT_SCHEMA)
     parser.add_argument("--database-url", default=os.environ.get("CHILON_TEST_DATABASE_URL"))
     parser.add_argument("--min-strict", type=int, default=30)
+    parser.add_argument("--allow-unverified", action="store_true", help="允许 strict_verified=false 的 draft（只做结构检查，不产出基线）")
     parser.add_argument("--require-quota", action="store_true", help="strict 类型必须严格等于 8/6/6/10")
     args = parser.parse_args()
 
@@ -120,11 +121,11 @@ def main() -> int:
     bad_chunk_ids = []
     for q in strict_queries:
         strict = q["expect"]["strict"]
-        if not q.get("strict_verified"):
+        if not q.get("strict_verified") and not args.allow_unverified:
             return fail(f"{q['id']} 有 strict 但 strict_verified != true", 3)
         if not strict.get("rationale"):
             return fail(f"{q['id']} strict 缺 rationale", 3)
-        if not strict.get("verified_by"):
+        if not args.allow_unverified and not strict.get("verified_by"):
             return fail(f"{q['id']} strict 缺 verified_by", 3)
         for chunk_id in strict["chunk_ids"]:
             if not UUID_RE.match(chunk_id):
