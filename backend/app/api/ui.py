@@ -23,6 +23,7 @@ Two deliberate UX decisions:
 
 from __future__ import annotations
 
+import asyncio
 import html
 import uuid
 from urllib.parse import quote
@@ -44,6 +45,7 @@ from app.services import (
     identity,
     planner,
     publication,
+    retrieval_guard,
     tasks,
 )
 
@@ -85,6 +87,7 @@ def page(title: str, body: str, *, teacher: str | None = None) -> HTMLResponse:
         header = (
             '<div class="muted" style="display:flex;justify-content:space-between">'
             f"<span>{esc(teacher)}</span>"
+            '<a href="/ui/search" style="margin-right:12px">检索</a>'
             '<a href="/ui/knowledge" style="margin-right:12px">知识库</a>'
             '<form method="post" action="/ui/logout" style="margin:0">'
             '<button class="secondary" type="submit">退出</button></form></div>'
@@ -212,6 +215,92 @@ async def post_logout(chilon_session: Annotated[str | None, Cookie()] = None) ->
     response = RedirectResponse("/ui/login", status_code=303)
     response.delete_cookie(COOKIE, path="/")
     return response
+
+
+# ── retrieval search ──────────────────────────────────────────────────────────
+
+
+SOURCE_LABELS = {
+    'textbook': '教材',
+    'gaokao_paper': '高考真题',
+    'mock_exam': '模拟题',
+}
+
+EMPTY_REASONS = {
+    'no_match': '没有找到匹配内容',
+    'no_match_under_filters': '在给定条件下没有匹配内容',
+    'no_candidates': '检索没有返回候选',
+}
+
+
+def _search_page(user_name: str, query: str, result: dict | None, error: str | None) -> HTMLResponse:
+    form = (
+        "<div class='card'><form method='get' action='/ui/search'>"
+        f"<input name='q' value='{esc(query)}' placeholder='例如：导数的切线方程公式是什么？' required>"
+        "<p><button type='submit'>检索</button></p></form>"
+        "<p class='muted'>只展示知识库原文证据，不生成答案；请核对来源和页码。</p></div>"
+    )
+    parts = [form]
+    if error:
+        parts.append(f"<p class='err'>{esc(error)}</p>")
+    if result is not None:
+        status = result.get('status')
+        mode = result.get('mode')
+        parts.append(
+            f"<p class='muted'>模式 {esc(mode)} · 状态 {esc(status)} · "
+            f"{esc(result.get('elapsed_ms'))}ms</p>"
+        )
+        if not result.get('hits'):
+            reason = EMPTY_REASONS.get(result.get('empty_reason'), '没有找到匹配内容')
+            parts.append(
+                "<div class='card'><p class='err'>没有找到匹配内容。</p>"
+                f"<p class='muted'>原因：{esc(reason)}。可以换一个更具体的说法，或去掉年份/题型等条件。</p></div>"
+            )
+        else:
+            for hit in result['hits']:
+                label = SOURCE_LABELS.get(hit.get('source_type'), hit.get('source_type') or '知识库')
+                meta = [label, hit.get('source_title'), hit.get('source_paper'), hit.get('year')]
+                meta_text = ' · '.join(str(x) for x in meta if x)
+                qtype = f" · 题型 {hit.get('question_type')}" if hit.get('question_type') else ''
+                parts.append(
+                    "<div class='card'>"
+                    f"<p><span class='tag'>{esc(label)}</span> {esc(meta_text)}</p>"
+                    f"<p class='muted'>位置 {esc(hit.get('locator'))}{esc(qtype)} · "
+                    f"chunk {esc(str(hit.get('chunk_id'))[:8])}</p>"
+                    f"<pre>{esc((hit.get('excerpt') or '')[:600])}</pre>"
+                    "</div>"
+                )
+    return page("知识库检索", ''.join(parts), teacher=user_name)
+
+
+@router.get("/ui/search")
+async def ui_search(
+    q: str | None = None,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    query = (q or '').strip()
+    if not query:
+        return _search_page(name, '', None, None)
+    try:
+        from app.services import routed_retrieval
+
+        retrieval_guard.check_and_record(str(user_id), 'h')
+        result = await asyncio.to_thread(
+            routed_retrieval.search, query, limit=8, mode='h', user_key=str(user_id)
+        )
+        return _search_page(name, query, result, None)
+    except retrieval_guard.RateLimited:
+        return _search_page(name, query, None, '请求过于频繁，请稍后再试。')
+    except retrieval_guard.QuotaExceeded:
+        return _search_page(name, query, None, '今日检索额度已用完。')
+    except Exception as exc:  # noqa: BLE001 - teacher sees a readable error
+        return _search_page(name, query, None, f"检索暂时不可用：{type(exc).__name__}")
 
 
 # ── tasks ──────────────────────────────────────────────────────────────────────
