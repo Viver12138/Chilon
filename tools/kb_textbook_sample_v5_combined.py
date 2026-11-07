@@ -116,11 +116,13 @@ def build(args):
     model = [x for x in reviewed if x.get('review_status') == 'model']
     teacher_ids = {x['block_id'] for x in reviewed if x.get('review_status') == 'teacher'}
     sampled_pool = [x for x in model if x['block_id'] not in pilot_ids]
-    pilot_pool = [byid[i] for i in pilot_ids if i in byid]
-    if len(pilot_pool) != len(pilot_ids):
-        die(f'pilot 块缺失：{len(pilot_ids) - len(pilot_pool)}')
+    # pilot 块只有仍是 model 时才需要回采（已复核的 pilot 不再进表）
+    pilot_model_ids = {i for i in pilot_ids if i in byid and byid[i].get('review_status') == 'model'}
+    pilot_pool = [byid[i] for i in sorted(pilot_model_ids)]
+    if len(pilot_pool) != len(pilot_model_ids):
+        die(f'pilot 块缺失：{len(pilot_model_ids) - len(pilot_pool)}')
     if set(pilot_ids) & teacher_ids:
-        die('pilot 与 teacher 重叠')
+        pass  # pilot 已复核时不再回采，属正常
 
     target = math.ceil(len(sampled_pool) * args.percent / 100.0)
     rng = random.Random(args.seed)
@@ -198,7 +200,7 @@ def write_xlsx(rows, meta, args):
     from openpyxl.worksheet.datavalidation import DataValidation
     from openpyxl.utils import get_column_letter
     mapped_v = {x['block_id']: x for x in json.loads(pathlib.Path(args.mapped).read_text(encoding='utf-8'))['items']}
-    v4_path = OUT / 'mapped_1797_v4.json'
+    v4_path = pathlib.Path(getattr(args, 'prev_mapped', str(OUT / 'mapped_1797_v4.json')))
     v4 = {x['block_id']: x for x in json.loads(v4_path.read_text(encoding='utf-8'))['items']} if v4_path.exists() else {}
     mods = module_map()
     kp_list = []
@@ -209,10 +211,13 @@ def write_xlsx(rows, meta, args):
                 kp_list.append(parts[0].strip('`'))
     pdf_dir = ROOT / 'corpus' / 'textbooks'
     pdfs = {p.stem: str(p) for p in pdf_dir.glob('*.pdf')}
-    wb = Workbook(); ws = wb.active; ws.title = '复核v5_20pct_pilot'
+    wb = Workbook(); ws = wb.active
+    ws.title = f"复核{getattr(args, 'rule_label', 'v5')}_20pct" + ('_pilot' if meta['pilot'] else '')
+    rule_l = getattr(args, 'rule_label', 'v5')
+    prev_l = getattr(args, 'prev_label', 'v4')
     headers = ['序号', '来源', 'block_id', '册', '章', '节', '页码', '块类型', '完整原文',
                '模型模块', '模型primary', '名称', '模型secondary', '置信', '理由',
-               'v5规则', 'v4模型primary', '教师模块', '教师考点', '备注', '来源PDF']
+               f'{rule_l}规则', f'{prev_l}模型primary', '教师模块', '教师考点', '备注', '来源PDF']
     ws.append(headers)
     for i, x in enumerate(rows, 1):
         mv = mapped_v.get(x['block_id'], {})
@@ -252,19 +257,35 @@ def write_xlsx(rows, meta, args):
         ws.row_dimensions[r].height = 70
     ws.freeze_panes = 'A2'; ws.auto_filter.ref = f'A1:U{ws.max_row}'
     ws3 = wb.create_sheet('说明')
+    if meta['pilot']:
+        title_line = f"教材 {rule_l} 映射 · 组合复核表（剩余 {meta['percent']:g}% + pilot {meta['pilot']} 回采）"
+        pool_line = (f"reviewed 中 model {meta['model']} 块（teacher {meta['teacher']} 已排除）；"
+                     f"其中 pilot 100 块单列回采。")
+        sample_line = (f"抽样池 = model − pilot = {meta['sampled_pool']}；{meta['percent']:g}% = "
+                       f"{meta['sample_target']} 块；稀有状态全量，其余按册/置信分层、章轮转。")
+        pilot_line = f"pilot {meta['pilot']} 块全量加入（来源列标 `pilot100回采`）。"
+        total_line = f"{meta['total']} 行 = {meta['sample_target']} 抽样 + {meta['pilot']} pilot。"
+    else:
+        title_line = f"教材 {rule_l} 映射 · 复核表（剩余 {meta['model']} 块抽 {meta['percent']:g}%）"
+        pool_line = f"reviewed 中 model {meta['model']} 块（teacher {meta['teacher']} 已排除）。"
+        sample_line = (f"{meta['percent']:g}% = {meta['sample_target']} 块；"
+                       f"按册比例、置信分层、章轮转抽取。")
+        pilot_line = None
+        total_line = f"{meta['total']} 行。"
     lines = [
-        ['教材 v5 映射 · 组合复核表（剩余 20% + pilot 100 回采）'],
+        [title_line],
         [''],
-        ['目的', '一次填完：剩余 model 块的 20% 抽样 + pilot 100 块全量回采（补回当年缺失的逐块标签）。'],
-        ['池', f"reviewed 中 model {meta['model']} 块（teacher {meta['teacher']} 已排除）；"
-               f"其中 pilot 100 块单列回采。"],
-        ['20% 抽样', f"抽样池 = model − pilot = {meta['sampled_pool']}；20% = {meta['sample_target']} 块；"
-                     f"稀有状态（vocab_gap/non_content）全量，其余按册/置信分层、章轮转。"],
-        ['pilot 回采', f"pilot {meta['pilot']} 块全量加入（来源列标 `pilot100回采`）。"],
-        ['合计', f"{meta['total']} 行 = {meta['sample_target']} 抽样 + {meta['pilot']} pilot。"],
+        ['目的', '验证当前映射规则在未复核 model 块上的质量；本表只给模型候选，教师判定请填 教师模块/教师考点/备注。'],
+        ['池', pool_line],
+        ['抽样', sample_line],
+    ]
+    if pilot_line:
+        lines.append(['pilot 回采', pilot_line])
+    lines += [
+        ['合计', total_line],
         ['排序', '按 册 → 页码 → part → ordinal 排序；来源列可筛选。'],
-        ['列说明', '模型模块/模型primary/名称/secondary/置信/理由 = v5 候选；v5规则 = 修正层来源；'
-                   'v4模型primary = 上一版候选，便于对比。'],
+        ['列说明', f'模型模块/模型primary/名称/secondary/置信/理由 = {rule_l} 候选；{rule_l}规则 = 修正层来源；'
+                   f'{prev_l}模型primary = 上一版候选，便于对比。'],
         ['待填', '教师模块、教师考点、备注 三列留空；模块 17 项、考点 120 项下拉。'],
         ['回填', '填完放回 review_sheets/filled/，命名不变；解析后更新 reviewed/PG，再重投影 Obsidian 链接。'],
     ]
@@ -287,22 +308,34 @@ def main(argv=None):
     ap.add_argument('--out-xlsx', default=str(ROOT / 'review_sheets' / 'samples' /
                                               '教材映射复核_v5_剩余20pct+pilot100_2026-11-07.xlsx'))
     ap.add_argument('--out-report', default=str(ROOT / 'docs' / 'textbook_sample_v5_2026-11-07.md'))
+    ap.add_argument('--rule-label', default='v5', help='规则列前缀（如 v6）')
+    ap.add_argument('--prev-label', default='v4', help='上一版模型列前缀（如 v5）')
+    ap.add_argument('--prev-mapped', default=None, help='上一版映射 json（默认 mapped_1797_v4.json）')
     args = ap.parse_args(argv)
 
     rows, meta = build(args)
     pathlib.Path(args.out_json).write_text(json.dumps(meta, ensure_ascii=False, indent=1), encoding='utf-8')
     write_xlsx(rows, meta, args)
-    L = ['---', 'type: report', 'title: 教材 v5 组合复核表（剩余 20% + pilot 100）', 'updated: 2026-11-07',
+    rule_l = getattr(args, 'rule_label', 'v5')
+    if meta['pilot']:
+        title = f'教材 {rule_l} 组合复核表（剩余 {meta["percent"]:g}% + pilot {meta["pilot"]}）'
+        lines = [f'- model 池 **{meta["model"]}**（teacher {meta["teacher"]} 排除）；抽样池 **{meta["sampled_pool"]}**；',
+                 f'- {meta["percent"]:g}% 抽样 **{meta["sample_target"]}** 块 + pilot 全量 **{meta["pilot"]}** 块 = **{meta["total"]}** 行；',
+                 f'- seed={meta["seed"]}；抽样与 pilot **零重叠**、与 teacher 零重叠。', '',
+                 '## 构成', '', '| 来源 | 行数 |', '| --- | ---: |',
+                 f'| {meta["percent"]:g}% 抽样 | {meta["sample_target"]} |',
+                 f'| pilot100 回采 | {meta["pilot"]} |',
+                 f'| **合计** | **{meta["total"]}** |', '']
+    else:
+        title = f'教材 {rule_l} 复核表（剩余 {meta["model"]} 块抽 {meta["percent"]:g}%）'
+        lines = [f'- model 池 **{meta["model"]}**（teacher {meta["teacher"]} 已排除）；',
+                 f'- {meta["percent"]:g}% 抽样 = **{meta["sample_target"]}** 块；seed={meta["seed"]}；与 teacher 零重叠。', '',
+                 '## 构成', '', '| 来源 | 行数 |', '| --- | ---: |',
+                 f'| {meta["percent"]:g}% 抽样 | {meta["sample_target"]} |',
+                 f'| **合计** | **{meta["total"]}** |', '']
+    L = ['---', 'type: report', f'title: {title}', 'updated: 2026-11-07',
          'status: sample-pending-review', '---', '',
-         '# 教材 v5 组合复核表（20% + pilot 100）', '',
-         f'- model 池 **{meta["model"]}**（teacher {meta["teacher"]} 排除）；抽样池 **{meta["sampled_pool"]}**；',
-         f'- 20% 抽样 **{meta["sample_target"]}** 块 + pilot 全量 **{meta["pilot"]}** 块 = **{meta["total"]}** 行；',
-         f'- seed={meta["seed"]}；抽样与 pilot **零重叠**、与 teacher 零重叠。', '',
-         '## 构成', '',
-         '| 来源 | 行数 |', '| --- | ---: |',
-         f'| 20% 抽样 | {meta["sample_target"]} |',
-         f'| pilot100 回采 | {meta["pilot"]} |',
-         f'| **合计** | **{meta["total"]}** |', '',
+         f'# {title}', ''] + lines + [
          '按册：' + '、'.join(f'{k} {v}' for k, v in meta['by_book'].items()), '',
          '## 校验', '',
          f'- block_id 唯一 {len(meta["block_ids"])}；与 teacher 零重叠；',
