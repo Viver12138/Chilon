@@ -1,0 +1,1665 @@
+{
+  "version": "teacher-questions/v2",
+  "note": "v2.0 数据集（2026-11-07 A/B 核验后）：60 条问题来自问题收集1.txt（T01/T02/T03）；20 条 strict（定义9/定理6/公式5），strict_verified=true。B01 焦点弦长无独立教材公式块，按“不硬凑 strict”降为 any-only；B02 切线以“导数几何意义=切线斜率”段为 canonical strict。建议二轮对 2 个修改项抽检。",
+  "provenance": {
+    "status": "real_teacher",
+    "real_teacher_confirmed": true,
+    "collected_by": "用户提供的 问题收集1.txt",
+    "collected_at": "2026-11-07",
+    "contributors": [
+      "T01/高三/教龄12年/用过AI",
+      "T02/高三/教龄8年/用过AI",
+      "T03/高三/教龄15年/未用过AI"
+    ],
+    "note": "教师原话来自 问题收集1.txt；strict 金标由 AI 在冻结 DB 快照上用 SQL 选定，经 A/B 两位核验人按《教师问题v2_strict金标核验_已填写.xlsx》逐条核验（21 行通过、2 行修改）；修改意见已按指定目标替换。同目录另有 4 位教师填写的 xlsx 变体，未纳入本数据集。"
+  },
+  "verification": {
+    "status": "reviewed",
+    "expect_verified": "all snippets checked against knowledge_chunks by SQL",
+    "strict_gold_pending_human_review": false,
+    "review_file": "教师问题v2_strict金标核验_已填写.xlsx",
+    "reviewed_at": "2026-11-07",
+    "approved_chunk_rows": 21,
+    "modified_chunk_rows": 2,
+    "modified_queries": [
+      "Q-A-06",
+      "Q-C-05"
+    ],
+    "modified_resolution": "Q-A-06 球体积公式替换为 91ed5c73（p125 独立公式陈述）；Q-C-05 概率定义替换为 e91583b7（p242 事件概率定义）。",
+    "recommended_followup": "第二轮抽检这 2 个修改项；其余 18 条 A/B 直接通过。",
+    "strict_count": 20,
+    "strict_types": {
+      "theorem": 6,
+      "formula": 5,
+      "definition": 9
+    },
+    "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。"
+  },
+  "strict_quota": {
+    "definition": 9,
+    "theorem": 6,
+    "formula": 5,
+    "question": 0,
+    "total": 20
+  },
+  "queries": [
+    {
+      "id": "Q-A-01",
+      "category": "主题词",
+      "text": "导数判断函数单调性的定理是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "单调递增",
+          "f'"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "75332b06-eebd-4168-a155-3d2fbbf9c8bb"
+          ],
+          "object_type": "theorem",
+          "rationale": "教材选必二 p91：导数与函数单调性的判定定理。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-A-02",
+      "category": "主题词",
+      "text": "线面垂直的判定定理是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "直线与平面垂直",
+          "两条相交直线"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "09f1f733-b860-49ab-a1ae-990728ec9d72"
+          ],
+          "object_type": "theorem",
+          "rationale": "教材必修二 p157：直线与平面垂直的判定定理。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-A-03",
+      "category": "主题词",
+      "text": "点到直线的距离公式是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "点到直线",
+          "距离"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "4d367b51-9b92-4d09-b9c3-2453cbf3da0c"
+          ],
+          "object_type": "formula",
+          "rationale": "教材选必一 p80：点到直线距离公式推导与公式。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-A-04",
+      "category": "主题词",
+      "text": "等差数列的前n项和公式是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "S _ { n }"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "00e1edef-431b-4d13-a11d-c4fbf7b7b383"
+          ],
+          "object_type": "formula",
+          "rationale": "教材选必二 p26：等差数列前n项和公式的两种形式。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-A-05",
+      "category": "主题词",
+      "text": "二项式展开的通项公式是什么？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "二项式定理",
+          "通项"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "657abda0-b762-4b4e-b0e1-174dd9c36cff"
+          ],
+          "object_type": "formula",
+          "rationale": "教材选必三 p35：二项式定理与通项 T_{k+1}。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-A-06",
+      "category": "主题词",
+      "text": "球的体积公式是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "球的体积",
+          "\\frac { 4 } { 3 }"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "91ed5c73-4581-408f-a50c-8f5510e7b3cf"
+          ],
+          "object_type": "formula",
+          "rationale": "教材必修二 p125：球的体积公式 V=4/3πR³（由表面积分割推导并明确给出公式）。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 修改意见已落实：替换为核验人指定的正确块（球体积 p125 / 概率定义 p242），strict_verified=true，建议第二轮抽检。"
+    },
+    {
+      "id": "Q-A-07",
+      "category": "主题词",
+      "text": "导数和微分有什么区别？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "导数"
+          },
+          {
+            "field": "text",
+            "contains": "微分"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-A-08",
+      "category": "主题词",
+      "text": "立体几何里垂直和平行怎么区分？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "立体几何"
+          },
+          {
+            "field": "text",
+            "contains": "垂直"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-A-09",
+      "category": "主题词",
+      "text": "概率里的互斥和对立事件有什么区别？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          "互斥",
+          "对立"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "452f6fd4-a42a-4e35-8a84-8897f458d3bb",
+            "ddd73112-174d-498c-9e4c-b0ef57de9ce9"
+          ],
+          "object_type": "definition",
+          "rationale": "教材必修二 p240：互斥与对立事件的关系表/定义段。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "any-only槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-A-10",
+      "category": "主题词",
+      "text": "圆锥曲线包括哪些内容？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "圆锥曲线"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-A-11",
+      "category": "主题词",
+      "text": "找一道用导数证明不等式的高考真题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          {
+            "field": "source_type",
+            "equals": "gaokao_paper"
+          },
+          {
+            "field": "text",
+            "contains": "导数"
+          },
+          {
+            "field": "text",
+            "contains": "不等式"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-A-12",
+      "category": "主题词",
+      "text": "找一道立体几何二面角的题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "立体几何"
+          },
+          {
+            "field": "text",
+            "contains": "二面角"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-01",
+      "category": "题型+知识点",
+      "text": "圆锥曲线选择题里常用的焦点弦长公式是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "圆锥曲线"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-02",
+      "category": "题型+知识点",
+      "text": "导数的解答题里常用的切线方程公式是什么？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          "切线",
+          "导数"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "a727d926-0e70-4e17-89ae-34825ef43df5"
+          ],
+          "object_type": "formula",
+          "rationale": "教材选必二 p73：导数的几何意义=切线斜率，切线方程由此得到；严格对象为“导数几何意义”段。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-B-03",
+      "category": "题型+知识点",
+      "text": "找一道圆锥曲线的选择题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "圆锥曲线"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-04",
+      "category": "题型+知识点",
+      "text": "找一道导数的解答题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "导数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-05",
+      "category": "题型+知识点",
+      "text": "找一道数列的填空题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "数列"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-06",
+      "category": "题型+知识点",
+      "text": "找一道立体几何的选择题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "立体几何"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-07",
+      "category": "题型+知识点",
+      "text": "找一道概率统计的解答题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "概率"
+          },
+          {
+            "field": "text",
+            "contains": "概率统计"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-08",
+      "category": "题型+知识点",
+      "text": "找一道三角函数的填空题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "三角函数"
+          },
+          {
+            "field": "text",
+            "contains": "函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-09",
+      "category": "题型+知识点",
+      "text": "找一道解析几何的压轴题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "解析几何"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-10",
+      "category": "题型+知识点",
+      "text": "找一道函数与导数的多选题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "导数"
+          },
+          {
+            "field": "text",
+            "contains": "函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "strict槽位"
+    },
+    {
+      "id": "Q-B-11",
+      "category": "题型+知识点",
+      "text": "找几道圆锥曲线和数列结合的综合题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "圆锥曲线"
+          },
+          {
+            "field": "text",
+            "contains": "数列"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-B-12",
+      "category": "题型+知识点",
+      "text": "找一些立体几何和概率结合的新题型",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "立体几何"
+          },
+          {
+            "field": "text",
+            "contains": "概率"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-C-01",
+      "category": "教材概念",
+      "text": "补集的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "补集"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "50b24a39-e886-47c6-8750-c6a720dc3ed0"
+          ],
+          "object_type": "definition",
+          "rationale": "教材必修第一册 p20：补集的定义段。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-02",
+      "category": "教材概念",
+      "text": "等差数列的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "等差数列",
+          "同一个常数"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "48550851-6c03-44e3-9999-32ef9caeb781"
+          ],
+          "object_type": "definition",
+          "rationale": "教材选必二 p18：等差数列定义段（从第2项起，差等于同一常数）。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-03",
+      "category": "教材概念",
+      "text": "函数奇偶性的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "偶函数",
+          "奇函数"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "e93078ee-b7d2-4aa6-96dc-cb21672603fd",
+            "e3d6db8a-e6e5-49e3-92e1-9cadaa163513"
+          ],
+          "object_type": "definition",
+          "rationale": "教材必修一 p90-91：偶函数与奇函数两个定义段；该查询含两个概念，gold 为两块。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-04",
+      "category": "教材概念",
+      "text": "椭圆的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "椭圆",
+          "距离的和等于常数"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "956535b2-16a6-4a4b-aca3-defe8c2d6335"
+          ],
+          "object_type": "definition",
+          "rationale": "教材选必一 p110：椭圆定义段（到两定点距离的和等于常数）。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-05",
+      "category": "教材概念",
+      "text": "随机事件的概率的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "概率",
+          "可能性大小"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "e91583b7-1add-4332-9eaa-732e60d14948"
+          ],
+          "object_type": "definition",
+          "rationale": "教材必修二 p242：事件概率的定义（随机事件发生可能性大小的度量，P(A)）。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 修改意见已落实：替换为核验人指定的正确块（球体积 p125 / 概率定义 p242），strict_verified=true，建议第二轮抽检。"
+    },
+    {
+      "id": "Q-C-06",
+      "category": "教材概念",
+      "text": "导数的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "导数",
+          "瞬时变化率"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "244b3422-ff62-48db-9e7f-9fbe38390504"
+          ],
+          "object_type": "definition",
+          "rationale": "教材选必二 p70：导数定义段（瞬时变化率/极限）。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-07",
+      "category": "教材概念",
+      "text": "平面向量的数量积的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "数量积"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "b93f461c-09b3-4ccf-8518-659bd95aa355"
+          ],
+          "object_type": "definition",
+          "rationale": "教材必修二 p24：向量数量积定义段。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-08",
+      "category": "教材概念",
+      "text": "正态分布的定义是什么？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "正态",
+          "钟形曲线"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "ca3680fd-5bbc-4efc-859c-351fee311bcb",
+            "e11269fd-da6d-4113-894a-dd74f5cc1a6f"
+          ],
+          "object_type": "definition",
+          "rationale": "教材选必三 p89-90：正态密度曲线与正态分布段；定义分散在两块，gold 为两块。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-09",
+      "category": "教材概念",
+      "text": "正弦定理的内容和适用条件是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "sin A",
+          "正弦"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "852e93db-dcb3-4885-a592-23c8cfb9ac30"
+          ],
+          "object_type": "theorem",
+          "rationale": "教材必修二 p52：正弦定理（边与对角正弦的比相等）。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-10",
+      "category": "教材概念",
+      "text": "余弦定理的内容是什么？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "余弦定理"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "9a57e41b-878f-4228-a62c-79c6f7bf40be"
+          ],
+          "object_type": "theorem",
+          "rationale": "教材必修二 p50：余弦定理陈述段。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-11",
+      "category": "教材概念",
+      "text": "线面平行的判定定理是什么？",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "平面外一条直线",
+          "平行"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "034f1d56-ffdc-4738-9203-890e8a95dada"
+          ],
+          "object_type": "theorem",
+          "rationale": "教材必修二 p143：直线与平面平行的判定定理。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-C-12",
+      "category": "教材概念",
+      "text": "基本不等式的内容和等号成立条件是什么？",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [
+          "基本不等式"
+        ],
+        "strict": {
+          "chunk_ids": [
+            "56ffc00b-230f-437f-8c22-41971820a60a"
+          ],
+          "object_type": "theorem",
+          "rationale": "教材必修一 p51：基本不等式陈述段。",
+          "verified_by": [
+            "V-A",
+            "V-B"
+          ],
+          "verified_at": "2026-11-07"
+        }
+      },
+      "expect_verified": true,
+      "strict_verified": true,
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+    },
+    {
+      "id": "Q-D-01",
+      "category": "年份+卷别",
+      "text": "2024年新高考Ⅰ卷有哪些题？",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2024"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-02",
+      "category": "年份+卷别",
+      "text": "2023年全国乙卷的理科数学题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2023"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-03",
+      "category": "年份+卷别",
+      "text": "近五年新高考Ⅰ卷的导数题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "source_type",
+            "equals": "gaokao_paper"
+          },
+          {
+            "field": "text",
+            "contains": "导数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-04",
+      "category": "年份+卷别",
+      "text": "2022年新高考Ⅱ卷的圆锥曲线题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2022"
+          },
+          {
+            "field": "text",
+            "contains": "圆锥曲线"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-05",
+      "category": "年份+卷别",
+      "text": "2021年甲卷的立体几何题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2021"
+          },
+          {
+            "field": "text",
+            "contains": "立体几何"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-06",
+      "category": "年份+卷别",
+      "text": "2020年山东卷的数列题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2020"
+          },
+          {
+            "field": "text",
+            "contains": "数列"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-07",
+      "category": "年份+卷别",
+      "text": "2019年全国Ⅰ卷的概率题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2019"
+          },
+          {
+            "field": "text",
+            "contains": "概率"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-08",
+      "category": "年份+卷别",
+      "text": "2024年北京卷的解析几何题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2024"
+          },
+          {
+            "field": "text",
+            "contains": "解析几何"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-09",
+      "category": "年份+卷别",
+      "text": "2023年上海卷的函数题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2023"
+          },
+          {
+            "field": "text",
+            "contains": "函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-10",
+      "category": "年份+卷别",
+      "text": "近三年浙江卷的三角函数题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "三角函数"
+          },
+          {
+            "field": "text",
+            "contains": "函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-11",
+      "category": "年份+卷别",
+      "text": "2025年模拟卷里的新定义题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2025"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-D-12",
+      "category": "年份+卷别",
+      "text": "2024年九省联考卷的选择题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [
+          {
+            "field": "year",
+            "equals": "2024"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-01",
+      "category": "自然语言要求",
+      "text": "出几道导数压轴题，难度接近高考",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "source_type",
+            "equals": "gaokao_paper"
+          },
+          {
+            "field": "text",
+            "contains": "导数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-02",
+      "category": "自然语言要求",
+      "text": "找一些学生容易错的分段函数题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "函数"
+          },
+          {
+            "field": "text",
+            "contains": "分段函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-03",
+      "category": "自然语言要求",
+      "text": "给我五道圆锥曲线小题，要基础一点的",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "圆锥曲线"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-04",
+      "category": "自然语言要求",
+      "text": "找两道适合课堂例题的立体几何题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "立体几何"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-05",
+      "category": "自然语言要求",
+      "text": "有没有改编过的高考数列题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "source_type",
+            "equals": "gaokao_paper"
+          },
+          {
+            "field": "text",
+            "contains": "数列"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-06",
+      "category": "自然语言要求",
+      "text": "找一些计算量不大的概率统计题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "概率"
+          },
+          {
+            "field": "text",
+            "contains": "概率统计"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-07",
+      "category": "自然语言要求",
+      "text": "出三道关于函数单调性的选择题，要有解析",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "单调性"
+          },
+          {
+            "field": "text",
+            "contains": "函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-08",
+      "category": "自然语言要求",
+      "text": "找近一年模拟卷里的创新题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "source_type",
+            "equals": "mock_exam"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-09",
+      "category": "自然语言要求",
+      "text": "找一道适合周测的解析几何大题",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "解析几何"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-10",
+      "category": "自然语言要求",
+      "text": "有没有考查数学文化的高考真题",
+      "origin": "teacher",
+      "contributor": "T02/高三/教龄8年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "source_type",
+            "equals": "gaokao_paper"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-11",
+      "category": "自然语言要求",
+      "text": "找几道可以用数形结合解的题",
+      "origin": "teacher",
+      "contributor": "T03/高三/教龄15年/未用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "数形结合"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    },
+    {
+      "id": "Q-E-12",
+      "category": "自然语言要求",
+      "text": "出一组三角函数基础训练题，十个左右",
+      "origin": "teacher",
+      "contributor": "T01/高三/教龄12年/用过AI",
+      "collected_at": "2026-11-07",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [
+          {
+            "field": "text",
+            "contains": "三角函数"
+          },
+          {
+            "field": "text",
+            "contains": "函数"
+          }
+        ],
+        "strict": null
+      },
+      "expect_verified": true,
+      "strict_verified": false,
+      "notes": "any-only槽位"
+    }
+  ]
+}

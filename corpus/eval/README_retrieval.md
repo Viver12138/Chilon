@@ -8,7 +8,7 @@
 >
 > **v2.0 收集模板与 strict 金标（2026-11-07）**：[`teacher_questions.v2.template.json`](teacher_questions.v2.template.json)（60 槽位/30 strict 计划）、[`teacher_questions.v2.schema.json`](teacher_questions.v2.schema.json)、[`V2_COLLECTION_GUIDE.md`](V2_COLLECTION_GUIDE.md)、校验器 `tools/check_teacher_questions_v2.py`。当前 15 条仍为 v1，v2 数据到位后按 D.117 跑正式五组对照。
 >
-> **首批 v2.0 draft（2026-11-07）**：[`teacher_questions.v2.draft.json`](teacher_questions.v2.draft.json)（60 条来自问题收集1.txt；20 条 strict SQL 候选，`strict_verified=false`）+ [`teacher_questions.v2.draft.gold.json`](teacher_questions.v2.draft.gold.json)（23 个 gold chunk 明细）。待两位人工核验后再冻结，核验表见 `review_sheets/samples/教师问题v2_strict金标核验_2026-11-07.xlsx`。
+> **v2.0 冻结（2026-11-07）**：[`teacher_questions.v2.json`](teacher_questions.v2.json)（60 条问题，20 条 strict：定义 9/定理 6/公式 5，`strict_verified=true`）+ [`teacher_questions.v2.gold.json`](teacher_questions.v2.gold.json)（23 个 gold chunk）+ [`teacher_questions.v2.manifest.json`](teacher_questions.v2.manifest.json)（sha256/DB counts/review）。A/B 核验：21 行通过、2 行修改后替换；B01 焦点弦无独立教材公式块降 any-only；题目类 strict 暂不纳入。历史 draft 留档在 `.draft.json`。
 >
 > 历史数字 `Recall@8 55% / MRR 0.451 / 空结果 32% / strict target 0/7` 来自
 > `corpus/eval/queries.json`（40 条开发者自拟措辞，D.83 已承认不可信）。
@@ -259,3 +259,4 @@ echo $LASTEXITCODE    # 0 = 完成
 | v1.2 | 2026-11-07 | 指标扩展：新增 Strict@1、Strict-all@8 两个诊断指标（均只在 strict 子集计算）；明确第一阶段发布门槛只有 Recall@8 ≥85% 与 Strict Recall@8 ≥70%，MRR@8/Strict@1/Strict-all@8 不阻断发布；v2 数据集把 strict 升级为 chunk_id 集合（见设计稿 B5/D.117）。 |
 | v1.3 | 2026-11-07 | v2.0 收集模板与 strict 金标 schema 落地：60 槽位（五类各 12）、30 条 strict（定义 8/定理 6/公式 6/题目 10）、chunk_id 金标、双人核验与 κ 要求；新增 `V2_COLLECTION_GUIDE.md` 与 `tools/check_teacher_questions_v2.py`。 |
 | v1.4 | 2026-11-07 | 首批 v2.0 draft：60 条问题来自问题收集1.txt，20 条 strict SQL 候选（定义 9/定理 6/公式 5），`strict_verified=false`；新增 draft gold 明细、核验表导出与 `--allow-unverified` draft 校验；待两位人工核验后冻结。 |
+| v1.5 | 2026-11-07 | v2.0 冻结：A/B 核验（21 行通过、2 行修改后替换），`strict_verified=true`；`teacher_questions.v2.json` + gold + manifest 落库；仍为 20 strict（B01 降 any-only、题目类暂不纳入），建议二轮抽检 2 个修改项。 |
