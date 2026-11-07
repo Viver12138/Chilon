@@ -209,18 +209,18 @@ def _sidebar(active: str | None) -> str:
 
     return (
         '<aside class="sidebar">'
-        '<a class="brand" href="/ui/dashboard">Chilon · 教师知识库</a>'
+        '<a class="brand" href="/ui/dashboard">Chilon</a>'
         '<div class="nav-group">WORKSPACE</div>'
         + item('工作台', '/ui/dashboard', 'dashboard')
         + item('AI 教学助手', '/ui/tasks', 'tasks')
-        + item('我的教学项目', '/ui/tasks', 'tasks')
+        + item('我的教学项目', '/ui/tasks', 'projects')
         + '<div class="nav-group">KNOWLEDGE CENTER</div>'
         + item('知识库', '/ui/knowledge', 'knowledge')
         + item('智能检索', '/ui/search', 'search')
-        + item('资料上传', '/ui/knowledge', 'knowledge')
-        + item('内容审核', '/ui/knowledge', 'knowledge')
+        + item('资料上传', '/ui/knowledge#upload', 'upload')
+        + item('内容审核', '/ui/knowledge?type=pending', 'review')
         + '<div class="nav-group">SYSTEM</div>'
-        + item('历史记录', '/ui/tasks', 'tasks')
+        + item('历史记录', '/ui/tasks', 'history')
         + item('设置', '/ui/settings', 'settings')
         + '</aside>'
     )
@@ -801,6 +801,8 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
     type = (type or '').strip()
     if type == 'mine':
         where.append("s.scope = 'teacher'")
+    elif type == 'pending':
+        where.append("v.lifecycle_status = 'pending_review'")
     elif type in ('textbook', 'gaokao_paper', 'mock_exam'):
         where.append("s.source_type = :source_type")
         params['source_type'] = type
@@ -878,7 +880,7 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         )
 
     tabs = [('', '全部'), ('textbook', '教材'), ('gaokao_paper', '高考真题'),
-            ('mock_exam', '模拟题'), ('mine', '我的资料')]
+            ('mock_exam', '模拟题'), ('mine', '我的资料'), ('pending', '待审核')]
     tab_html = ''.join(
         f"<a class='chip' style='text-decoration:none' href='/ui/knowledge{('?type=' + key) if key else ''}'>"
         f"{'● ' if type == key else ''}{esc(label)}</a>"
@@ -888,7 +890,7 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         "<p class='muted'>管理、查阅和审核高中数学教学资料。</p>"
         f"<div class='chip-row'>{tab_html}</div>"
         + (''.join(blocks) if blocks else "<p class='muted'>还没有上传任何材料。</p>")
-        + "<h2>上传试卷</h2><div class='card'>"
+        + "<h2 id='upload'>上传试卷</h2><div class='card'>"
         "<form method='post' action='/ui/knowledge' enctype='multipart/form-data'>"
         "<p><label>标题<br><input name='title' required></label></p>"
         "<p><label>类型<br><select name='source_type'>"
@@ -900,7 +902,8 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         "<input type='file' name='file' accept='.docx,.pdf' required></label></p>"
         "<button type='submit'>上传并解析</button></form></div>"
     )
-    return page("知识库", body, teacher=name)
+    active = 'review' if type == 'pending' else 'knowledge'
+    return page("知识库", body, teacher=name, active=active)
 
 
 @router.post("/ui/knowledge")
