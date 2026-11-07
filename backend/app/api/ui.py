@@ -25,6 +25,7 @@ from __future__ import annotations
 
 import asyncio
 import html
+import json
 import uuid
 from urllib.parse import quote
 from pathlib import Path
@@ -73,6 +74,9 @@ table { border-collapse: collapse; width: 100%; }
 td, th { text-align: left; padding: 6px 8px; border-bottom: 1px solid #8883; }
 .tag { display: inline-block; padding: 2px 8px; border-radius: 999px;
        background: #8882; font-size: 0.85rem; }
+.chip { display: inline-block; padding: 2px 10px; margin: 2px 4px 2px 0;
+        border-radius: 999px; background: #4a6cf71a; font-size: 0.85rem; }
+.copy-cite { font-size: 0.8rem; padding: 3px 8px; margin-top: 4px; }
 pre { background: #8881; padding: 12px; border-radius: 6px; overflow-x: auto; }
 """
 
@@ -226,11 +230,89 @@ SOURCE_LABELS = {
     'mock_exam': '模拟题',
 }
 
+QUESTION_TYPE_LABELS = {
+    'single_choice': '单选',
+    'multiple_choice': '多选',
+    'fill_blank': '填空',
+    'free_response': '解答',
+}
+
+OBJECT_LABELS = {
+    'knowledge': '教材知识块',
+    'question': '题目',
+    'other': '其他',
+}
+
 EMPTY_REASONS = {
     'no_match': '没有找到匹配内容',
     'no_match_under_filters': '在给定条件下没有匹配内容',
     'no_candidates': '检索没有返回候选',
 }
+
+
+def _locator_page(locator: object) -> str:
+    if isinstance(locator, dict):
+        page = locator.get('page') or locator.get('page_number')
+        return f"第 {page} 页" if page else str(locator)
+    if isinstance(locator, str):
+        try:
+            parsed = json.loads(locator)
+        except (json.JSONDecodeError, TypeError):
+            return locator
+        if isinstance(parsed, dict):
+            page = parsed.get('page') or parsed.get('page_number')
+            return f"第 {page} 页" if page else str(parsed)
+    return str(locator or '')
+
+
+def _condition_chips(plan: dict | None) -> list[str]:
+    hard = (plan or {}).get('hard') or {}
+    chips: list[str] = []
+    scope = hard.get('question_scope')
+    if scope == 'knowledge':
+        chips.append('只搜教材')
+    elif scope == 'question':
+        chips.append('只搜题目')
+    for source in hard.get('source_types') or []:
+        chips.append(SOURCE_LABELS.get(source, source))
+    if hard.get('year_range'):
+        chips.append(f"年份 {hard['year_range'][0]}–{hard['year_range'][1]}")
+    for paper in hard.get('papers') or []:
+        chips.append(str(paper))
+    for qtype in hard.get('question_types') or []:
+        chips.append(QUESTION_TYPE_LABELS.get(qtype, qtype))
+    return chips or ['无硬条件']
+
+
+def _object_group(hit: dict) -> str:
+    if hit.get('question_id') or hit.get('question_type'):
+        return 'question'
+    if hit.get('source_type') == 'textbook':
+        return 'knowledge'
+    return 'other'
+
+
+def _hit_card(hit: dict) -> str:
+    source_label = SOURCE_LABELS.get(hit.get('source_type'), hit.get('source_type') or '知识库')
+    group = _object_group(hit)
+    title = hit.get('source_title') or ''
+    page = _locator_page(hit.get('locator'))
+    qtype = QUESTION_TYPE_LABELS.get(hit.get('question_type'), hit.get('question_type') or '')
+    meta = [source_label, title, hit.get('source_paper'), hit.get('year')]
+    meta_text = ' · '.join(str(x) for x in meta if x)
+    citation = ' '.join(part for part in (title, page, f"题型 {qtype}" if qtype else '') if part)
+    citation = f"{citation}｜{(hit.get('excerpt') or '')[:180]}"
+    return (
+        "<div class='card'>"
+        f"<p><span class='tag'>{esc(OBJECT_LABELS[group])}</span> "
+        f"<span class='tag'>{esc(source_label)}</span> {esc(meta_text)}</p>"
+        f"<p class='muted'>{esc(page)}"
+        f"{' · 题型 ' + esc(qtype) if qtype else ''}"
+        f" · chunk {esc(str(hit.get('chunk_id'))[:8])}</p>"
+        f"<pre>{esc((hit.get('excerpt') or '')[:600])}</pre>"
+        f"<button class='secondary copy-cite' data-citation='{esc(citation)}'>复制引用</button>"
+        "</div>"
+    )
 
 
 def _search_page(user_name: str, query: str, result: dict | None, error: str | None) -> HTMLResponse:
@@ -246,9 +328,11 @@ def _search_page(user_name: str, query: str, result: dict | None, error: str | N
     if result is not None:
         status = result.get('status')
         mode = result.get('mode')
+        chips = _condition_chips(result.get('plan'))
         parts.append(
             f"<p class='muted'>模式 {esc(mode)} · 状态 {esc(status)} · "
             f"{esc(result.get('elapsed_ms'))}ms</p>"
+            "<p>" + ''.join(f"<span class='chip'>{esc(chip)}</span>" for chip in chips) + "</p>"
         )
         if not result.get('hits'):
             reason = EMPTY_REASONS.get(result.get('empty_reason'), '没有找到匹配内容')
@@ -257,19 +341,18 @@ def _search_page(user_name: str, query: str, result: dict | None, error: str | N
                 f"<p class='muted'>原因：{esc(reason)}。可以换一个更具体的说法，或去掉年份/题型等条件。</p></div>"
             )
         else:
+            groups: dict[str, list[dict]] = {'knowledge': [], 'question': [], 'other': []}
             for hit in result['hits']:
-                label = SOURCE_LABELS.get(hit.get('source_type'), hit.get('source_type') or '知识库')
-                meta = [label, hit.get('source_title'), hit.get('source_paper'), hit.get('year')]
-                meta_text = ' · '.join(str(x) for x in meta if x)
-                qtype = f" · 题型 {hit.get('question_type')}" if hit.get('question_type') else ''
-                parts.append(
-                    "<div class='card'>"
-                    f"<p><span class='tag'>{esc(label)}</span> {esc(meta_text)}</p>"
-                    f"<p class='muted'>位置 {esc(hit.get('locator'))}{esc(qtype)} · "
-                    f"chunk {esc(str(hit.get('chunk_id'))[:8])}</p>"
-                    f"<pre>{esc((hit.get('excerpt') or '')[:600])}</pre>"
-                    "</div>"
-                )
+                groups[_object_group(hit)].append(hit)
+            for group in ('knowledge', 'question', 'other'):
+                if groups[group]:
+                    parts.append(f"<h2>{esc(OBJECT_LABELS[group])}</h2>")
+                    parts.extend(_hit_card(hit) for hit in groups[group])
+            parts.append(
+                "<script>document.querySelectorAll('.copy-cite').forEach(function(b){"
+                "b.addEventListener('click',function(){navigator.clipboard.writeText(b.dataset.citation);"
+                "b.textContent='已复制';setTimeout(function(){b.textContent='复制引用';},1200);});});</script>"
+            )
     return page("知识库检索", ''.join(parts), teacher=user_name)
 
 
