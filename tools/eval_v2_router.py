@@ -44,6 +44,7 @@ def main() -> int:
     parser = argparse.ArgumentParser(description='H/HR routed evaluation')
     parser.add_argument('--qp-json', type=Path, required=True)
     parser.add_argument('--out-prefix', type=Path, default=ROOT / 'var/retrieval/v2_eval_router_2026-11-07')
+    parser.add_argument('--bootstrap', type=int, default=1000)
     args = parser.parse_args()
     doc = json.loads(args.qp_json.read_text(encoding='utf-8'))
     h_rows = {q['id']: q for q in doc['groups']['H']['queries']}
@@ -58,6 +59,11 @@ def main() -> int:
         decisions.append({'id': qid, 'text': h['text'], 'intent': plan['intent'],
                           'mode': mode, 'hard': plan['hard']})
     metrics = base.metrics(routed)
+    ci_95 = {
+        'H': base.bootstrap_ci(list(h_rows.values()), args.bootstrap),
+        'HR': base.bootstrap_ci(list(hr_rows.values()), args.bootstrap),
+        'routed': base.bootstrap_ci(routed, args.bootstrap),
+    }
     payload = {
         'version': 'h-hr-router/v0',
         'source': str(args.qp_json),
@@ -73,6 +79,7 @@ def main() -> int:
         },
         'mode_counts': dict(Counter(d['mode'] for d in decisions)),
         'metrics': metrics,
+        'ci_95': ci_95,
         'by_category': category_table(routed),
         'mode_decisions': decisions,
         'rows': routed,
@@ -99,7 +106,16 @@ def main() -> int:
              f"| Strict MRR@8 | {metrics['strict_mrr_at_8']:.3f} |",
              f"| Strict@1 | {pct(metrics['strict_at_1'])} |",
              f"| Strict-all@8 | {pct(metrics['strict_all_at_8'])} |", '',
-             '## 分类别', '',
+             '### 95% bootstrap CI（query-level 重采样）', '',
+             '| 组 | Recall@8 [95% CI] | Strict Recall@8 [95% CI] |',
+             '| --- | --- | --- |']
+    for name in ('H', 'HR', 'routed'):
+        ci = ci_95[name]
+        r = ci.get('recall_at_8') or {}
+        s = ci.get('strict_recall_at_8') or {}
+        lines.append(f"| {name} | {r.get('point', 0):.3f} [{r.get('lo', 0):.3f}, {r.get('hi', 0):.3f}] | "
+                     f"{s.get('point', 0):.3f} [{s.get('lo', 0):.3f}, {s.get('hi', 0):.3f}] |")
+    lines += ['', '## 分类别', '',
              '| 类别 | Recall | Strict Recall | Strict MRR |', '| --- | ---: | ---: | ---: |']
     for cat, m in payload['by_category'].items():
         smrr = '—' if m['strict_mrr_at_8'] is None else f"{m['strict_mrr_at_8']:.3f}"
