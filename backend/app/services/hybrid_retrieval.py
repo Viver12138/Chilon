@@ -680,6 +680,11 @@ def _sql_filter_clauses(conditions: dict[str, Any]) -> tuple[list[str], dict[str
     if conditions.get("question_types"):
         clauses.append("q.current_paper_question_type = ANY(%(question_types)s)")
         params["question_types"] = list(conditions["question_types"])
+    scope = conditions.get("question_scope")
+    if scope == "question":
+        clauses.append("q.id IS NOT NULL")
+    elif scope == "knowledge":
+        clauses.append("s.source_type = 'textbook'")
     return clauses, params
 
 
@@ -811,6 +816,7 @@ def qdrant_filter(conditions: dict[str, Any]):
     from qdrant_client import models as qm  # type: ignore
 
     must = []
+    must_not = []
     if conditions.get("year_range"):
         start, end = conditions["year_range"]
         must.append(qm.FieldCondition(key="year", range=qm.Range(gte=start, lte=end)))
@@ -822,7 +828,14 @@ def qdrant_filter(conditions: dict[str, Any]):
         must.append(
             qm.FieldCondition(key="question_type", match=qm.MatchAny(any=conditions["question_types"]))
         )
-    return qm.Filter(must=must) if must else None
+    scope = conditions.get("question_scope")
+    if scope == "question":
+        must_not.append(qm.IsNullCondition(is_null=qm.PayloadField(key="question_id")))
+    elif scope == "knowledge":
+        must.append(qm.FieldCondition(key="source_type", match=qm.MatchValue(value="textbook")))
+    if not must and not must_not:
+        return None
+    return qm.Filter(must=must or None, must_not=must_not or None)
 
 
 def vector_search(
