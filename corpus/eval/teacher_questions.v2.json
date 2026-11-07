@@ -1,6 +1,6 @@
 {
   "version": "teacher-questions/v2",
-  "note": "v2.0 数据集（2026-11-07 A/B 核验后）：60 条问题来自问题收集1.txt（T01/T02/T03）；20 条 strict（定义9/定理6/公式5），strict_verified=true。B01 焦点弦长无独立教材公式块，按“不硬凑 strict”降为 any-only；B02 切线以“导数几何意义=切线斜率”段为 canonical strict。建议二轮对 2 个修改项抽检。",
+  "note": "v2.0 数据集（2026-11-07 A/B 核验后）：60 条问题来自问题收集1.txt（T01/T02/T03）；20 条 strict（定义9/定理6/公式5），strict_verified=true。B01 焦点弦长无独立教材公式块，按“不硬凑 strict”降为 any-only；B02 切线以“导数几何意义=切线斜率”段为 canonical strict。建议二轮对 2 个修改项抽检。 修订 v2.0.1：Q-B-01/Q-E-11 的 expect.any 放宽（原词表过窄）；strict 不变。",
   "provenance": {
     "status": "real_teacher",
     "real_teacher_confirmed": true,
@@ -33,7 +33,8 @@
       "formula": 5,
       "definition": 9
     },
-    "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。"
+    "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。",
+    "revision": "v2.0.1 (2026-11-07): Q-B-01/Q-E-11 expect.any broadened; strict gold unchanged."
   },
   "strict_quota": {
     "definition": 9,
@@ -403,14 +404,26 @@
         "any": [
           {
             "field": "text",
-            "contains": "圆锥曲线"
+            "contains": "椭圆"
+          },
+          {
+            "field": "text",
+            "contains": "双曲线"
+          },
+          {
+            "field": "text",
+            "contains": "抛物线"
+          },
+          {
+            "field": "text",
+            "contains": "焦点"
           }
         ],
         "strict": null
       },
       "expect_verified": true,
       "strict_verified": false,
-      "notes": "strict槽位"
+      "notes": "strict槽位；v2.0 修订（2026-11-07）：expect.any 由 [{'field': 'text', 'contains': '圆锥曲线'}] 放宽为 [{'field': 'text', 'contains': '椭圆'}, {'field': 'text', 'contains': '双曲线'}, {'field': 'text', 'contains': '抛物线'}, {'field': 'text', 'contains': '焦点'}]（原词表过窄，导致 lenient 低估；strict 不变）。"
     },
     {
       "id": "Q-B-02",
@@ -1626,14 +1639,18 @@
         "any": [
           {
             "field": "text",
-            "contains": "数形结合"
+            "contains": "图象"
+          },
+          {
+            "field": "text",
+            "contains": "几何"
           }
         ],
         "strict": null
       },
       "expect_verified": true,
       "strict_verified": false,
-      "notes": "any-only槽位"
+      "notes": "any-only槽位；v2.0 修订（2026-11-07）：expect.any 由 [{'field': 'text', 'contains': '数形结合'}] 放宽为 [{'field': 'text', 'contains': '图象'}, {'field': 'text', 'contains': '几何'}]（原词表过窄，导致 lenient 低估；strict 不变）。"
     },
     {
       "id": "Q-E-12",

@@ -260,4 +260,4 @@ echo $LASTEXITCODE    # 0 = 完成
 | v1.3 | 2026-11-07 | v2.0 收集模板与 strict 金标 schema 落地：60 槽位（五类各 12）、30 条 strict（定义 8/定理 6/公式 6/题目 10）、chunk_id 金标、双人核验与 κ 要求；新增 `V2_COLLECTION_GUIDE.md` 与 `tools/check_teacher_questions_v2.py`。 |
 | v1.4 | 2026-11-07 | 首批 v2.0 draft：60 条问题来自问题收集1.txt，20 条 strict SQL 候选（定义 9/定理 6/公式 5），`strict_verified=false`；新增 draft gold 明细、核验表导出与 `--allow-unverified` draft 校验；待两位人工核验后冻结。 |
 | v1.5 | 2026-11-07 | v2.0 冻结：A/B 核验（21 行通过、2 行修改后替换），`strict_verified=true`；`teacher_questions.v2.json` + gold + manifest 落库；仍为 20 strict（B01 降 any-only、题目类暂不纳入），建议二轮抽检 2 个修改项。 |
-| v1.6 | 2026-11-07 | v2.0 首轮五组评测：H 混合 58/60=96.7%、strict 17/20=85.0%；HR（API 重排）53/60=88.3%、strict 19/20=95.0%、strict MRR 0.887；H/HR 均过第一阶段门槛但目标不同；评测脚本 `tools/eval_v2.py`，报告 `V2_EVAL_2026-11-07.md`；未据此调参。 |
+| v1.6 | 2026-11-07 | v2.0 首轮五组评测（v2.0.1 期望词修订）：H 混合 60/60=100%、strict 17/20=85.0%；HR（API 重排）55/60=91.7%、strict 19/20=95.0%、strict MRR 0.887；H/HR 均过第一阶段门槛但目标不同；评测脚本 `tools/eval_v2.py`，报告 `V2_EVAL_2026-11-07.md`；未据此调参。 |

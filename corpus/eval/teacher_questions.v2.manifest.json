@@ -1,12 +1,12 @@
 {
   "dataset": "teacher_questions.v2.json",
-  "sha256": "fe992315f139ec61f8037b16b8fd48c9a9ed5995edf06045f26dfffac63e9082",
+  "sha256": "8df5257ec8fbe03dd178b005429d0aaddf8f62b478a96fc3750f14d54697e017",
   "db": {
     "sources": 346,
     "chunks": 12973,
     "questions": 6981
   },
-  "git_commit_before_manifest": "d427bc3d8619637d08e9d033ae44cefcb6ab3047",
+  "git_commit_before_manifest": "6805f302ee65e062c6767976b1e02e802d2b6dcf",
   "frozen_at": "2026-11-07",
   "counts": {
     "total": 60,
@@ -35,7 +35,8 @@
       "formula": 5,
       "definition": 9
     },
-    "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。"
+    "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。",
+    "revision": "v2.0.1 (2026-11-07): Q-B-01/Q-E-11 expect.any broadened; strict gold unchanged."
   },
   "note": "v2.0 冻结；strict 20 条（定义9/定理6/公式5），比模板计划少 10 条，原因见 verification.deviation；冻结后不调参，调参用独立 dev 集。"
 }
