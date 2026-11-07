@@ -298,7 +298,7 @@ def stage_apply(args):
     teacher_expected = sum(1 for r in rows if r['classification_source'] == 'teacher')
     model_expected = len(rows) - teacher_expected
     return 0 if (count == 1797 and uniq == 1797 and src.get('teacher') == teacher_expected
-                 and src.get('model') == model_expected) else 4
+                 and src.get('model', 0) == model_expected) else 4
 
 
 def stage_rollback(args):

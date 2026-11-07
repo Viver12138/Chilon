@@ -70,6 +70,8 @@ def main(argv=None):
     ap.add_argument('--teacher-version', default=TEACHER_VERSION)
     ap.add_argument('--batch-label', default='第三批组合复核结果（310 块：20% + pilot100）')
     ap.add_argument('--engine-label', default='v5')
+    ap.add_argument('--source-label', default='20%抽样')
+    ap.add_argument('--census', action='store_true', help='全量终检（非抽样）')
     args = ap.parse_args(argv)
 
     mods, kps = load_vocab()
@@ -110,7 +112,7 @@ def main(argv=None):
                        'teacher_module': '' if blank_mod else tm,
                        'teacher_kp': '' if blank_kp else tk,
                        'teacher_note': r['note'], 'kind': kind,
-                       'source': 'pilot100' if r['block_id'] in pilot_ids else '20%抽样'})
+                       'source': 'pilot100' if r['block_id'] in pilot_ids else args.source_label})
     if errors:
         for e in errors[:10]:
             print(e)
@@ -215,7 +217,8 @@ def main(argv=None):
           f'- `{pathlib.Path(args.out_reviewed).name}`：teacher **{teacher}** / model **{len(new_reviewed) - teacher}**；',
           f'- 本轮新增 teacher **{applied}** 条（上批 {teacher - applied} 不动）；status {dict(status)}。', '',
           '## 4. 边界', '',
-          f'- 抽样/回采不是全量；准确率仍是样本值；',
+          ('- 本轮为**全量终检**（非抽样）；准确率覆盖剩余池全部块，但仍不是 1797 的随机样本；'
+           if args.census else '- 抽样/回采不是全量；准确率仍是样本值；'),
           f'- module_only {len(modonly)} 条按“有模块、无合适主考点”记 vocab_gap，不强行塞考点；',
           f'- {len(mism)} 条不一致留待下一版规则收敛；{pilot_note}', '',
           '---', '', f'> 明细：`{pathlib.Path(args.out_parsed).name}`。', '']
