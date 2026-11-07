@@ -383,9 +383,10 @@ retrieval_evaluation:
 | --- | --- |
 | 全量索引（12,973 chunks） | 649 请求、2,332,424 input tokens、**¥1.17**、**16.3 分钟**（13.47 chunks/s） |
 | 15 条评测整轮 | **约 12 秒**；rerank 平均 **0.58s/query**（本地 CPU 同任务 82.7s/query） |
-| 15 条指标 | Recall 14/15 = 93.3%（与本地持平）；MRR 无重排 **0.702**、API 重排 **0.714**（本地 0.836 / 0.818） |
+| 15 条指标（原始） | Recall 14/15 = 93.3%；MRR 无重排 **0.702**、API 重排 **0.714**（本地 0.836 / 0.818） |
+| 15 条指标（稀有词 rescue 后） | Recall **15/15 = 100%**；MRR 无重排 **0.780**、API 重排 **0.723** |
 
-> MRR 下降不是“找不到”，而是排序位置变化：API embedding 与本地模型排序不同，且语义 rerank 与 v1 的 lenient 片段判定错位。**15 条不足以判定重排收益**，等 v2 strict 集。详见 `corpus/eval/QWEN_API_EVAL_2026-11-07.md`。
+> MRR 下降不是“找不到”，而是排序位置变化：API embedding 与本地模型排序不同，且语义 rerank 与 v1 的 lenient 片段判定错位。**Q08 的 miss 是“近五年 + 递推”过滤冲突**，已用稀有词 rescue（≤50 chunks 视为稀有、第三路权重 3.0）修复；但这是按 15 条调的策略，**v2 strict 集上需重新确认**。详见 `corpus/eval/QWEN_API_EVAL_2026-11-07.md`。
 
 ### B7.3 Qwen embedding 选型性价比（2026-11-07 官方价目）
 

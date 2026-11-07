@@ -1,7 +1,7 @@
 # Qwen API 索引与重排 · 15 条真人问题评测（2026-11-07）
 
 > 目的：把 embedding + rerank 切到阿里云百炼中国区（北京）后，在**未改动的 15 条真人问题**上对照本地 CPU 基线，确认 API 是否可用、指标是否退化。
-> 结论先行：**可用；Recall 不变（14/15 = 93.3%），但 MRR 从 0.836 降到 0.702（无重排）/ 0.714（API 重排）；唯一 miss 的 Q08 是旧基线同样 miss 的既有问题，不是 API 回归。**
+> 结论先行：**API 链路可用**。原始 15 条 Recall 14/15（93.3%），加入稀有词 rescue 后 **15/15（100%）**；但 MRR 仍低于本地基线（无重排 0.780、API 重排 0.723 vs 本地 0.836/0.818）。**Q08 的 miss 不是 API 回归**，而是“近五年 + 递推”过滤冲突，已用稀有词 rescue 修复；重排是否默认启用仍要等 v2 strict 集。
 
 ## 1. 索引构建
 
@@ -28,6 +28,8 @@ manifest：`var/retrieval/index_manifest_qwen3_7_api.json`
 | **API embedding，无 rerank** | 14/15 = 93.3% | **0.702** | 0% |
 | **API embedding + `qwen3.7-text-rerank`（raw query）** | 14/15 = 93.3% | **0.714** | 0% |
 | API embedding + API rerank（query 加 instruction 模板） | 14/15 = 93.3% | 0.677 | 0% |
+| **API embedding + 稀有词 rescue，无 rerank** | **15/15 = 100%** | **0.780** | 0% |
+| **API embedding + API rerank + 稀有词 rescue** | **15/15 = 100%** | **0.723** | 0% |
 
 - API 重排平均 **0.58s/query**（CPU 本地同任务约 82.7s/query），15 条整轮含检索约 **12s**；
 - 给 query 加 `Instruct: ...\nQuery:` 模板没有收益（0.708 / 0.677），**默认用 raw query**；
@@ -69,6 +71,30 @@ Q08 原话：**“整理近五年高考数学数列大题，重点筛选递推�
 
 “数列求和”全库也只有 2 条 chunk，期望本身脆弱（v1 备注已写）。
 
+### 3.1.1 修复与复测（2026-11-07）
+
+已实现 **稀有词 rescue**（`backend/app/services/hybrid_retrieval.py`）：
+
+1. 统计 query 关键词在语料中的 chunk 频次，≤50 视为稀有词（如“递推”=26）；
+2. 过滤后的文本结果若**完全不含**稀有词，则跑一次无过滤文本检索，取出含该稀有词的结果作为**第三路**；
+3. RRF 融合时给 rescue 路权重 **3.0**（`[文本 1.0, 向量 1.0, 稀有词 3.0]`），避免稀有词被普通“数列”结果淹没；
+4. 记录 `rare_keywords_missing` / `rare_rescue_used`，产品层可提示“近五年无，以下为更早年份”。
+
+复测（同一 15 条、同一 API 索引）：
+
+| 指标 | raw API | + 稀有词 rescue |
+| --- | ---: | ---: |
+| Recall@8（无重排） | 14/15 | **15/15** |
+| Recall@8（API 重排） | 14/15 | **15/15** |
+| MRR@8（无重排） | 0.702 | **0.780** |
+| MRR@8（API 重排） | 0.714 | **0.723** |
+
+- Q08：无重排 **rank 1**、API 重排 **rank 6**，从 miss 变为命中；
+- Q06 也触发 rescue（“余弦定理/恒等/变换”被过滤丢失）：无重排 3→2；
+- 代价：Q05 的 API 重排 5→6（轻微）；rescue 会**绕过年份硬过滤**，产品需显式提示年份不符。
+
+复测产物：`var/retrieval/hybrid_eval_qwen_api_rare2_2026-11-07.json` / `.md`。
+
 ### 3.2 MRR 为什么下降
 
 - **API embedding 排序差异**：Q05（1→4）、Q16（1→4）、Q03（1→2）——qwen3.7 的语义排序与本地 Qwen3-Embedding-0.6B 不同，把“含期望片段”的 chunk 排后了；
@@ -77,9 +103,9 @@ Q08 原话：**“整理近五年高考数学数列大题，重点筛选递推�
 
 ## 4. 结论与下一步
 
-1. **API 链路可用**：索引 16.3 分钟/¥1.17，15 条评测 12 秒；Recall 与本地持平；
-2. **不能用这 15 条判定重排收益**：样本小、无 strict、Q08 本身是策略/数据问题；重排是否默认启用等 v2.0（60 条/30 strict）；
-3. **需要修的检索策略**：稀有词 + 年份过滤的 fallback/并集（Q08 类）；
+1. **API 链路可用**：索引 16.3 分钟/¥1.17，15 条评测 12 秒；Recall 与本地持平，稀有词 rescue 后 **15/15**；
+2. **不能用这 15 条判定重排收益**：样本小、无 strict；API 重排 MRR 0.723 仍低于本地 0.818，Q08 经 rescue 命中但 rank 6。等 v2.0（60 条/30 strict）再决定默认开关；
+3. **稀有词 + 年份过滤已修**：`text_search_with_rare_rescue` + 加权 RRF（1/1/3），Q08 从 miss → rank1（无重排）；产品需提示“年份不符”；
 4. **API 模型已按质量优先选 `qwen3.7-text-embedding` + `qwen3.7-text-rerank`**；本地模型保留为离线回退，两套索引并存：
    - 本地：`chilon_chunks_qwen3_embedding_0_6b_v1`（12,973）
    - API：`chilon_chunks_qwen3_7_text_embedding_v1`（12,973）
@@ -88,12 +114,14 @@ Q08 原话：**“整理近五年高考数学数列大题，重点筛选递推�
 ## 5. 产物
 
 - 索引：`var/retrieval/index_manifest_qwen3_7_api.json`
-- 评测：`var/retrieval/hybrid_eval_qwen_api_2026-11-07.json` / `.md`（raw query）
+- 评测（raw）：`var/retrieval/hybrid_eval_qwen_api_2026-11-07.json` / `.md`
+- 评测（稀有词 rescue）：`var/retrieval/hybrid_eval_qwen_api_rare2_2026-11-07.json` / `.md`
 - 指令模板对照：`var/retrieval/hybrid_eval_qwen_api_instr_2026-11-07.json`
-- 代码：`tools/qwen_api.py`、`tools/build_qwen_index.py`、`tools/eval_hybrid.py --api`
+- 代码：`tools/qwen_api.py`、`tools/build_qwen_index.py`、`tools/eval_hybrid.py --api`、`backend/app/services/hybrid_retrieval.py`（rare rescue + weighted RRF）
 
 ## 6. 边界
 
-- 15 条真人问题、lenient 片段判定、无 strict target；Q08 的期望词在年份约束下不可得；
+- 15 条真人问题、lenient 片段判定、无 strict target；Q08 的期望词在年份约束下不可得，rescue 是**有意绕过**年份硬过滤，产品必须提示年份不符；
+- rescue 阈值（≤50 chunks）与权重（3.0）是在这 15 条上定的，**有过拟合风险**；v2 strict 集上需重新确认；
 - API 与本地 embedding 不是同一模型，排序差异不能简单归因于“API 更差”；
 - 成本按北京区原价 ¥0.5/M 估算，实际账单价以百炼控制台为准。
