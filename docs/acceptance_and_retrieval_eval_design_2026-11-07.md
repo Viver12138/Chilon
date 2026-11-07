@@ -377,6 +377,16 @@ retrieval_evaluation:
 
 **结论**：把 embedding + rerank 都切到 Qwen API，100 条评测从本地约 2.3h 压到 **约 2–5 分钟**；收益几乎全部来自 rerank API。若只切 embedding，时间不省。
 
+**实测（2026-11-07，中国区北京）：**
+
+| 项 | 实测 |
+| --- | --- |
+| 全量索引（12,973 chunks） | 649 请求、2,332,424 input tokens、**¥1.17**、**16.3 分钟**（13.47 chunks/s） |
+| 15 条评测整轮 | **约 12 秒**；rerank 平均 **0.58s/query**（本地 CPU 同任务 82.7s/query） |
+| 15 条指标 | Recall 14/15 = 93.3%（与本地持平）；MRR 无重排 **0.702**、API 重排 **0.714**（本地 0.836 / 0.818） |
+
+> MRR 下降不是“找不到”，而是排序位置变化：API embedding 与本地模型排序不同，且语义 rerank 与 v1 的 lenient 片段判定错位。**15 条不足以判定重排收益**，等 v2 strict 集。详见 `corpus/eval/QWEN_API_EVAL_2026-11-07.md`。
+
 ### B7.3 Qwen embedding 选型性价比（2026-11-07 官方价目）
 
 阿里云百炼当前实际有三档（不是两档）：`text-embedding-v4`、`qwen3.7-text-embedding`、`qwen3.7-text-embedding-flash`；另有旧的 `text-embedding-v3`。
@@ -436,6 +446,7 @@ flash 保留为后续降本 A/B 候选；v4 仅作“本地 Qwen3-Embedding-0.6B
 
 **说明：**
 
+- **实测校准**：全量 12,973 chunks 实际 **2.33M tokens → ¥1.166**（比 2.06M 的截断假设高约 13%），耗时 16.3 分钟；15 条评测 12 秒。以百炼账单为准。
 - `qwen3.7-text-embedding` 有 **1M tokens 免费额度**（领取/有效期以控制台为准），可覆盖约一半首次建库，实际现金成本可能更低；以百炼账单为准。
 - 重排成本与候选数近似线性：40→20 约减半，40→10 约 1/4；strict 指标可能变化，需 A/B。
 - 若改用 `qwen3.7-text-embedding-flash`：仅省一次性约 **¥0.77**（¥1.03→¥0.26），查询成本几乎不变；在这个量级“质量优先”的额外成本可忽略。
