@@ -326,7 +326,9 @@ retrieval_evaluation:
 | T | 仅 pg_trgm | 文本路径贡献 |
 | V | 仅 Qdrant | 向量路径贡献 |
 | H | pg_trgm + Qdrant + RRF（当前默认） | 主基线 |
-| HR | H + Qwen3-Reranker-0.6B | 决定是否默认启用（看 Recall/MRR 与 CPU 延迟） |
+| HR | H + qwen3-rerank（API） | 决定是否默认启用（看 Recall/MRR/Strict 与 API 延迟） |
+
+> 2026-11-07 决策：HR 组用 **API 重排 qwen3-rerank**；本地 Qwen3-Reranker-0.6B 只作离线回退/历史对照，不再作为评测默认。
 
 约束：**评测前冻结参数**（final_k、top_n、rrf_k、rerank_candidates）；报告里记录 git commit、dataset sha256、索引 manifest、DB counts；不按测试集调参。
 
@@ -357,7 +359,8 @@ retrieval_evaluation:
 
 ### B7.2 改用 Qwen API 的耗时估算（未实测，按公开限制与典型延迟）
 
-> 依据：`text-embedding-v4` 单请求最多 **10 条**、每条 8192 token；`qwen3-rerank` 单请求最多 **500 docs**、请求最多 120k token（阿里云百炼文档）。API 延迟与 **RPM/TPM 配额、并发**强相关，以下为估算区间；执行前应先用 5–10 条 smoke 校准。
+> **2026-11-07 决策**：embedding 用 `qwen3.7-text-embedding`，rerank 用 `qwen3-rerank`，**均走 DashScope 原生 API**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。
+> 依据：`qwen3.7-text-embedding` 单请求 20 条、每条 131072 token；`qwen3-rerank` 单请求最多 500 docs、请求最多 120k token（阿里云百炼文档）。API 延迟与 **RPM/TPM 配额、并发**强相关，以下为估算区间；执行前应先用 `backend/tests/check_qwen.py` 校准。
 
 | 环节 | 假设 | 60 条评测 | 100 条评测 |
 | --- | --- | ---: | ---: |
@@ -402,17 +405,18 @@ retrieval_evaluation:
 
 **建议的选型验证**（成本极低）：用同一 12,973 chunks、同 1024 维、同 payload 建两套 Qdrant collection（qwen3.7 vs flash），在 v2.0 验收集上比较 Recall@8 / Strict Recall@8 / Strict@1；总成本 <¥2、API 建库各约 10–25 分钟。v4 作为对照第三套可选。
 
-**选型决策（2026-11-07）**：**质量优先，主选 `qwen3.7-text-embedding`（1024 维，北京区）**。配置变量已写入 `.env.example`：
+**选型决策（2026-11-07）**：**质量优先，embedding 用 `qwen3.7-text-embedding`（1024 维，北京区），rerank 也用 API `qwen3-rerank`**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。配置变量已写入 `.env.example`：
 `CHILON_QWEN_API_KEY`（兼容官方 `DASHSCOPE_API_KEY`）、`CHILON_QWEN_BASE_URL`、`CHILON_QWEN_REGION`、
-`CHILON_QWEN_EMBEDDING_MODEL`、`CHILON_QWEN_EMBEDDING_DIM`、`CHILON_QWEN_RERANK_MODEL`。flash 保留为后续降本 A/B 候选；
-v4 仅作“本地 Qwen3-Embedding-0.6B 同源”对照。工具切换到 API 后，必须先用 v2 验收集重跑 strict 指标再采信。
+`CHILON_QWEN_TIMEOUT_SECONDS`、`CHILON_QWEN_EMBEDDING_MODEL`、`CHILON_QWEN_EMBEDDING_DIM`、
+`CHILON_QWEN_RERANK_MODEL`、`CHILON_QWEN_RERANK_TOP_N`。填 key 后用 `backend/tests/check_qwen.py` 自测两条链路；
+flash 保留为后续降本 A/B 候选；v4 仅作“本地 Qwen3-Embedding-0.6B 同源”对照。工具切换到 API 后，必须先用 v2 验收集重跑 strict 指标再采信。
 
 ## B8. 验收与决策
 
 1. **初期验收集 v2.0**：60 条、五类各 12、30 条 strict、κ ≥0.70、sha256 冻结 → **数据集验收通过**（只用于阶段 6 初期验收）；
 2. 基线：5 组跑完、可复现 → **检索验收报告**；
 3. **发布门禁（第一阶段）**：Recall@8 **≥85%** 且 Strict Recall@8 **≥70%**；MRR@8、Strict@1、Strict-all@8 只作诊断，不设门槛、不阻断；P95 延迟与空结果率作工程观测；
-4. Reranker：仅当 HR 在 Recall/MRR/Strict 指标上有可见提升且 P95 可接受时默认启用，否则保持可选；
+4. 重排：HR 组使用 **qwen3-rerank API**；若相对 H 无可见增益，则产品默认不启用重排，API 重排保留为可选项；本地 Qwen3-Reranker-0.6B 仅离线回退；
 5. **长期门禁 v2.1**：strict 查询 ≥100、对象类型覆盖达标后，用 v2.1 冻结集重跑；未达 v2.1 前，v2.0 通过只能记为“初期验收通过”，**不能对外宣称检索已长期达标**。
 
 ## B9. 风险

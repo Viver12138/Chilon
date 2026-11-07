@@ -76,10 +76,22 @@ class Settings:
     ocr_aliyun_key_secret: str
     ocr_aliyun_image_type: str
     ocr_aliyun_subject: str
+    qwen_api_key: str
+    qwen_base_url: str
+    qwen_region: str
+    qwen_timeout_seconds: int
+    qwen_embedding_model: str
+    qwen_embedding_dim: int
+    qwen_rerank_model: str
+    qwen_rerank_top_n: int
 
     @property
     def llm_configured(self) -> bool:
         return bool(self.deepseek_api_key) and bool(self.deepseek_base_url)
+
+    @property
+    def qwen_configured(self) -> bool:
+        return bool(self.qwen_api_key) and bool(self.qwen_base_url)
 
     @property
     def ocr_configured(self) -> bool:
@@ -121,4 +133,14 @@ def load() -> Settings:
         ocr_aliyun_key_secret=get("CHILON_OCR_ALIYUN_KEY_SECRET"),
         ocr_aliyun_image_type=get("CHILON_OCR_ALIYUN_IMAGE_TYPE", "scan"),
         ocr_aliyun_subject=get("CHILON_OCR_ALIYUN_SUBJECT", "Math"),
+        # Qwen / 百炼：embedding + rerank 都走原生 API。
+        # 官方 DASHSCOPE_API_KEY 作为回退，方便直接复用百炼文档里的变量名。
+        qwen_api_key=get("CHILON_QWEN_API_KEY") or get("DASHSCOPE_API_KEY"),
+        qwen_base_url=get("CHILON_QWEN_BASE_URL", "https://dashscope.aliyuncs.com/api/v1"),
+        qwen_region=get("CHILON_QWEN_REGION", "beijing"),
+        qwen_timeout_seconds=get_int("CHILON_QWEN_TIMEOUT_SECONDS", 30),
+        qwen_embedding_model=get("CHILON_QWEN_EMBEDDING_MODEL", "qwen3.7-text-embedding"),
+        qwen_embedding_dim=get_int("CHILON_QWEN_EMBEDDING_DIM", 1024),
+        qwen_rerank_model=get("CHILON_QWEN_RERANK_MODEL", "qwen3-rerank"),
+        qwen_rerank_top_n=get_int("CHILON_QWEN_RERANK_TOP_N", 40),
     )
