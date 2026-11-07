@@ -13,6 +13,9 @@
 | `tools/check_teacher_questions_v2.py` | 结构 + 配额 + 完整性校验（模板 / 数据集两种模式） |
 | `corpus/eval/teacher_questions.v2.json`（待生成） | 填好的 v2.0 数据集；**不要覆盖模板** |
 | `corpus/eval/teacher_questions.v2.manifest.json`（冻结时） | sha256、DB counts、commit、日期 |
+| `review_sheets/samples/教师问题收集_v2.0_2026-11-07.xlsx` | 教师直接填写的 Excel（说明/填写表/示例/strict 金标说明，含下拉） |
+| `review_sheets/samples/教师问题收集_v2.0_2026-11-07.csv` | 同一内容的纯文本版（UTF-8 BOM，Excel 可直接打开） |
+| `tools/export_teacher_questions_v2.py` | 从 JSON 模板重新生成上面的 Excel + CSV |
 
 v1 文件（`teacher_questions.schema.json` / `teacher_questions.json`）保留，**不要混改**。
 
@@ -79,6 +82,9 @@ WHERE s.title LIKE '%2024%' AND c.text_content LIKE '%<题干片段>%';
 ## 5. 校验
 
 ```powershell
+# 生成教师填写用的 Excel/CSV（review_sheets/samples/，gitignored）
+python tools/export_teacher_questions_v2.py
+
 # 模板结构 + 配额
 python tools/check_teacher_questions_v2.py
 

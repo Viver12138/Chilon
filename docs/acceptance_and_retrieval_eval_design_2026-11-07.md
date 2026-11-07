@@ -341,6 +341,7 @@ retrieval_evaluation:
   - `corpus/eval/teacher_questions.v2.template.json`：60 槽位（五类各 12）、30 strict 计划（定义 8/定理 6/公式 6/题目 10）；
   - `corpus/eval/V2_COLLECTION_GUIDE.md`：收集、gold 标注、双人核验、冻结 manifest、示例；
   - `tools/check_teacher_questions_v2.py`：模板/数据集结构、配额、完整性、chunk_id UUID（可选 DB 存在性）校验；
+  - `tools/export_teacher_questions_v2.py`：导出教师填写的 Excel/CSV（说明、填写表、示例、strict 金标说明；含下拉）；
 - 待做（v2 数据到位后）：
   - `tools/eval_retrieval.py` / `tools/eval_hybrid.py` 增加 `--dataset`（v2 文件）、`--strict-chunk`（按 chunk_id 判定）、`--bootstrap 1000`、`--per-category-ci`；
   - 输出 JSON + MD：总指标、分类别、分来源、unanswerable 专项、逐条 diff；
