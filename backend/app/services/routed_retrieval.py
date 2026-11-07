@@ -20,7 +20,7 @@ import httpx
 
 from app import settings
 from app.services import hybrid_retrieval as hr
-from app.services import query_plan, retrieval_router
+from app.services import query_plan, retrieval_router, shadow_log
 
 DEFAULT_COLLECTION = 'chilon_chunks_qwen3_7_text_embedding_v1'
 
@@ -208,6 +208,23 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
                 'excerpt': (base.get('excerpt') or '')[:400],
                 'rrf_score': base.get('rrf_score'),
                 'rerank_score': base.get('rerank_score'),
+            })
+        if router_flag in ('shadow', 'on'):
+            shadow_log.append({
+                'source': 'retrieval-service',
+                'query': query[:500],
+                'user_hash': shadow_log.user_hash(user_key),
+                'mode': selected,
+                'auto_mode': auto_mode,
+                'shadow_mode': shadow,
+                'router_flag': router_flag,
+                'plan_intent': plan.get('intent'),
+                'hard_filters': plan.get('hard'),
+                'hit_count': len(final),
+                'empty': not final,
+                'candidate_count': len(hits),
+                'elapsed_ms': round((time.perf_counter() - started) * 1000, 1),
+                'top_chunk_ids': [h.get('chunk_id') for h in final[:3]],
             })
         return {
             'query': query,

@@ -20,6 +20,7 @@ import asyncio
 import hashlib
 import json
 import re
+import time
 import uuid
 from dataclasses import dataclass
 from typing import Any, Awaitable, Callable
@@ -29,7 +30,7 @@ from sqlalchemy import text
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app import settings as config
-from app.services import taxonomy
+from app.services import shadow_log, taxonomy
 
 
 class ToolFailed(Exception):
@@ -174,6 +175,7 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
     try:
         from app.services import routed_retrieval
 
+        started = time.perf_counter()
         routed = await asyncio.to_thread(
             routed_retrieval.search,
             topic,
@@ -199,6 +201,16 @@ async def knowledge_search(session: AsyncSession, ctx: ToolContext) -> dict[str,
         }
     except Exception as exc:  # noqa: BLE001 - availability fallback, not a silent quality claim
         result = await _legacy_knowledge_search(session, ctx)
+        shadow_log.append({
+            'source': 'agent-tool',
+            'query': topic[:500],
+            'user_hash': shadow_log.user_hash(str(ctx.owner_id)),
+            'mode': 'legacy_fallback',
+            'router_flag': flag,
+            'error': f'{type(exc).__name__}: {exc}'[:300],
+            'elapsed_ms': round((time.perf_counter() - started) * 1000, 1) if 'started' in locals() else None,
+            'empty': not result.get('hits'),
+        })
         result["retrieval"] = {
             "mode": "legacy_fallback",
             "router_flag": flag,
