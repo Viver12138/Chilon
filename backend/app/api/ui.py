@@ -154,9 +154,9 @@ pre {
 .nav-item.active { background: #3157d5; color: #fff; font-weight: 650; }
 .main-shell { flex: 1; min-width: 0; }
 .topbar {
-  display: flex; justify-content: space-between; align-items: center; gap: 16px;
-  padding: 14px 26px; background: #ffffffee; border-bottom: 1px solid var(--line);
-  position: sticky; top: 0; z-index: 5; backdrop-filter: blur(8px);
+  display: flex; justify-content: flex-end; align-items: center; gap: 16px;
+  padding: 14px 26px; background: transparent; border-bottom: 0;
+  position: sticky; top: 0; z-index: 5;
 }
 .crumb { color: var(--muted); font-size: 0.88rem; }
 .top-actions { display: flex; align-items: center; gap: 12px; }
@@ -258,7 +258,6 @@ def page(title: str, body: str, *, teacher: str | None = None,
         initial = esc((teacher.strip()[:1] or '师').upper())
         top = (
             '<header class="topbar">'
-            f'<span class="crumb">{esc(title)}</span>'
             '<div class="top-actions">'
             '<form class="top-search" method="get" action="/ui/search">'
             '<input name="q" placeholder="搜索知识库…" aria-label="搜索知识库"></form>'
