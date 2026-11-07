@@ -20,6 +20,7 @@ import asyncio
 import hashlib
 import json
 import os
+import random
 import sys
 import time
 import uuid
@@ -112,6 +113,31 @@ def group_summary(rows: list[dict], k: int = K) -> dict:
     return {'metrics': metrics(rows, k), 'by_category': by_category, 'queries': rows}
 
 
+def bootstrap_ci(rows: list[dict], n: int = 1000, seed: int = 42) -> dict:
+    """Query-level bootstrap 95% CI for the headline metrics."""
+    if not rows:
+        return {}
+    rng = random.Random(seed)
+    keys = ('recall_at_8', 'mrr_at_8', 'strict_recall_at_8', 'strict_mrr_at_8',
+            'strict_at_1', 'strict_all_at_8')
+    samples = {key: [] for key in keys}
+    for _ in range(n):
+        sample = [rows[rng.randrange(len(rows))] for _ in rows]
+        m = metrics(sample)
+        for key in keys:
+            if m.get(key) is not None:
+                samples[key].append(float(m[key]))
+    result = {}
+    for key, values in samples.items():
+        if not values:
+            continue
+        values.sort()
+        lo = values[int(0.025 * (len(values) - 1))]
+        hi = values[int(0.975 * (len(values) - 1))]
+        result[key] = {'point': round(metrics(rows).get(key), 4), 'lo': round(lo, 4), 'hi': round(hi, 4)}
+    return result
+
+
 def hydrate_vector_hits(conn, vector_hits: list[dict]) -> list[dict]:
     ids = [h['chunk_id'] for h in vector_hits if h.get('chunk_id')]
     hydrated = hr.fetch_chunks(conn, ids)
@@ -191,6 +217,17 @@ def render_md(doc: dict) -> str:
             f"{pct(m['strict_at_1'])} | {pct(m['strict_all_at_8'])} | "
             f"{m['empty']}/{m['queries']} | {group['seconds']:.1f}s |"
         )
+    lines += ['', '### 95% bootstrap CI（query-level 重采样）', '']
+    lines += ['| 组 | Recall@8 点估计 [95% CI] | Strict Recall@8 点估计 [95% CI] |']
+    lines += ['| --- | --- | --- |']
+    for key, group in doc['groups'].items():
+        ci = group.get('ci_95') or {}
+        def fmt(metric):
+            item = ci.get(metric)
+            if not item:
+                return '—'
+            return f"{item['point']:.3f} [{item['lo']:.3f}, {item['hi']:.3f}]"
+        lines.append(f"| {group['label']} | {fmt('recall_at_8')} | {fmt('strict_recall_at_8')} |")
     lines += ['', '## 分类别（strict Recall@8）', '']
     for key, group in doc['groups'].items():
         lines.append(f"### {group['label']}")
@@ -217,6 +254,8 @@ def main() -> int:
     parser.add_argument('--out-prefix', type=Path, default=DEFAULT_OUT)
     parser.add_argument('--limit-queries', type=int, default=0)
     parser.add_argument('--skip-legacy', action='store_true')
+    parser.add_argument('--bootstrap', type=int, default=1000, help='bootstrap resamples (0 = off)')
+    parser.add_argument('--seed', type=int, default=42)
     args = parser.parse_args()
     if not args.database_url:
         print('CHILON_TEST_DATABASE_URL is not set (or pass --database-url)', file=sys.stderr)
@@ -257,7 +296,12 @@ def main() -> int:
     timings: dict[str, list[float]] = {}
 
     def add_group(key: str, label: str, seconds: float, rows: list[dict]):
-        groups[key] = {'label': label, 'seconds': round(seconds, 2), **group_summary(rows)}
+        groups[key] = {
+            'label': label,
+            'seconds': round(seconds, 2),
+            **group_summary(rows),
+            'ci_95': bootstrap_ci(rows, args.bootstrap, args.seed) if args.bootstrap else {},
+        }
 
     if legacy_hits:
         rows = [judge(legacy_hits[q['id']], q) for q in queries]
@@ -326,6 +370,7 @@ def main() -> int:
             'reranker': {'provider': 'dashscope', 'model': qwen_api.rerank_model()},
         },
         'query_embedding': embed_stats,
+        'bootstrap': {'resamples': args.bootstrap, 'seed': args.seed},
         'rerank': {
             'calls': len(rerank_stats),
             'documents': sum(s['pairs'] for s in rerank_stats),
@@ -351,6 +396,12 @@ def main() -> int:
               f"strict={m['strict_found']}/{m['strict_queries']} ({m['strict_recall_at_8']:.1%}) "
               f"strictMRR={m['strict_mrr_at_8']:.3f} strict@1={m['strict_at_1']:.1%} "
               f"strict-all@8={m['strict_all_at_8']:.1%}")
+        ci = groups[key].get('ci_95') or {}
+        if ci.get('recall_at_8'):
+            r = ci['recall_at_8']
+            s = ci.get('strict_recall_at_8')
+            print(f"   95% CI Recall [{r['lo']:.3f}, {r['hi']:.3f}]"
+                  + (f"; strict [{s['lo']:.3f}, {s['hi']:.3f}]" if s else ""))
     print(f'JSON: {json_path}')
     print(f'MD  : {md_path}')
     return 0
