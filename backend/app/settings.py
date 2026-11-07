@@ -141,6 +141,6 @@ def load() -> Settings:
         qwen_timeout_seconds=get_int("CHILON_QWEN_TIMEOUT_SECONDS", 30),
         qwen_embedding_model=get("CHILON_QWEN_EMBEDDING_MODEL", "qwen3.7-text-embedding"),
         qwen_embedding_dim=get_int("CHILON_QWEN_EMBEDDING_DIM", 1024),
-        qwen_rerank_model=get("CHILON_QWEN_RERANK_MODEL", "qwen3-rerank"),
+        qwen_rerank_model=get("CHILON_QWEN_RERANK_MODEL", "qwen3.7-text-rerank"),
         qwen_rerank_top_n=get_int("CHILON_QWEN_RERANK_TOP_N", 40),
     )

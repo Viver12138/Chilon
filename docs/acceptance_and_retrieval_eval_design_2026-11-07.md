@@ -326,9 +326,9 @@ retrieval_evaluation:
 | T | 仅 pg_trgm | 文本路径贡献 |
 | V | 仅 Qdrant | 向量路径贡献 |
 | H | pg_trgm + Qdrant + RRF（当前默认） | 主基线 |
-| HR | H + qwen3-rerank（API） | 决定是否默认启用（看 Recall/MRR/Strict 与 API 延迟） |
+| HR | H + qwen3.7-text-rerank（API） | 决定是否默认启用（看 Recall/MRR/Strict 与 API 延迟） |
 
-> 2026-11-07 决策：HR 组用 **API 重排 qwen3-rerank**；本地 Qwen3-Reranker-0.6B 只作离线回退/历史对照，不再作为评测默认。
+> 2026-11-07 决策：HR 组用 **API 重排 qwen3.7-text-rerank**；本地 Qwen3-Reranker-0.6B 只作离线回退/历史对照，不再作为评测默认。
 
 约束：**评测前冻结参数**（final_k、top_n、rrf_k、rerank_candidates）；报告里记录 git commit、dataset sha256、索引 manifest、DB counts；不按测试集调参。
 
@@ -359,21 +359,21 @@ retrieval_evaluation:
 
 ### B7.2 改用 Qwen API 的耗时估算（未实测，按公开限制与典型延迟）
 
-> **2026-11-07 决策**：embedding 用 `qwen3.7-text-embedding`，rerank 用 `qwen3-rerank`，**均走 DashScope 原生 API**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。
-> 依据：`qwen3.7-text-embedding` 单请求 20 条、每条 131072 token；`qwen3-rerank` 单请求最多 500 docs、请求最多 120k token（阿里云百炼文档）。API 延迟与 **RPM/TPM 配额、并发**强相关，以下为估算区间；执行前应先用 `backend/tests/check_qwen.py` 校准。
+> **2026-11-07 决策**：embedding 用 `qwen3.7-text-embedding`，rerank 用 `qwen3.7-text-rerank`，**均走 DashScope 原生 API**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。
+> 依据：`qwen3.7-text-embedding` 单请求 20 条、每条 131072 token；`qwen3.7-text-rerank` 单请求最多 500 docs、单条/请求输入上限 32768 token（阿里云百炼文档）。API 延迟与 **RPM/TPM 配额、并发**强相关，以下为估算区间；执行前应先用 `backend/tests/check_qwen.py` 校准。
 
 | 环节 | 假设 | 60 条评测 | 100 条评测 |
 | --- | --- | ---: | ---: |
 | query embedding（API） | v4、10 条/请求、0.2–0.5s/请求 | 6 请求 → ~1–3s | 10 请求 → ~2–5s |
 | 本地检索（pg_trgm+Qdrant） | 不变 | ~9s | ~15s |
-| qwen3-rerank（API） | 1 请求/query（40 docs）、0.5–2s/请求 | ~30–120s | ~50–200s |
+| qwen3.7-text-rerank（API） | 1 请求/query（40 docs）、0.5–2s/请求 | ~30–120s | ~50–200s |
 | **合计（含 rerank）** | 串行 | **~1–2.5 分钟** | **~1.5–4 分钟** |
 
 - 若配额 QPS 较低（如 10 QPS），100 条 rerank 主要受排队限制，总时间仍在 **5 分钟内**；若 RPM 仅 60，排队约 100s，总约 **3–5 分钟**；
 - **全量索引重建（API embedding）**：12,973 chunks / 每请求 10 条 ≈ 1,298 请求；按 2.06M token、TPM 1M 估算纯推理约 2–3 分钟，加并发与限流后约 **10–25 分钟**（本地 CPU 为 ~2.4h）；
 - **部分 API 方案**：若只把 embedding 换 API、rerank 仍用本地 Qwen3-Reranker-0.6B，则 60/100 条评测仍被 rerank 主导，耗时仍是 **1.4h / 2.3h**，不变；
 - **成本粗估**：全量 embedding ~2.06M token、$0.07/1M ≈ **$0.15**；rerank 100 条约 60 万 token，按百炼排序单价另计（执行前查价）；
-- **不可直接比较**：API 的 `qwen3-rerank` 与本地 Qwen3-Reranker-0.6B 不是同一部署，指标可能不同；必须用同一批 query 做 smoke 对齐后再切换。
+- **不可直接比较**：API 的 `qwen3.7-text-rerank` 与本地 Qwen3-Reranker-0.6B 不是同一部署，指标可能不同；必须用同一批 query 做 smoke 对齐后再切换。
 
 **结论**：把 embedding + rerank 都切到 Qwen API，100 条评测从本地约 2.3h 压到 **约 2–5 分钟**；收益几乎全部来自 rerank API。若只切 embedding，时间不省。
 
@@ -405,18 +405,50 @@ retrieval_evaluation:
 
 **建议的选型验证**（成本极低）：用同一 12,973 chunks、同 1024 维、同 payload 建两套 Qdrant collection（qwen3.7 vs flash），在 v2.0 验收集上比较 Recall@8 / Strict Recall@8 / Strict@1；总成本 <¥2、API 建库各约 10–25 分钟。v4 作为对照第三套可选。
 
-**选型决策（2026-11-07）**：**质量优先，embedding 用 `qwen3.7-text-embedding`（1024 维，北京区），rerank 也用 API `qwen3-rerank`**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。配置变量已写入 `.env.example`：
+**选型决策（2026-11-07）**：**质量优先，embedding 用 `qwen3.7-text-embedding`（1024 维，北京区），rerank 也用 API `qwen3.7-text-rerank`**；本地 Qwen3-Embedding/Reranker 只保留为离线回退。配置变量已写入 `.env.example`：
 `CHILON_QWEN_API_KEY`（兼容官方 `DASHSCOPE_API_KEY`）、`CHILON_QWEN_BASE_URL`、`CHILON_QWEN_REGION`、
 `CHILON_QWEN_TIMEOUT_SECONDS`、`CHILON_QWEN_EMBEDDING_MODEL`、`CHILON_QWEN_EMBEDDING_DIM`、
 `CHILON_QWEN_RERANK_MODEL`、`CHILON_QWEN_RERANK_TOP_N`。填 key 后用 `backend/tests/check_qwen.py` 自测两条链路；
 flash 保留为后续降本 A/B 候选；v4 仅作“本地 Qwen3-Embedding-0.6B 同源”对照。工具切换到 API 后，必须先用 v2 验收集重跑 strict 指标再采信。
+
+### B7.4 成本估算（北京区，2026-11-07 官方价）
+
+> 假设：embedding 输入 **2.06M tokens**（12,973 chunks，`sum(min(len,512))` 口径；若按全文不截断约 2.3M，成本约 ¥1.15）；rerank 每 query 40 docs、平均 ~159 tokens/doc + query ≈ **6.4k tokens/query**。不含 PG/Qdrant/机器/LLM 成本。
+
+| 项目 | 用量 | 单价 | 成本 |
+| --- | ---: | ---: | ---: |
+| 全量 embedding 建索引 | 2.06M tokens | ¥0.5/M（同步）；批量 ¥0.25/M | **¥1.03**；批量 **¥0.52** |
+| 100 条 query embedding | ~5k tokens | ¥0.5/M | ¥0.003 |
+| 60 条评测 rerank（40 候选） | ~384k tokens | ¥0.5/M | **¥0.19** |
+| 100 条评测 rerank（40 候选） | ~640k tokens | ¥0.5/M | **¥0.32** |
+| **一次完整 100 条评测（建索引 + 跑评测）** | ≈2.7M tokens | — | **≈¥1.35**（批量 embedding ≈¥0.84） |
+| 单次生产检索（40 候选 rerank） | ~6.4k tokens | — | **≈¥0.0032/次** |
+| 单次生产检索（20 候选） | ~3.2k tokens | — | ≈¥0.0016/次 |
+
+**月成本（仅检索 API，40 候选）：**
+
+| 检索量 | 月成本 |
+| ---: | ---: |
+| 1,000 次 | ≈ ¥3.2 |
+| 10,000 次 | ≈ ¥32 |
+| 100,000 次 | ≈ ¥320 |
+| 1,000,000 次 | ≈ ¥3,200 |
+
+**说明：**
+
+- `qwen3.7-text-embedding` 有 **1M tokens 免费额度**（领取/有效期以控制台为准），可覆盖约一半首次建库，实际现金成本可能更低；以百炼账单为准。
+- 重排成本与候选数近似线性：40→20 约减半，40→10 约 1/4；strict 指标可能变化，需 A/B。
+- 若改用 `qwen3.7-text-embedding-flash`：仅省一次性约 **¥0.77**（¥1.03→¥0.26），查询成本几乎不变；在这个量级“质量优先”的额外成本可忽略。
+- 新加坡区价格更高（embedding ¥0.525/M、rerank ¥0.749/M），同量级成本约为北京区的 **1.2–1.5 倍**。
+- 生产量级 ≥10 万次/月后，再考虑候选裁剪、缓存、自建模型；当前阶段 API 成本不是瓶颈。
+- 免费额度、活动价与限流以百炼控制台为准；本表为按官方原价做的 planning 估算。
 
 ## B8. 验收与决策
 
 1. **初期验收集 v2.0**：60 条、五类各 12、30 条 strict、κ ≥0.70、sha256 冻结 → **数据集验收通过**（只用于阶段 6 初期验收）；
 2. 基线：5 组跑完、可复现 → **检索验收报告**；
 3. **发布门禁（第一阶段）**：Recall@8 **≥85%** 且 Strict Recall@8 **≥70%**；MRR@8、Strict@1、Strict-all@8 只作诊断，不设门槛、不阻断；P95 延迟与空结果率作工程观测；
-4. 重排：HR 组使用 **qwen3-rerank API**；若相对 H 无可见增益，则产品默认不启用重排，API 重排保留为可选项；本地 Qwen3-Reranker-0.6B 仅离线回退；
+4. 重排：HR 组使用 **qwen3.7-text-rerank API**；若相对 H 无可见增益，则产品默认不启用重排，API 重排保留为可选项；本地 Qwen3-Reranker-0.6B 仅离线回退；
 5. **长期门禁 v2.1**：strict 查询 ≥100、对象类型覆盖达标后，用 v2.1 冻结集重跑；未达 v2.1 前，v2.0 通过只能记为“初期验收通过”，**不能对外宣称检索已长期达标**。
 
 ## B9. 风险

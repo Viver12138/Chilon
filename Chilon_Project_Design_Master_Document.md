@@ -8652,7 +8652,7 @@ D.114 后 1797 全部 teacher 标注。v8 只修自动映射引擎，**不动 PG
 - 2–3 位教师、分层矩阵采样（模块/来源/年份/题型/难度）；**逐字记录、只收答不上的也算**；
 - 两位核验人独立标注 gold chunk + strict，Cohen's κ ≥0.70；冻结 `teacher-questions/v2`（sha256 + DB counts + commit），**冻结后不调参**；
 - 指标（第一阶段）：发布门槛只有 **Recall@8 ≥85%** 与 **Strict Recall@8 ≥70%**；诊断三项 **MRR@8 / Strict@1 / Strict-all@8**（均只在 strict 子集上算，不阻断发布）；空结果率/延迟/nDCG 作工程观测；五组对照 L/T/V/H/HR 决定 Reranker 是否默认启用；
-- **实现取向（2026-11-07 决策）**：embedding + rerank 均走 Qwen API（`qwen3.7-text-embedding` / `qwen3-rerank`），本地模型仅离线回退；key 配置见 `.env.example` 的 `CHILON_QWEN_*`，填后 `backend/tests/check_qwen.py` 自测两条链路；
+- **实现取向（2026-11-07 决策）**：embedding + rerank 均走 Qwen API（`qwen3.7-text-embedding` / `qwen3.7-text-rerank`），本地模型仅离线回退；key 配置见 `.env.example` 的 `CHILON_QWEN_*`，填后 `backend/tests/check_qwen.py` 自测两条链路；
 - 工装：`eval_retrieval.py`/`eval_hybrid.py` 增加 strict-chunk、bootstrap、分类别 CI。
 
 ### 计划
