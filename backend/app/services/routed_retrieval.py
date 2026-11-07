@@ -13,6 +13,7 @@ Environment:
 from __future__ import annotations
 
 import os
+import threading
 import time
 from typing import Any
 
@@ -128,8 +129,8 @@ def _hydrate(conn, vector_hits: list[dict]) -> list[dict]:
     return out
 
 
-def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '',
-           sources: list[str] | None = None) -> dict[str, Any]:
+def _search_impl(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '',
+                 sources: list[str] | None = None) -> dict[str, Any]:
     started = time.perf_counter()
     plan = query_plan.build_plan(query)
     if mode in ('h', 'hr'):
@@ -253,3 +254,23 @@ def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = ''
     finally:
         conn.close()
         client.close()
+
+
+_SLOTS = threading.BoundedSemaphore(
+    max(1, int(settings.get('CHILON_RETRIEVAL_MAX_CONCURRENCY', '8') or 8))
+)
+
+
+def search(query: str, *, limit: int = 8, mode: str = 'auto', user_key: str = '',
+           sources: list[str] | None = None) -> dict[str, Any]:
+    """Public entrypoint with a global concurrency cap (API + agent)."""
+    try:
+        timeout = float(settings.get('CHILON_RETRIEVAL_ACQUIRE_TIMEOUT_SECONDS', '5') or 5)
+    except ValueError:
+        timeout = 5.0
+    if not _SLOTS.acquire(timeout=timeout):
+        raise RuntimeError('retrieval busy: concurrency cap reached')
+    try:
+        return _search_impl(query, limit=limit, mode=mode, user_key=user_key, sources=sources)
+    finally:
+        _SLOTS.release()

@@ -11,7 +11,7 @@ from fastapi.concurrency import run_in_threadpool
 from pydantic import BaseModel, Field
 
 from app.api.deps import ApiError, UserDep
-from app.services import retrieval_router, routed_retrieval
+from app.services import retrieval_guard, retrieval_router, routed_retrieval
 
 router = APIRouter(tags=["retrieval"], prefix="/retrieval")
 
@@ -28,14 +28,23 @@ class SearchRequest(BaseModel):
 
 @router.post("/search")
 async def search(payload: SearchRequest, user: UserDep) -> dict:
+    user_key = str(user)
     try:
-        return await run_in_threadpool(
+        retrieval_guard.check_and_record(user_key, payload.mode)
+    except retrieval_guard.RateLimited as exc:
+        raise ApiError(429, "RATE_LIMITED", str(exc)) from exc
+    except retrieval_guard.QuotaExceeded as exc:
+        raise ApiError(429, "QUOTA_EXCEEDED", str(exc)) from exc
+    try:
+        result = await run_in_threadpool(
             routed_retrieval.search,
             payload.query,
             limit=payload.limit,
             mode=payload.mode,
-            user_key=str(user),
+            user_key=user_key,
         )
+        retrieval_guard.note_mode(user_key, result.get("mode", ""))
+        return result
     except RuntimeError as exc:
         raise ApiError(503, 'CAPABILITY_GAP', str(exc)) from exc
     except Exception as exc:  # noqa: BLE001
