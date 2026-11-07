@@ -59,6 +59,30 @@ def conditions_for(plan: dict) -> dict:
     return conditions
 
 
+def load_content_types(path: Path | None) -> dict[str, dict]:
+    if not path:
+        return {}
+    data = json.loads(path.read_text(encoding='utf-8'))
+    return {row['chunk_id']: row for row in data['rows']}
+
+
+def content_bonus(hit: dict, plan: dict, ct_map: dict[str, dict]) -> float:
+    """Soft content_type prior for knowledge/formula intents only."""
+    if not ct_map or plan['intent'] not in ('formula_search', 'knowledge_search'):
+        return 0.0
+    meta = ct_map.get(hit.get('chunk_id') or '')
+    if not meta:
+        return 0.0
+    primary = meta['primary']
+    if plan['intent'] == 'formula_search':
+        weights = {'formula': 0.0, 'definition': 0.0, 'theorem': 0.0,
+                   'catalog': -1.0, 'reading': -0.75, 'exercise': 0.0, 'example': 0.0, 'other': 0.0}
+    else:
+        weights = {'definition': 0.0, 'theorem': 0.0, 'formula': 0.0,
+                   'catalog': -1.0, 'reading': -0.75, 'exercise': 0.0, 'example': 0.0, 'other': 0.0}
+    return weights.get(primary, 0.0)
+
+
 def text_for(conn, query: str, plan: dict):
     conditions = conditions_for(plan)
     hard = plan['hard']
@@ -143,6 +167,9 @@ def main() -> int:
     parser.add_argument('--qdrant-url', default=os.environ.get('QDRANT_URL', 'http://127.0.0.1:6333'))
     parser.add_argument('--collection', default=DEFAULT_COLLECTION)
     parser.add_argument('--out-prefix', type=Path, default=DEFAULT_OUT)
+    parser.add_argument('--content-type', type=Path, default=None)
+    parser.add_argument('--ct-weight-h', type=float, default=0.01, help='RRF score bonus weight for H')
+    parser.add_argument('--ct-weight-hr', type=float, default=0.05, help='rerank score bonus weight for HR')
     args = parser.parse_args()
     if not args.database_url:
         print('CHILON_TEST_DATABASE_URL is not set (or pass --database-url)', file=sys.stderr)
@@ -165,6 +192,7 @@ def main() -> int:
     client = QdrantClient(url=args.qdrant_url, timeout=120)
     vectors, embed_stats = qwen_api.embed_texts([q['text'] for q in queries])
     vector_by_id = {q['id']: v for q, v in zip(queries, vectors)}
+    ct_map = load_content_types(args.content_type)
 
     def rows_for(group_key: str) -> list[dict]:
         rows = []
@@ -182,11 +210,24 @@ def main() -> int:
                     hits = hr.rrf_fuse([text_hits, vec_full, rare_hits], weights=[1.0, 1.0, 3.0])
                 else:
                     hits = hr.rrf_fuse([text_hits, vec_full])
+                if ct_map and group_key == 'H':
+                    hits = sorted(
+                        hits,
+                        key=lambda h: h.get('rrf_score', 0.0) + args.ct_weight_h * content_bonus(h, plan, ct_map),
+                        reverse=True,
+                    )
                 if group_key == 'HR':
                     candidates = hits[: hr.CONFIG['rerank_candidates']]
                     docs = [hr.embedding_text(h)[: hr.CONFIG['rerank_doc_chars']] for h in candidates]
                     scores, _ = qwen_api.rerank(q['text'], docs)
-                    ranked = sorted(zip(candidates, scores), key=lambda pair: pair[1], reverse=True)
+                    if ct_map:
+                        ranked = sorted(
+                            zip(candidates, scores),
+                            key=lambda pair: pair[1] + args.ct_weight_hr * content_bonus(pair[0], plan, ct_map),
+                            reverse=True,
+                        )
+                    else:
+                        ranked = sorted(zip(candidates, scores), key=lambda pair: pair[1], reverse=True)
                     hits = []
                     for h, score in ranked:
                         item = dict(h)
