@@ -13,6 +13,9 @@
 | `tools/check_teacher_questions_v2.py` | 结构 + 配额 + 完整性校验（模板 / 数据集两种模式） |
 | `corpus/eval/teacher_questions.v2.json`（待生成） | 填好的 v2.0 数据集；**不要覆盖模板** |
 | `corpus/eval/teacher_questions.v2.manifest.json`（冻结时） | sha256、DB counts、commit、日期 |
+| `corpus/eval/teacher_questions.v2.draft.json` | 首批 60 条 draft（问题来自问题收集1.txt；20 条 strict SQL 候选，`strict_verified=false`） |
+| `corpus/eval/teacher_questions.v2.draft.gold.json` | 20 条 strict 的 23 个 gold chunk 明细（摘录/位置/rationale） |
+| `review_sheets/samples/教师问题v2_strict金标核验_2026-11-07.xlsx` | 两位核验人逐条确认 strict gold 的核验表（含下拉） |
 | `review_sheets/samples/教师问题收集_v2.0_2026-11-07.xlsx` | 教师直接填写的 Excel（说明/填写表/示例/strict 金标说明，含下拉） |
 | `review_sheets/samples/教师问题收集_v2.0_2026-11-07.csv` | 同一内容的纯文本版（UTF-8 BOM，Excel 可直接打开） |
 | `tools/export_teacher_questions_v2.py` | 从 JSON 模板重新生成上面的 Excel + CSV |
@@ -85,6 +88,9 @@ WHERE s.title LIKE '%2024%' AND c.text_content LIKE '%<题干片段>%';
 # 生成教师填写用的 Excel/CSV（review_sheets/samples/，gitignored）
 python tools/export_teacher_questions_v2.py
 
+# 生成 strict 金标核验表（draft gold -> xlsx/csv）
+python tools/export_v2_gold_review.py
+
 # 模板结构 + 配额
 python tools/check_teacher_questions_v2.py
 
@@ -151,6 +157,8 @@ python tools/check_teacher_questions_v2.py --input ... --database-url "postgresq
 | v2.1 | ≥100 strict（定义 25/定理 20/公式 20/题 35） | 长期回归/发布门禁；strict 门槛建议 ≥80%（待定） |
 
 v2.0 冻结后不调参；v2.1 单独冻结，不覆盖 v2.0。每季度或语料大版本增补 ≥20 条。
+
+**首批 draft 状态（2026-11-07）**：60 条来自 `问题收集1.txt`（T01/T02/T03）；20 条 strict 为 SQL 候选（定义 9 / 定理 6 / 公式 5），`strict_verified=false`，待两位人工核验。偏差：B01 焦点弦长无独立教材公式块，按“不硬凑 strict”降为 any-only；B02 切线方程以“导数几何意义=切线斜率”段为 canonical strict；题目类 strict 暂不纳入。核验表：`review_sheets/samples/教师问题v2_strict金标核验_2026-11-07.xlsx`。
 
 ## 9. 禁止事项
 
