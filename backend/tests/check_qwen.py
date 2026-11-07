@@ -98,6 +98,14 @@ async def main() -> int:
         print("FAIL: CHILON_QWEN_API_KEY 为空。请先在 .env 里填写（或设置 DASHSCOPE_API_KEY）。")
         return 2
 
+    # 阿里云 AccessKey（LTAI...）和百炼 API-KEY（sk-...）是两种凭据，混用会 401。
+    if s.qwen_api_key.startswith("LTAI"):
+        print("提示：当前 key 形如 LTAI...，这是阿里云 AccessKey ID，不是百炼 API-KEY。")
+        print("      请到百炼控制台「API-KEY」创建 sk-... 形式的 key（中国区/华北2 北京）。")
+    elif not s.qwen_api_key.startswith("sk-"):
+        print("提示：百炼 API-KEY 通常以 sk- 开头；当前格式可能不对，若 401 请回控制台确认。")
+    print()
+
     base = s.qwen_base_url.rstrip("/")
     embed_url = f"{base}/services/embeddings/text-embedding/text-embedding"
     rerank_url = f"{base}/services/rerank/text-rerank/text-rerank"
