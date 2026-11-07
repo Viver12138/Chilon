@@ -1,8 +1,8 @@
 {
-  "version": "teacher-questions/v2-gold-reviewed",
-  "note": "v2.0 strict 金标明细：A/B 两位核验人逐条核验（21 行通过、2 行修改后替换）；最终数据集 gold 明细。",
+  "version": "teacher-questions/v2-gold",
+  "note": "v2.0.3 strict 金标明细：A/B 核验 + Q-B-02 二轮确认（B，组合 gold）；23→24 个 chunk。",
   "query_count": 20,
-  "chunk_rows": 23,
+  "chunk_rows": 24,
   "rows": [
     {
       "query_id": "Q-A-01",
@@ -110,7 +110,19 @@
       "title": "普通高中教科书·数学（A版）选择性必修第二册",
       "locator": "{\"page\": 73, \"part\": 1, \"ocr_action\": \"RecognizeEduPaperOcr\"}",
       "excerpt": "近于函数 y=f(x) 在 x = x _ { 0 } 处的导数.因此，函数 y=f(x) 在 x = x _ { 0 } 处的导数 f ' \\left( x _ { 0 } \\right) 就是切线 P _ { 0 } T 的斜率 k _ { 0 } ，即 k _ { 0 } = \\lim _ { \\triangle x \\to 0 } \\frac { f \\left( x _ { 0 } + \\triangle x \\right) - f \\left( x _ { 0 } \\right) } { \\triangle x } = f ' \\left( x _ { 0 } \\right) . 这就是导数的几何意义. 继续观察图5.1-4，可以发现点 P _ { 0 } 处的切线PT比任 何一条割线更贴近点 P _ { 0 } 附近的曲线.进一步地，利用信息 ①数学上常用简单的 技术工具将点 P _ { 0 } 附近的曲线不断放大(图5.1-5)，可以发 对象刻画复杂的对象.例 如，用有理数3.1416近 现点 P _ { 0 } 附近的曲线越来越接近于直线.因此，在点 P _ { 0 } 附 似代替无理数π. 这里， 近，曲线 y=f(x) 可以用点 P _ { 0 } 处的切线 P _ { 0 } T 近似代替. 我们用曲线上某点处的切 T T T 线近似代替这一点附近的 曲线，",
-      "rationale": "教材选必二 p73：导数的几何意义=切线斜率，切线方程由此得到；严格对象为“导数几何意义”段。"
+      "rationale": "切线方程公式由两块组成：p73 给出导数 f'(x0) 即切线斜率；p64 给出点斜式 y-y0=k(x-x0)。二轮确认（B）采用组合 gold。"
+    },
+    {
+      "query_id": "Q-B-02",
+      "category": "题型+知识点",
+      "text": "导数的解答题里常用的切线方程公式是什么？",
+      "object_type": "formula",
+      "gold_index": 2,
+      "chunk_id": "184a1f7c-9bb6-4f07-9550-961bb519f9bf",
+      "title": "普通高中教科书·数学（A版）选择性必修第一册",
+      "locator": "{\"page\": 64, \"part\": 1, \"ocr_action\": \"RecognizeEduPaperOcr\"}",
+      "excerpt": "2.2 直线的方程 我们知道，给定一点和一个方向可以唯一确定一条直 线.这样，在平面直角坐标系中，给定一个点 P _ { 0 } \\left( x _ { 0 } ， y _ { 0 } \\right) 和斜率k(或倾斜角)，就能唯一确定一条直线.也就是说， 这条直线上任意一点的坐标 (x，y) 与点 P _ { 0 } 的坐标 \\left( x _ { 0 } ， y _ { 0 } ) 和斜率k之间的关系是完全确定的.那么，这一关系如 何表示呢?下面我们就来研究这个问题. 2.2.1 直线的点斜式方程 如图2.2-1，直线l经过点 P _ { 0 } \\left( x _ { 0 } ， y _ { 0 } \\right) ， 且斜率为k. 设 P P(x，y) 是直线l上不同于点 P _ { 0 } 的任意一点，因为直线l P _ { 0 } 的斜率为k，由斜率公式得 x k = \\frac { y - y _ { 0 } } { x - x _ { 0 } } ， 图2.2-1 即 y - y _ { 0 } = k \\left( x - x _ { 0 } \\right) . 点 P _ { 0 } ，的坐标 \\left( x _ { 0 } ， 由上述推导过程可知： y _ { 0 } \\right) 满足关系式 y - y _ { 0 } = (1)直线l上每一个点的",
+      "rationale": "切线方程公式由两块组成：p73 给出导数 f'(x0) 即切线斜率；p64 给出点斜式 y-y0=k(x-x0)。二轮确认（B）采用组合 gold。"
     },
     {
       "query_id": "Q-C-01",

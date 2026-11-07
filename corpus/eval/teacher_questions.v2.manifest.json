@@ -1,12 +1,12 @@
 {
   "dataset": "teacher_questions.v2.json",
-  "sha256": "af80b1f10388f948865320f8553a51a789b607b8ca0f04a38dca3d14b6b56e40",
+  "sha256": "d6e12901fb94980272a6683284ab44222e321c82bbf6587845fc182c4b5e1f2a",
   "db": {
     "sources": 346,
     "chunks": 12973,
     "questions": 6981
   },
-  "git_commit_before_manifest": "907c1be14f38868faa55bb4464db33b18c76175d",
+  "git_commit_before_manifest": "265ee9d91a8b8a3c6c3058c6a28c19a691413887",
   "frozen_at": "2026-11-07",
   "counts": {
     "total": 60,
@@ -25,6 +25,7 @@
     "modified_chunk_rows": 2,
     "modified_queries": [
       "Q-A-06",
+      "Q-B-02",
       "Q-C-05"
     ],
     "modified_resolution": "Q-A-06 球体积公式替换为 91ed5c73（p125 独立公式陈述）；Q-C-05 概率定义替换为 e91583b7（p242 事件概率定义）。",
@@ -36,7 +37,7 @@
       "definition": 9
     },
     "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。",
-    "revision": "v2.0.2 (2026-11-07): Q-B-03/B-06/B-09/E-03/E-09 expect.any use subject+question_type; strict unchanged."
+    "revision": "v2.0.3 (2026-11-07): Q-B-02 strict gold = [a727d926(p73), 184a1f7c(p64)] per second-round option B; strict count unchanged (20)."
   },
   "note": "v2.0 冻结；strict 20 条（定义9/定理6/公式5），比模板计划少 10 条，原因见 verification.deviation；冻结后不调参，调参用独立 dev 集。"
 }

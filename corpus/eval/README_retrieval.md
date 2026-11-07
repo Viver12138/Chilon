@@ -263,3 +263,4 @@ echo $LASTEXITCODE    # 0 = 完成
 | v1.6 | 2026-11-07 | v2.0 首轮五组评测（v2.0.2 question_type 修订）：HR（API 重排）60/60=100%、strict 19/20=95.0%、strict MRR 0.887；H 混合 58/60=96.7%、strict 17/20=85.0%；V 59/60/90.0%；H/HR 均过第一阶段门槛；评测脚本 `tools/eval_v2.py`，报告 `V2_EVAL_2026-11-07.md`；未据此调参。 |
 | v1.7 | 2026-11-07 | 判定字段新增 `question_type`（单/多选、填空、解答），用于“找一道…选择题/压轴题”类查询；v2.0.2 给 5 条此类补 subject+question_type 子句，HR lenient 55→60/60；strict 不变。 |
 | v1.8 | 2026-11-07 | `eval_v2.py` 增加 query-level bootstrap CI（1000 次）：HR Recall 1.000 [1.000,1.000]（60/60 退化区间）、strict 0.950 [0.833,1.000]；H strict 0.850 [0.682,1.000]；Q-B-02 二轮确认表已生成（A 保留/B 组合/C 降 any-only）。 |
+| v1.9 | 2026-11-07 | 按二轮确认 B 更新 Q-B-02 为组合 gold `[a727d926(p73), 184a1f7c(p64)]`（24 gold chunks）；复测 V/H/HR 仍 miss 该条（top-8 无两块），strict 指标不变；L 本轮 28/60；数据集/manifest 更新为 `d6e12901…`。 |

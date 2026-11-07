@@ -1,6 +1,6 @@
 {
   "version": "teacher-questions/v2",
-  "note": "v2.0 数据集（2026-11-07 A/B 核验后）：60 条问题来自问题收集1.txt（T01/T02/T03）；20 条 strict（定义9/定理6/公式5），strict_verified=true。B01 焦点弦长无独立教材公式块，按“不硬凑 strict”降为 any-only；B02 切线以“导数几何意义=切线斜率”段为 canonical strict。建议二轮对 2 个修改项抽检。 修订 v2.0.1：Q-B-01/Q-E-11 的 expect.any 放宽（原词表过窄）；strict 不变。 修订 v2.0.2：5 条“找一道…”类补 question_type 子句；strict 不变。",
+  "note": "v2.0 数据集（2026-11-07 A/B 核验后）：60 条问题来自问题收集1.txt（T01/T02/T03）；20 条 strict（定义9/定理6/公式5），strict_verified=true。B01 焦点弦长无独立教材公式块，按“不硬凑 strict”降为 any-only；B02 切线以“导数几何意义=切线斜率”段为 canonical strict。建议二轮对 2 个修改项抽检。 修订 v2.0.1：Q-B-01/Q-E-11 的 expect.any 放宽（原词表过窄）；strict 不变。 修订 v2.0.2：5 条“找一道…”类补 question_type 子句；strict 不变。 修订 v2.0.3：Q-B-02 组合 gold（B）。",
   "provenance": {
     "status": "real_teacher",
     "real_teacher_confirmed": true,
@@ -23,6 +23,7 @@
     "modified_chunk_rows": 2,
     "modified_queries": [
       "Q-A-06",
+      "Q-B-02",
       "Q-C-05"
     ],
     "modified_resolution": "Q-A-06 球体积公式替换为 91ed5c73（p125 独立公式陈述）；Q-C-05 概率定义替换为 e91583b7（p242 事件概率定义）。",
@@ -34,7 +35,7 @@
       "definition": 9
     },
     "deviation": "B01 焦点弦长无独立教材公式块，strict=null；B02 切线方程以导数几何意义段为 canonical strict；题目类 strict 暂不纳入。",
-    "revision": "v2.0.2 (2026-11-07): Q-B-03/B-06/B-09/E-03/E-09 expect.any use subject+question_type; strict unchanged."
+    "revision": "v2.0.3 (2026-11-07): Q-B-02 strict gold = [a727d926(p73), 184a1f7c(p64)] per second-round option B; strict count unchanged (20)."
   },
   "strict_quota": {
     "definition": 9,
@@ -441,10 +442,11 @@
         ],
         "strict": {
           "chunk_ids": [
-            "a727d926-0e70-4e17-89ae-34825ef43df5"
+            "a727d926-0e70-4e17-89ae-34825ef43df5",
+            "184a1f7c-9bb6-4f07-9550-961bb519f9bf"
           ],
           "object_type": "formula",
-          "rationale": "教材选必二 p73：导数的几何意义=切线斜率，切线方程由此得到；严格对象为“导数几何意义”段。",
+          "rationale": "切线方程公式由两块组成：p73 给出导数 f'(x0) 即切线斜率；p64 给出点斜式 y-y0=k(x-x0)。二轮确认（B）采用组合 gold。",
           "verified_by": [
             "V-A",
             "V-B"
@@ -454,7 +456,7 @@
       },
       "expect_verified": true,
       "strict_verified": true,
-      "notes": "strict槽位；A/B 核验通过，strict_verified=true。"
+      "notes": "strict槽位；A/B 核验通过，strict_verified=true。；二轮确认 B（2026-11-07）：Q-B-02 strict 改为组合 gold（p73 导数几何意义 + p64 点斜式）；A/B 二轮确认。"
     },
     {
       "id": "Q-B-03",
