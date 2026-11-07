@@ -145,7 +145,7 @@ def render(doc: dict) -> str:
     for key in ('H', 'HR'):
         b = baseline.get(key) or {}
         q = doc['groups'].get(key) or {}
-        if b and q:
+        if b and q and q['metrics']['strict_recall_at_8'] is not None:
             lines.append(
                 f"| {key} | {b['recall_at_8']:.1%} | {q['metrics']['recall_at_8']:.1%} | "
                 f"{b['strict_recall_at_8']:.1%} | {q['metrics']['strict_recall_at_8']:.1%} |"
@@ -156,7 +156,7 @@ def render(doc: dict) -> str:
     lines += ['', '## 边界', '',
               '- 本原型只做 P0：结构化硬过滤 + 遵守率；没有 content_type 分池/同义词/UI。',
               '- 硬过滤下 0 结果不静默回退；后续应在产品层展示“0 条 + 更早年份相关组”。',
-              '- 评测集 60 条 / 20 strict，单次运行；不能当线上准确率。']
+              f'- 评测集 {doc["dataset"]["queries"]} 条 / {doc["dataset"]["strict_queries"]} strict，单次运行；不能当线上准确率。']
     return '\n'.join(lines) + '\n'
 
 
@@ -262,8 +262,9 @@ def main() -> int:
             m = old['groups'][key]['metrics']
             baseline[key] = {'recall_at_8': m['recall_at_8'], 'strict_recall_at_8': m['strict_recall_at_8']}
 
+    dataset_path = args.dataset.resolve()
     doc = {
-        'dataset': {'path': args.dataset.relative_to(ROOT).as_posix(),
+        'dataset': {'path': dataset_path.relative_to(ROOT).as_posix(),
                     'sha256': __import__('hashlib').sha256(dataset_bytes).hexdigest(),
                     'queries': len(queries),
                     'strict_queries': sum(1 for q in queries if q['expect'].get('strict'))},

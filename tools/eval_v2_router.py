@@ -103,7 +103,7 @@ def main() -> int:
              '| 指标 | 值 |', '| --- | ---: |',
              f"| Recall@8 | {metrics['found']}/{metrics['queries']} = {pct(metrics['recall_at_8'])} |",
              f"| Strict Recall@8 | {metrics['strict_found']}/{metrics['strict_queries']} = {pct(metrics['strict_recall_at_8'])} |",
-             f"| Strict MRR@8 | {metrics['strict_mrr_at_8']:.3f} |",
+             f"| Strict MRR@8 | {'—' if metrics['strict_mrr_at_8'] is None else f'{metrics['strict_mrr_at_8']:.3f}'} |",
              f"| Strict@1 | {pct(metrics['strict_at_1'])} |",
              f"| Strict-all@8 | {pct(metrics['strict_all_at_8'])} |", '',
              '### 95% bootstrap CI（query-level 重采样）', '',
@@ -113,8 +113,9 @@ def main() -> int:
         ci = ci_95[name]
         r = ci.get('recall_at_8') or {}
         s = ci.get('strict_recall_at_8') or {}
-        lines.append(f"| {name} | {r.get('point', 0):.3f} [{r.get('lo', 0):.3f}, {r.get('hi', 0):.3f}] | "
-                     f"{s.get('point', 0):.3f} [{s.get('lo', 0):.3f}, {s.get('hi', 0):.3f}] |")
+        strict_txt = ('—' if not s else
+                      f"{s.get('point', 0):.3f} [{s.get('lo', 0):.3f}, {s.get('hi', 0):.3f}]")
+        lines.append(f"| {name} | {r.get('point', 0):.3f} [{r.get('lo', 0):.3f}, {r.get('hi', 0):.3f}] | {strict_txt} |")
     lines += ['', '## 分类别', '',
              '| 类别 | Recall | Strict Recall | Strict MRR |', '| --- | ---: | ---: | ---: |']
     for cat, m in payload['by_category'].items():
@@ -124,8 +125,9 @@ def main() -> int:
     for d in decisions:
         lines.append(f"| {d['text']} | {d['intent']} | **{d['mode']}** |")
     md_path.write_text('\n'.join(lines) + '\n', encoding='utf-8')
+    smrr = '—' if metrics['strict_mrr_at_8'] is None else f'{metrics["strict_mrr_at_8"]:.3f}'
     print(f"routed Recall={metrics['found']}/{metrics['queries']} strict={metrics['strict_found']}/{metrics['strict_queries']} "
-          f"strictMRR={metrics['strict_mrr_at_8']:.3f} modes={payload['mode_counts']}")
+          f"strictMRR={smrr} modes={payload['mode_counts']}")
     print('JSON', json_path)
     print('MD  ', md_path)
     return 0
