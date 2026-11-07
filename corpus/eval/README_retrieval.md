@@ -6,6 +6,8 @@
 > 详见 [`BASELINE_2026-11-06.md`](BASELINE_2026-11-06.md)。本文件继续定义口径与工装；解释边界见基线 §7/§8。
 > 阶段 4–5 混合检索原型见 [`HYBRID_BASELINE_2026-11-06.md`](HYBRID_BASELINE_2026-11-06.md)（Qwen3-Embedding + Qdrant + pg_trgm + 可选 Reranker）：同 15 条上无 rerank 组 Recall@8 93.3%（14/15）；复现需 `requirements-ai.txt`，与本节旧检索评测口径分开。
 >
+> **v2.0 收集模板与 strict 金标（2026-11-07）**：[`teacher_questions.v2.template.json`](teacher_questions.v2.template.json)（60 槽位/30 strict 计划）、[`teacher_questions.v2.schema.json`](teacher_questions.v2.schema.json)、[`V2_COLLECTION_GUIDE.md`](V2_COLLECTION_GUIDE.md)、校验器 `tools/check_teacher_questions_v2.py`。当前 15 条仍为 v1，v2 数据到位后按 D.117 跑正式五组对照。
+>
 > 历史数字 `Recall@8 55% / MRR 0.451 / 空结果 32% / strict target 0/7` 来自
 > `corpus/eval/queries.json`（40 条开发者自拟措辞，D.83 已承认不可信）。
 > **它们与新基线不可比，不得引用。** 该文件保留只作对照。
@@ -121,6 +123,9 @@
 | `corpus/eval/teacher_questions.candidates.json` | 25 条**模拟候选**（Agent 拟定，显式标注） | 不能，仅演练工装/给教师看样例 |
 | `corpus/eval/teacher_questions.schema.json` | 结构定义（JSON Schema Draft 2020-12，已用 jsonschema 校验模板与候选） | — |
 | `corpus/eval/queries.json` | 旧 40 条开发者自拟 | 不能，只作对照 |
+| `corpus/eval/teacher_questions.v2.template.json` | **v2.0 收集模板：60 槽位，30 strict 计划** | 不能，空白模板 |
+| `corpus/eval/teacher_questions.v2.schema.json` | v2 结构：strict 为 chunk_id 金标集合 | — |
+| `corpus/eval/V2_COLLECTION_GUIDE.md` | v2 收集/核验/冻结指南 | — |
 
 ## 6. 收集工装与真人输入清单
 
@@ -250,3 +255,4 @@ echo $LASTEXITCODE    # 0 = 完成
 | v1.0 | 2026-11-06 | 初版：对象/命中/strict/指标口径；问题集 schema、30 条模板、25 条模拟候选；`tools/eval_retrieval.py` 改造（外部问题集、JSON+MD、DB 缺失干净失败、17 项自测）。数据库不可用，未产生基线数字。 |
 | v1.1 | 2026-11-06 | DB 恢复后产出首份真人基线（15 条真人问题、`expect_verified` 15/15，Recall@8 26.7% / MRR 0.180 / 空结果 13.3%，见 `BASELINE_2026-11-06.md`）；顶部状态与第 8 节相应更新，口径与工装说明不变。 |
 | v1.2 | 2026-11-07 | 指标扩展：新增 Strict@1、Strict-all@8 两个诊断指标（均只在 strict 子集计算）；明确第一阶段发布门槛只有 Recall@8 ≥85% 与 Strict Recall@8 ≥70%，MRR@8/Strict@1/Strict-all@8 不阻断发布；v2 数据集把 strict 升级为 chunk_id 集合（见设计稿 B5/D.117）。 |
+| v1.3 | 2026-11-07 | v2.0 收集模板与 strict 金标 schema 落地：60 槽位（五类各 12）、30 条 strict（定义 8/定理 6/公式 6/题目 10）、chunk_id 金标、双人核验与 κ 要求；新增 `V2_COLLECTION_GUIDE.md` 与 `tools/check_teacher_questions_v2.py`。 |

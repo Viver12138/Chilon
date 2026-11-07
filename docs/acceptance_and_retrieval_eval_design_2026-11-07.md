@@ -139,6 +139,7 @@ status: design-proposal
 | 证据不足专项 | 另设 **5 条“无答案/证据不足”** 查询（不并入主指标，单独报告“是否正确拒绝”） |
 | 教师来源 | 2–3 位教师，各 15–20 条；不要求全部来自同一位 |
 | 冻结版本 | `teacher-questions/v2`，数据集 sha256 + DB 快照计数 + git commit 一起记录 |
+| 已落文件 | `corpus/eval/teacher_questions.v2.schema.json`（结构）、`teacher_questions.v2.template.json`（60 槽位/30 strict 计划）、`V2_COLLECTION_GUIDE.md`（流程）、`tools/check_teacher_questions_v2.py`（校验） |
 
 ## B3. 采样矩阵（防只收“系统答得对”的题）
 
@@ -164,12 +165,13 @@ status: design-proposal
 | --- | --- |
 | `text` | 教师原话（不改写） |
 | `category` | 五类之一（+ `unanswerable` 专项） |
-| `intent` | 检索意图（找题/找概念/按年份/按题型） |
-| `object_type` | 期望对象：`question` / `textbook_block` / `definition` |
+| `intent` | 检索意图（find_topic / find_question / find_concept / find_by_year / find_by_type / natural_language） |
+| `object_type` | 查询想要的对象：`any` / `question` / `chunk` / `knowledge_point` |
 | `expect.any` | 至少一个可判定片段（保留 v1） |
-| `expect.strict` | 精确对象：**chunk_id 集合**（新增；从 DB 导出，不靠片段猜测） |
-| `gold_rationale` | 为什么这些 chunk 是标准答案 |
-| `expect_verified` | 两位核验人独立核验后置 true |
+| `expect.strict` | 精确对象：`{chunk_ids, object_type, rationale, verified_by, verified_at}`；`chunk_ids` 是 DB `knowledge_chunks.id` 集合，从冻结快照导出，不靠片段猜测；无 strict 时为 null |
+| `expect.strict.object_type` | `definition` / `theorem` / `formula` / `question` / `example` / `section` |
+| `expect_verified` | 两位核验人独立核验 `expect.any` 后置 true |
+| `strict_verified` | strict 金标两人独立核验后置 true；strict 非 null 时必须为 true |
 | `provenance` | 教师匿名 ID、教龄段、收集日期 |
 
 核验流程：
@@ -332,14 +334,19 @@ retrieval_evaluation:
 
 约束：**评测前冻结参数**（final_k、top_n、rrf_k、rerank_candidates）；报告里记录 git commit、dataset sha256、索引 manifest、DB counts；不按测试集调参。
 
-## B7. 工装改造（设计，不在本轮实现）
+## B7. 工装（模板/校验已落；评测工具 strict-chunk 判定待做）
 
-- `tools/eval_retrieval.py` / `tools/eval_hybrid.py` 增加：
-  - `--dataset`（v2 文件）、`--strict-chunk`（按 chunk_id 判定）、`--bootstrap 1000`、`--per-category-ci`；
+- 已落（2026-11-07）：
+  - `corpus/eval/teacher_questions.v2.schema.json`：strict = `chunk_ids` 金标集合 + object_type/rationale/verified_by；
+  - `corpus/eval/teacher_questions.v2.template.json`：60 槽位（五类各 12）、30 strict 计划（定义 8/定理 6/公式 6/题目 10）；
+  - `corpus/eval/V2_COLLECTION_GUIDE.md`：收集、gold 标注、双人核验、冻结 manifest、示例；
+  - `tools/check_teacher_questions_v2.py`：模板/数据集结构、配额、完整性、chunk_id UUID（可选 DB 存在性）校验；
+- 待做（v2 数据到位后）：
+  - `tools/eval_retrieval.py` / `tools/eval_hybrid.py` 增加 `--dataset`（v2 文件）、`--strict-chunk`（按 chunk_id 判定）、`--bootstrap 1000`、`--per-category-ci`；
   - 输出 JSON + MD：总指标、分类别、分来源、unanswerable 专项、逐条 diff；
 - 新收集模板：`corpus/eval/teacher_questions.v2.template.json`（60 槽位，含 strict/gold 字段）；
 - 冻结清单：`corpus/eval/teacher_questions.v2.manifest.json`（sha256、DB counts、commit、创建日期）；
-- 回归：`--check-input` 校验结构 + 100% `expect_verified` 才允许出基线。
+- 回归：模板/数据集均先跑 `tools/check_teacher_questions_v2.py`，模板通过才发教师；数据 100% verified 才允许出基线。
 
 ### B7.1 运行成本估算（当前设备，基于 2026-11-06 实测参数）
 

@@ -1,0 +1,1187 @@
+{
+  "version": "teacher-questions/v2",
+  "template": true,
+  "note": "teacher-questions/v2 空白收集模板：60 槽位（五类各 12），其中 30 条计划 strict（定义 8/定理 6/公式 6/题目 10）。填完后另存为 teacher_questions.v2.json，更新 provenance 并跑 tools/check_teacher_questions_v2.py。",
+  "instructions": [
+    "找 2–3 位真实高中数学教师，在不知道检索实现的前提下，说出真正会提的检索需求；逐字记录，不改写成系统友好关键词。",
+    "一条只表达一个检索意图；一句话多个要求就拆条；不要只收集系统答得对的问题。",
+    "填写 contributor（T01/年级/教龄段/是否用过 AI 工具）与 collected_at（YYYY-MM-DD）；不要在仓库写姓名/学校。",
+    "expect.any 由另一位核验人在冻结 DB 快照上用 SQL 确认后填写，至少 1 条；填完把 expect_verified 改为 true。",
+    "strict 金标只给唯一确定对象：从 DB 导出该对象的 chunk_id 集合（题干/定义/定理/公式块），填 object_type、rationale、verified_by；两位核验人独立核验后 strict_verified=true。",
+    "strict 计划配额：定义 8、定理 6、公式 6、完整题目 10，共 30 条；多目标/模糊需求只用 expect.any，不强行凑 strict。",
+    "v2.0 目标 60 条（五类各 12）；长期 v2.1 扩到 ≥100 条 strict（定义 25/定理 20/公式 20/题目 35），见 V2_COLLECTION_GUIDE.md。",
+    "模拟候选（teacher_questions.candidates.json）只用于演练工装，origin 必须保持 simulated_candidate，不得改成 teacher。"
+  ],
+  "collection_protocol": {
+    "target_total": 60,
+    "per_category": 12,
+    "strict_total": 30,
+    "strict_by_type": {
+      "definition": 8,
+      "theorem": 6,
+      "formula": 6,
+      "question": 10
+    },
+    "teachers": "2–3 位，教龄/年级分层；至少 1 位 >15 年教龄",
+    "verification": "expect.any 与 expect.strict 均由第二位核验人独立核验；strict 需两位核验人；hit/no-hit Cohen's κ ≥ 0.70",
+    "freeze": "provenance.status=real_teacher；sha256 + DB counts + git commit 写入 manifest；冻结后不调参",
+    "dev_set": "另建 20 条 dev 集（同样真实教师），与评测集隔离"
+  },
+  "strict_quota": {
+    "definition": 8,
+    "theorem": 6,
+    "formula": 6,
+    "question": 10,
+    "total": 30
+  },
+  "provenance": {
+    "status": "template",
+    "real_teacher_confirmed": false,
+    "collected_by": "",
+    "collected_at": "",
+    "contributors": [],
+    "note": "空白模板：填写后必须更新 provenance；模拟数据不得标 real_teacher。"
+  },
+  "queries": [
+    {
+      "id": "Q-A-01",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "theorem",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 定理/性质类：录一条定理或性质，strict 金标填定理所在块。"
+    },
+    {
+      "id": "Q-A-02",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "theorem",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 定理/性质类：录一条定理或性质，strict 金标填定理所在块。"
+    },
+    {
+      "id": "Q-A-03",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "formula",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 公式类：录一个公式，strict 金标填公式所在块。"
+    },
+    {
+      "id": "Q-A-04",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "formula",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 公式类：录一个公式，strict 金标填公式所在块。"
+    },
+    {
+      "id": "Q-A-05",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "formula",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 公式类：录一个公式，strict 金标填公式所在块。"
+    },
+    {
+      "id": "Q-A-06",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "formula",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 公式类：录一个公式，strict 金标填公式所在块。"
+    },
+    {
+      "id": "Q-A-07",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-A-08",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-A-09",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-A-10",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-A-11",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-A-12",
+      "category": "主题词",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_topic",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "一个主题词/章节名/一对易混概念，例如“导数”“立体几何”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-01",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "formula",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 公式类：录一个公式，strict 金标填公式所在块。"
+    },
+    {
+      "id": "Q-B-02",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "formula",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 公式类：录一个公式，strict 金标填公式所在块。"
+    },
+    {
+      "id": "Q-B-03",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-04",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-05",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-06",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-07",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-08",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-09",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-10",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "question",
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 完整题目类：录一道题，strict 金标填题干块（解析块不自动算）。"
+    },
+    {
+      "id": "Q-B-11",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-B-12",
+      "category": "题型+知识点",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "question",
+      "intent": "find_by_type",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "题型 + 知识点，例如“圆锥曲线的选择题”“导数的解答题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-C-01",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-02",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-03",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-04",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-05",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-06",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-07",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-08",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "definition",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定义类：录一条教材定义原话，strict 金标填该定义所在块。"
+    },
+    {
+      "id": "Q-C-09",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "theorem",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定理/性质类：录一条定理或性质，strict 金标填定理所在块。"
+    },
+    {
+      "id": "Q-C-10",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "theorem",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定理/性质类：录一条定理或性质，strict 金标填定理所在块。"
+    },
+    {
+      "id": "Q-C-11",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "theorem",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定理/性质类：录一条定理或性质，strict 金标填定理所在块。"
+    },
+    {
+      "id": "Q-C-12",
+      "category": "教材概念",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "chunk",
+      "intent": "find_concept",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": "theorem",
+      "notes": "",
+      "fill_hint": "定义/定理/公式/推论/适用条件，例如“补集的定义”“正弦定理”。 定理/性质类：录一条定理或性质，strict 金标填定理所在块。"
+    },
+    {
+      "id": "Q-D-01",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-02",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-03",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-04",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-05",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-06",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-07",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-08",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-09",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-10",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-11",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-D-12",
+      "category": "年份+卷别",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "find_by_year",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "年份、卷别、年份段或某年模拟卷，例如“2024 新高考Ⅰ卷的题”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-01",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-02",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-03",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-04",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-05",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-06",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-07",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-08",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-09",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-10",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-11",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    },
+    {
+      "id": "Q-E-12",
+      "category": "自然语言要求",
+      "text": "",
+      "origin": "teacher",
+      "contributor": "",
+      "collected_at": "",
+      "object_type": "any",
+      "intent": "natural_language",
+      "expect": {
+        "any": [],
+        "strict": null
+      },
+      "expect_verified": false,
+      "strict_verified": false,
+      "strict_plan": null,
+      "notes": "",
+      "fill_hint": "难度/易错/数量/用途/来源限制/改编，例如“出几道导数压轴题，难度接近高考”。 any-only 槽位：可记录模糊/多目标需求；不强行填 strict，直接用 expect.any。"
+    }
+  ]
+}
