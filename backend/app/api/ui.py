@@ -922,10 +922,13 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         )
         source_link = ""
         if row.version_id and row.mime_type and _source_path(row.storage_key):
-            label = "查看源 PDF" if row.mime_type == "application/pdf" else "查看源文件"
+            is_pdf = row.mime_type == "application/pdf"
+            href = (f"/ui/knowledge/{esc(row.version_id)}/source/view"
+                    if is_pdf else f"/ui/knowledge/{esc(row.version_id)}/source")
+            label = "查看源 PDF" if is_pdf else "查看源文件"
             source_link = (
-                f"<p><a href='/ui/knowledge/{esc(row.version_id)}/source' "
-                f"target='_blank' rel='noopener'>{label} ↗</a></p>"
+                f"<p><a href='{href}' target='_blank' rel='noopener'>"
+                f"{label} ↗</a></p>"
             )
         blocks.append(
             f"<div class='card'><p><b>{esc(row.title)}</b> "
@@ -1096,6 +1099,101 @@ def _source_path(storage_key: str | None) -> Path | None:
     return None
 
 
+@router.get("/ui/knowledge/{version_id}/source/view")
+async def knowledge_source_view(
+    version_id: uuid.UUID,
+    page_no: int = 1,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    async with db.session_for(user_id) as session:
+        row = (await session.execute(text(
+            "SELECT storage_key, mime_type, title FROM knowledge_document_versions v "
+            "JOIN knowledge_sources s ON s.id = v.source_id WHERE v.id = :id"
+        ), {'id': version_id})).first()
+    if row is None:
+        return page("找不到源文件", "<p class='err'>源文件不存在或无权访问。</p>", teacher=name)
+    path = _source_path(row[0])
+    if path is None:
+        return page("文件缺失", "<p class='err'>存储中没有这个文件。</p>", teacher=name)
+    if not (row[1] or '').startswith('application/pdf'):
+        return page(
+            "源文件",
+            f"<p><a href='/ui/knowledge/{esc(version_id)}/source'>下载源文件</a></p>",
+            teacher=name, active='knowledge',
+        )
+    import pypdfium2 as pdfium
+
+    document = pdfium.PdfDocument(str(path))
+    try:
+        page_count = len(document)
+    finally:
+        document.close()
+    page_no = max(1, min(page_no, page_count))
+    prev_link = (
+        f"<a href='/ui/knowledge/{esc(version_id)}/source/view?page_no={page_no - 1}'>← 上一页</a>"
+        if page_no > 1 else "<span class='muted'>← 上一页</span>"
+    )
+    next_link = (
+        f"<a href='/ui/knowledge/{esc(version_id)}/source/view?page_no={page_no + 1}'>下一页 →</a>"
+        if page_no < page_count else "<span class='muted'>下一页 →</span>"
+    )
+    body = (
+        f"<p><a href='/ui/knowledge'>← 返回知识库</a> "
+        f"<a href='/ui/knowledge/{esc(version_id)}/source' target='_blank' "
+        "rel='noopener' style='margin-left:12px'>下载原 PDF</a></p>"
+        f"<p class='muted'>{esc(row[2])} · 第 {page_no} / {page_count} 页</p>"
+        f"<p>{prev_link} <span style='margin:0 12px'>{page_no} / {page_count}</span> {next_link}</p>"
+        f"<div style='background:#fff;border:1px solid var(--line);border-radius:12px;"
+        "padding:12px;text-align:center'>"
+        f"<img src='/ui/knowledge/{esc(version_id)}/source/page/{page_no}' "
+        "alt='源 PDF 页面' style='max-width:100%;height:auto;border-radius:4px'></div>"
+    )
+    return page("查看源 PDF", body, teacher=name, active='knowledge')
+
+
+@router.get("/ui/knowledge/{version_id}/source/page/{page_no}")
+async def knowledge_source_page(
+    version_id: uuid.UUID,
+    page_no: int,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, _, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    async with db.session_for(user_id) as session:
+        row = (await session.execute(text(
+            "SELECT storage_key, mime_type FROM knowledge_document_versions WHERE id = :id"
+        ), {'id': version_id})).first()
+    if row is None or not (row[1] or '').startswith('application/pdf'):
+        return Response(status_code=404)
+    path = _source_path(row[0])
+    if path is None:
+        return Response(status_code=404)
+    import pypdfium2 as pdfium
+    from io import BytesIO
+
+    document = pdfium.PdfDocument(str(path))
+    try:
+        if page_no < 1 or page_no > len(document):
+            return Response(status_code=404)
+        image = document[page_no - 1].render(scale=2).to_pil()
+        buffer = BytesIO()
+        image.save(buffer, format='PNG')
+    finally:
+        document.close()
+    return Response(buffer.getvalue(), media_type='image/png',
+                    headers={'Cache-Control': 'private, max-age=300'})
+
+
 @router.get("/ui/knowledge/{version_id}/source")
 async def knowledge_source(
     version_id: uuid.UUID,
@@ -1123,7 +1221,8 @@ async def knowledge_source(
     if path is None:
         return page("文件缺失", "<p class='err'>存储中没有这个文件。</p>", teacher=name)
     if (row[1] or '').startswith('application/pdf'):
-        return FileResponse(path, media_type='application/pdf')
+        return FileResponse(path, media_type='application/pdf',
+                            headers={'Content-Disposition': 'inline; filename="source.pdf"'})
     return FileResponse(path, media_type=row[1] or 'application/octet-stream',
                         filename=f"{row[2]}{path.suffix}")
 
@@ -1193,10 +1292,13 @@ async def knowledge_questions(
 
     source_link = ""
     if source_info and _source_path(source_info[0]):
-        label = "查看源 PDF" if (source_info[1] or '').startswith('application/pdf') else "查看源文件"
+        is_pdf = (source_info[1] or '').startswith('application/pdf')
+        href = (f"/ui/knowledge/{esc(version_id)}/source/view"
+                if is_pdf else f"/ui/knowledge/{esc(version_id)}/source")
+        label = "查看源 PDF" if is_pdf else "查看源文件"
         source_link = (
-            f"<p><a href='/ui/knowledge/{esc(version_id)}/source' target='_blank' "
-            f"rel='noopener'>{label} ↗</a></p>"
+            f"<p><a href='{href}' target='_blank' rel='noopener'>"
+            f"{label} ↗</a></p>"
         )
     body = (
         f"<p class='muted'><a href='/ui/knowledge'>← 返回知识库</a></p>"
@@ -1571,9 +1673,9 @@ async def task_detail(
                 f"<form method='post' action='/ui/tasks/{task_id}/export' "
                 "style='display:inline'>"
                 "<button class='secondary' type='submit' name='profile' value='teacher'>"
-                "下载教师版</button> "
+                "下载教师版（.docx）</button> "
                 "<button class='secondary' type='submit' name='profile' value='student'>"
-                "下载学生版</button></form></div>"
+                "下载学生版（.docx）</button></form></div>"
             )
         rows = "".join(
             f"<tr><td>{esc(v.version_no)}</td><td>{esc(v.content_hash[:12])}…</td></tr>"
