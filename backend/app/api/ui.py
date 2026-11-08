@@ -48,6 +48,7 @@ from app.services import (
     publication,
     retrieval_guard,
     tasks,
+    teaching_agent,
 )
 
 router = APIRouter(tags=["ui"], include_in_schema=False)
@@ -219,6 +220,7 @@ def esc(value: object) -> str:
 
 ACTIVE_BY_TITLE = {
     '工作台': 'dashboard',
+    'AI 教学助手': 'agent',
     '知识库': 'knowledge',
     '知识库检索': 'search',
     '我的任务': 'tasks',
@@ -237,7 +239,7 @@ def _sidebar(active: str | None) -> str:
         '<a class="brand" href="/ui/dashboard">Chilon</a>'
         '<div class="nav-group">WORKSPACE</div>'
         + item('工作台', '/ui/dashboard', 'dashboard')
-        + item('AI 教学助手', '/ui/tasks', 'tasks')
+        + item('AI 教学助手', '/ui/agent', 'agent')
         + item('我的教学项目', '/ui/tasks', 'projects')
         + '<div class="nav-group">KNOWLEDGE CENTER</div>'
         + item('知识库', '/ui/knowledge', 'knowledge')
@@ -683,6 +685,91 @@ async def search_detail(
     return page(qno or "内容详情", body, teacher=name, active='search')
 
 
+# ── teaching agent UI ─────────────────────────────────────────────────────────
+
+
+@router.get("/ui/agent")
+async def agent_page(chilon_session: Annotated[str | None, Cookie()] = None) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    _, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    body = (
+        "<div class='card search-hero'><h2>AI 教学助手</h2>"
+        "<p class='muted'>用自然语言检索真实教材和试题，再基于证据备课、分析或生成资料。</p>"
+        "<form method='post' action='/ui/agent'>"
+        "<textarea name='message' rows='4' required "
+        "placeholder='例如：总结数列求和的常见方法，并找 10 道高考真题和 5 道模拟题'></textarea>"
+        "<p><button type='submit'>开始</button></p></form></div>"
+        "<div class='card'><p class='muted'>示例</p><ul class='muted'>"
+        "<li>总结等差数列的核心知识点</li>"
+        "<li>检索 10 道数列求和的高考真题</li>"
+        "<li>设计一节导数专题复习课</li>"
+        "<li>分析一道数列大题，给出两种解法</li></ul></div>"
+    )
+    return page("AI 教学助手", body, teacher=name, active='agent')
+
+
+@router.post("/ui/agent")
+async def agent_answer(
+    message: Annotated[str, Form()],
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    message = message.strip()
+    if not message:
+        return RedirectResponse("/ui/agent", status_code=303)
+    try:
+        retrieval_guard.check_and_record(str(user_id), 'h')
+    except retrieval_guard.RateLimited:
+        return page("AI 教学助手", "<p class='err'>请求过于频繁，请稍后再试。</p>",
+                    teacher=name, active='agent')
+    except retrieval_guard.QuotaExceeded:
+        return page("AI 教学助手", "<p class='err'>今日检索额度已用完。</p>",
+                    teacher=name, active='agent')
+    try:
+        async with db.session_for(user_id) as session:
+            result = await teaching_agent.chat(session, user_id, message)
+    except Exception as exc:  # noqa: BLE001
+        return page("AI 教学助手",
+                    f"<p class='err'>Agent 暂时不可用：{esc(type(exc).__name__)}</p>",
+                    teacher=name, active='agent')
+    data = result.get('data') or {}
+    answer_html = (
+        "<div class='card'><h2>回答</h2>"
+        f"<pre style='white-space:pre-wrap'>{esc(data.get('answer') or '')}</pre>"
+        f"<p class='muted'>任务类型 {esc(data.get('task_type'))} · "
+        f"证据 {esc(data.get('evidence_count', 0))} 条 · "
+        f"{'生成' if data.get('generated') else '未生成额外内容'}</p></div>"
+    )
+    citations = data.get('citations') or []
+    citation_html = ''
+    if citations:
+        cards = []
+        for cite in citations:
+            cards.append(
+                "<div class='card'><span class='tag'>引用</span> "
+                f"<b>{esc(cite.get('source_name') or '未命名来源')}</b> "
+                f"<span class='muted'>{esc(cite.get('year') or '年份未提供')} · "
+                f"{esc(cite.get('locator') or '位置未提供')}</span>"
+                f"<pre>{esc(cite.get('excerpt') or '')}</pre></div>"
+            )
+        citation_html = "<h2>检索证据</h2>" + ''.join(cards)
+    body = (
+        "<p><a href='/ui/agent'>← 继续提问</a></p>"
+        f"<div class='card'><p class='muted'>你的问题</p><p>{esc(message)}</p></div>"
+        + answer_html + citation_html
+    )
+    return page("AI 教学助手", body, teacher=name, active='agent')
+
+
 # ── dashboard / settings ───────────────────────────────────────────────────────
 
 
@@ -728,8 +815,8 @@ async def dashboard(chilon_session: Annotated[str | None, Cookie()] = None) -> R
         "<h3>智能检索</h3><p class='muted'>用自然语言找教材、真题和模拟题，并核对来源。</p></a>"
         "<a class='card quick-card' href='/ui/knowledge'><div class='kicker'>KNOWLEDGE</div>"
         "<h3>知识库</h3><p class='muted'>浏览、上传和审核高中数学资料。</p></a>"
-        "<a class='card quick-card' href='/ui/tasks'><div class='kicker'>WORKSPACE</div>"
-        "<h3>AI 教学助手</h3><p class='muted'>从一句话开始生成教学方案和材料。</p></a>"
+        "<a class='card quick-card' href='/ui/agent'><div class='kicker'>WORKSPACE</div>"
+        "<h3>AI 教学助手</h3><p class='muted'>从一句话开始检索、备课和生成教学材料。</p></a>"
         "</div>"
         "<div class='stat-row'>"
         f"<div class='card stat'><span class='muted'>教学任务</span><b>{esc(task_count)}</b></div>"

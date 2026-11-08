@@ -17,6 +17,7 @@ from app.api import auth as auth_api
 from app.api import events as events_api
 from app.api import knowledge as knowledge_api
 from app.api import retrieval as retrieval_api
+from app.api import teaching_agent as teaching_agent_api
 from app.api import ui as ui_api
 from app.api import executions as executions_api
 from app.api import plans as plans_api
@@ -46,6 +47,7 @@ app.include_router(auth_api.router)
 app.include_router(events_api.router)
 app.include_router(knowledge_api.router)
 app.include_router(retrieval_api.router)
+app.include_router(teaching_agent_api.router)
 app.include_router(ui_api.router)
 
 

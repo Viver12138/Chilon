@@ -171,6 +171,33 @@ Windows 上异步 psycopg 需要 Selector event loop；本地启动脚本/测试
 5. 请求发布 → 确认发布；
 6. 下载教师版 / 学生版。
 
+### Teaching Agent API
+
+除任务工作流外，仓库还实现了面向教学的 Agent V1：
+
+```text
+agent/
+├── prompts/             System Prompt、教学原则、输出格式
+├── skills/              知识总结 / 题检索 / 题分析 / 备课 / 试卷分析 / 资料生成
+├── tools/               工具契约
+└── evaluation/          评测规则与首批用例
+```
+
+后端入口：
+
+```text
+POST /teaching-agent/chat
+POST /teaching-agent/tools/search_knowledge
+GET  /teaching-agent/tools/questions/{question_id}
+POST /teaching-agent/tools/get_textbook_content
+GET  /teaching-agent/tools/sources/{source_id}
+POST /teaching-agent/tools/calculate_math
+```
+
+Agent 不直接访问数据库；它通过工具读取 PostgreSQL/Qdrant。检索不足时必须报告
+实际数量，生成内容必须标注为生成；没有 LLM key 时仍可用证据模式返回检索结果。
+
+
 ## 架构
 
 ```mermaid
@@ -206,6 +233,7 @@ query
 
 ```text
 backend/            FastAPI 应用、服务层、工具、服务端 UI
+agent/              Teaching Agent prompts / skills / tools 契约 / 评测
 database/           Registry、DDL、迁移、RLS 与数据库测试
 design/             状态机 / 动作 / API / 导航 / 测试矩阵契约
 schemas/            机器可读 JSON Schema
@@ -231,6 +259,7 @@ Dockerfile          应用镜像
 - [x] QueryPlan + 结构化硬过滤
 - [x] Hybrid H 默认检索 + HR 增强
 - [x] 服务端教师工作台（检索 / 知识库 / 工作台 / 详情）
+- [x] Teaching Agent V1（六 Skills + 五个工具 + 证据模式）
 - [ ] 独立 Vue 前端与更完整的知识卡片
 - [ ] 草稿可视化编辑
 - [ ] 公式/定理对象类型分池
