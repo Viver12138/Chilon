@@ -197,14 +197,14 @@ POST /teaching-agent/tools/calculate_math
 Agent 不直接访问数据库；它通过工具读取 PostgreSQL/Qdrant。检索不足时必须报告
 实际数量，生成内容必须标注为生成；没有 LLM key 时仍可用证据模式返回检索结果。
 
-仓库还提供 DSH preset：
+仓库还提供 DSH agent-preset bundle：
 
 ```powershell
 .venv\Scripts\python.exe -m pip install -r requirements-agent.txt
-pwsh -NoProfile -File agent/install_dsh_preset.ps1
 ```
 
-刷新 DSH Web UI 后，新建会话选择「Chilon 教学 Agent」。
+用 DSH 的插件管理安装 `agent/dsh-bundle`，刷新 DSH 后新建会话选择
+「Chilon 教学 Agent」。
 
 
 ## 架构
