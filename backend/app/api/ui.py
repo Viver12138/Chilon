@@ -842,11 +842,16 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
     type = (type or '').strip()
     if type == 'mine':
         where.append("s.scope = 'teacher'")
+        where.append("COALESCE(v.lifecycle_status, '') <> 'pending_review'")
     elif type == 'pending':
         where.append("v.lifecycle_status = 'pending_review'")
     elif type in ('textbook', 'gaokao_paper', 'mock_exam'):
         where.append("s.source_type = :source_type")
+        where.append("COALESCE(v.lifecycle_status, '') <> 'pending_review'")
         params['source_type'] = type
+    else:
+        # versions waiting for question proofreading live in the 待审核 tab only
+        where.append("COALESCE(v.lifecycle_status, '') <> 'pending_review'")
 
     async with db.session_for(user_id) as session:
         rows = (
@@ -860,10 +865,12 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
                             ORDER BY r.started_at DESC LIMIT 1) AS review_reasons,
                            (SELECT array_agg(q.question_no ORDER BY q.ordinal)
                             FROM knowledge_questions q
-                            WHERE q.document_version_id = v.id) AS question_numbers
+                            WHERE q.document_version_id = v.id) AS question_numbers,
+                           v.mime_type, v.storage_key
                     FROM knowledge_sources s
                     LEFT JOIN LATERAL (
-                        SELECT dv.id, dv.lifecycle_status FROM knowledge_document_versions dv
+                        SELECT dv.id, dv.lifecycle_status, dv.mime_type, dv.storage_key
+                        FROM knowledge_document_versions dv
                         WHERE dv.source_id = s.id ORDER BY dv.version_no DESC LIMIT 1
                     ) v ON true
                     WHERE {' AND '.join(where)}
@@ -910,14 +917,21 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
             )
         detail = (
             f"<p><a href='/ui/knowledge/{esc(row.version_id)}'>校对题目 →</a></p>"
-            if row.version_id
+            if row.version_id and status == "pending_review"
             else ""
         )
+        source_link = ""
+        if row.version_id and row.mime_type and _source_path(row.storage_key):
+            label = "查看源 PDF" if row.mime_type == "application/pdf" else "查看源文件"
+            source_link = (
+                f"<p><a href='/ui/knowledge/{esc(row.version_id)}/source' "
+                f"target='_blank' rel='noopener'>{label} ↗</a></p>"
+            )
         blocks.append(
             f"<div class='card'><p><b>{esc(row.title)}</b> "
             f"<span class='tag'>{esc(status)}</span> "
             f"<span class='muted'>{esc(row.source_type)}</span></p>"
-            f"{reason_html}{holes}{promote}{detail}</div>"
+            f"{reason_html}{holes}{promote}{detail}{source_link}</div>"
         )
 
     tabs = [('', '全部'), ('textbook', '教材'), ('gaokao_paper', '高考真题'),
@@ -927,10 +941,15 @@ async def knowledge_page(chilon_session: Annotated[str | None, Cookie()] = None,
         f"{'● ' if type == key else ''}{esc(label)}</a>"
         for key, label in tabs
     )
+    empty_text = (
+        "<p class='muted'>没有待审核的资料。</p>"
+        if type == 'pending'
+        else "<p class='muted'>还没有上传任何材料。</p>"
+    )
     body = (
         "<p class='muted'>管理、查阅和审核高中数学教学资料。</p>"
         f"<div class='chip-row'>{tab_html}</div>"
-        + (''.join(blocks) if blocks else "<p class='muted'>还没有上传任何材料。</p>")
+        + (''.join(blocks) if blocks else empty_text)
         + "<div class='card'><p class='muted'>需要新增教材、真题或模拟题？</p>"
         "<p><a href='/ui/knowledge/upload'>上传资料 →</a></p></div>"
     )
@@ -1061,6 +1080,54 @@ async def knowledge_promote(
 
 
 
+def _source_path(storage_key: str | None) -> Path | None:
+    """Resolve a teacher-uploaded source file, if it is available locally."""
+    if not storage_key or not storage_key.startswith("uploads/"):
+        return None
+    from app.api import knowledge as knowledge_api
+
+    relative = storage_key.split("uploads/", 1)[-1]
+    root = knowledge_api.UPLOAD_ROOT.resolve()
+    for base in (root, root.parent / "backend/var/uploads"):
+        base = base.resolve()
+        candidate = (base / relative).resolve()
+        if (base == candidate or base in candidate.parents) and candidate.exists():
+            return candidate
+    return None
+
+
+@router.get("/ui/knowledge/{version_id}/source")
+async def knowledge_source(
+    version_id: uuid.UUID,
+    chilon_session: Annotated[str | None, Cookie()] = None,
+) -> Response:
+    who = await teacher_from_cookie(chilon_session)
+    if who is None:
+        return RedirectResponse("/ui/login", status_code=303)
+    user_id, name, pending = who
+    if pending:
+        return RedirectResponse("/ui/password", status_code=303)
+    async with db.session_for(user_id) as session:
+        row = (await session.execute(text("""
+            SELECT v.storage_key, v.mime_type, s.title
+            FROM knowledge_document_versions v
+            JOIN knowledge_sources s ON s.id = v.source_id
+            WHERE v.id = :id
+        """), {'id': version_id})).first()
+    if row is None:
+        return page("找不到源文件", "<p class='err'>源文件不存在或无权访问。</p>", teacher=name)
+
+    from fastapi.responses import FileResponse
+
+    path = _source_path(row[0])
+    if path is None:
+        return page("文件缺失", "<p class='err'>存储中没有这个文件。</p>", teacher=name)
+    if (row[1] or '').startswith('application/pdf'):
+        return FileResponse(path, media_type='application/pdf')
+    return FileResponse(path, media_type=row[1] or 'application/octet-stream',
+                        filename=f"{row[2]}{path.suffix}")
+
+
 @router.get("/ui/knowledge/{version_id}")
 async def knowledge_questions(
     version_id: uuid.UUID,
@@ -1092,6 +1159,9 @@ async def knowledge_questions(
                 {"v": version_id},
             )
         ).all()
+        source_info = (await session.execute(text(
+            "SELECT storage_key, mime_type FROM knowledge_document_versions WHERE id = :v"
+        ), {'v': version_id})).first()
 
     cards = []
     for row in rows:
@@ -1121,8 +1191,16 @@ async def knowledge_questions(
             "<button class='secondary' type='submit'>删除这道</button></form></div>"
         )
 
+    source_link = ""
+    if source_info and _source_path(source_info[0]):
+        label = "查看源 PDF" if (source_info[1] or '').startswith('application/pdf') else "查看源文件"
+        source_link = (
+            f"<p><a href='/ui/knowledge/{esc(version_id)}/source' target='_blank' "
+            f"rel='noopener'>{label} ↗</a></p>"
+        )
     body = (
         f"<p class='muted'><a href='/ui/knowledge'>← 返回知识库</a></p>"
+        + source_link
         + (''.join(cards) if cards else "<p class='muted'>这个版本还没有题目。</p>")
     )
     return page("校对题目", body, teacher=name, active="knowledge")
