@@ -48,6 +48,29 @@ Authorization: Bearer <teacher token>
 
 工具接口见 `agent/tools/tool-contracts.md`。
 
+## DeepSeek Harness（DSH）接入
+
+仓库提供可直接安装的 DSH agent preset：
+
+```powershell
+.venv\Scripts\python.exe -m pip install -r requirements-agent.txt
+pwsh -NoProfile -File agent/install_dsh_preset.ps1
+```
+
+它会安装到 `<DSH_HOME>/.agent-presets/chilon-teaching`，启动
+`agent/mcp_server.py`，把 Chilon 工具注册为：
+
+```text
+mcp__chilon__search_knowledge
+mcp__chilon__get_question_detail
+mcp__chilon__get_textbook_content
+mcp__chilon__get_source_detail
+mcp__chilon__calculate_math
+```
+
+刷新 DSH Web UI，新建会话时选择「Chilon 教学 Agent」。完整说明：
+`agent/dsh-presets/README.md`。
+
 ## 设计约束
 
 - Agent 不直接访问 PostgreSQL/Qdrant，只调用后端工具；
